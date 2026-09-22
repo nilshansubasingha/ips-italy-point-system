@@ -1,0 +1,224 @@
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
+import { italyLocalToIso } from '@/lib/project4';
+
+function s(form: FormData, key: string) { return String(form.get(key) ?? '').trim(); }
+function nullable(form: FormData, key: string) { const v=s(form,key); return v || null; }
+function num(form: FormData,key:string,fallback:number|null=null){ const raw=s(form,key); if(!raw)return fallback; const n=Number(raw); return Number.isFinite(n)?n:fallback; }
+function go(path: string, kind: 'ok'|'error', message: string): never {
+  redirect(`${path}${path.includes('?') ? '&' : '?'}${kind}=${encodeURIComponent(message)}`);
+}
+function returnPath(form: FormData, fallback='/manage/tournaments') { return s(form,'return_to') || fallback; }
+function slugify(value:string){ return value.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').replace(/-+/g,'-'); }
+function normalizeCode(value:string){ return value.toUpperCase().replace(/[^A-Z0-9-]+/g,'-').replace(/^-+|-+$/g,'').replace(/-+/g,'-'); }
+function friendlyError(error:any, fallback:string){
+  const message=String(error?.message??fallback);
+  if(message.includes('tournaments_slug_check')) return 'The tournament URL slug is invalid. Use lowercase letters, numbers and single hyphens only.';
+  if(message.includes('tournaments_code_check')) return 'The tournament code can only contain capital letters, numbers and hyphens.';
+  if(message.includes('duplicate key')&&message.includes('slug')) return 'That tournament URL slug is already in use. Choose a different tournament name or slug.';
+  if(message.includes('duplicate key')&&message.includes('code')) return 'That tournament code is already in use.';
+  return message;
+}
+
+export async function createTournament(form: FormData) {
+  const supabase = await createClient(); const back=returnPath(form);
+  try {
+    const name=s(form,'name');
+    const code=normalizeCode(s(form,'code'));
+    const slug=slugify(s(form,'slug')||name);
+    const starts=italyLocalToIso(s(form,'starts_at'));
+    if (!code || !name || !slug || !starts) throw new Error('Name, code and start time are required. The slug can be generated automatically from the name.');
+    if(!/^[A-Z0-9-]{3,32}$/.test(code)) throw new Error('Tournament code must be 3–32 characters using capital letters, numbers or hyphens.');
+    if(!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) throw new Error('Tournament URL slug is invalid.');
+
+    const playersPerSide=num(form,'players_per_side');
+    const overs=num(form,'overs_per_innings');
+    const balls=num(form,'balls_per_over');
+    const wicketLimit=num(form,'wicket_limit');
+    const maxBowlerOvers=num(form,'tournament_max_overs_per_bowler');
+    if(!playersPerSide || playersPerSide<2 || playersPerSide>20) throw new Error('Players per side must be between 2 and 20.');
+    if(!overs || overs<1 || overs>100) throw new Error('Overs per innings must be between 1 and 100.');
+    if(!balls || balls<1 || balls>12) throw new Error('Balls per over must be between 1 and 12.');
+
+    const payload:any={
+      season_id:s(form,'season_id'), city_id:s(form,'city_id'), ruleset_id:s(form,'ruleset_id'),
+      code,name,slug,format_label:s(form,'format_label')||`${overs} overs`,status:'DRAFT',
+      starts_at:starts, ends_at:italyLocalToIso(s(form,'ends_at')),
+      registration_deadline:italyLocalToIso(s(form,'registration_deadline')),
+      squad_deadline:italyLocalToIso(s(form,'squad_deadline')),
+      squad_size:num(form,'squad_size'), max_teams:num(form,'max_teams'),
+      registration_mode:s(form,'registration_mode')||'OPEN', default_venue_id:nullable(form,'default_venue_id'),
+      short_description:nullable(form,'short_description'),
+      players_per_side:playersPerSide, overs_per_innings:overs, balls_per_over:balls,
+      wicket_limit:wicketLimit, tournament_max_overs_per_bowler:maxBowlerOvers,
+    };
+    const {data,error}=await supabase.from('tournaments').insert(payload).select('id').single(); if(error) throw error;
+    revalidatePath('/manage/tournaments'); go(`/manage/tournaments/${data.id}`,'ok','Tournament created with frozen tournament match defaults.');
+  } catch(e:any) { go(back,'error',friendlyError(e,'Could not create tournament.')); }
+}
+
+export async function updateTournament(form: FormData) {
+  const supabase=await createClient(); const id=s(form,'tournament_id'); const back=returnPath(form,`/manage/tournaments/${id}`);
+  try {
+    const payload:any={
+      name:s(form,'name'), format_label:s(form,'format_label'), status:s(form,'status'),
+      starts_at:italyLocalToIso(s(form,'starts_at')), ends_at:italyLocalToIso(s(form,'ends_at')),
+      registration_deadline:italyLocalToIso(s(form,'registration_deadline')), squad_deadline:italyLocalToIso(s(form,'squad_deadline')),
+      squad_size:num(form,'squad_size'), max_teams:num(form,'max_teams'), registration_mode:s(form,'registration_mode')||'OPEN',
+      default_venue_id:nullable(form,'default_venue_id'), short_description:nullable(form,'short_description'),
+      players_per_side:num(form,'players_per_side'), overs_per_innings:num(form,'overs_per_innings'), balls_per_over:num(form,'balls_per_over'),
+      wicket_limit:num(form,'wicket_limit'), tournament_max_overs_per_bowler:num(form,'tournament_max_overs_per_bowler'),
+    };
+    const {error}=await supabase.from('tournaments').update(payload).eq('id',id); if(error) throw error;
+    revalidatePath(back); revalidatePath('/tournaments');
+    go(back,'ok','Tournament defaults updated. Existing fixtures keep their own match-format snapshot.');
+  } catch(e:any){go(back,'error',friendlyError(e,'Could not update tournament.'));}
+}
+
+export async function addTournamentTeam(form: FormData) {
+  const supabase=await createClient(); const tid=s(form,'tournament_id'); const back=returnPath(form,`/manage/tournaments/${tid}`);
+  try { const {error}=await supabase.from('tournament_teams').insert({tournament_id:tid,team_id:s(form,'team_id'),status:'APPLIED',application_note:nullable(form,'application_note')}); if(error) throw error; revalidatePath(back); go(back,'ok','Team application added.'); }
+  catch(e:any){go(back,'error',friendlyError(e,'Could not add team.'));}
+}
+
+export async function decideTournamentTeam(form: FormData) {
+  const supabase=await createClient(); const tid=s(form,'tournament_id'); const back=returnPath(form,`/manage/tournaments/${tid}`);
+  try {
+    const {data:{user}}=await supabase.auth.getUser(); if(!user) throw new Error('Not signed in.');
+    const status=s(form,'status'); const patch:any={status,decision_by:user.id,decision_note:nullable(form,'decision_note')};
+    if(status==='ACCEPTED') patch.accepted_at=new Date().toISOString(); if(status==='CONFIRMED') patch.confirmed_at=new Date().toISOString();
+    const {error}=await supabase.from('tournament_teams').update(patch).eq('id',s(form,'tournament_team_id')); if(error) throw error;
+    revalidatePath(back); go(back,'ok',`Team ${status.toLowerCase()}.`);
+  } catch(e:any){go(back,'error',friendlyError(e,'Could not update application.'));}
+}
+
+export async function ensureSquad(form: FormData) {
+  const supabase=await createClient(); const tid=s(form,'tournament_id'); const back=returnPath(form,`/manage/tournaments/${tid}`);
+  try { const {error}=await supabase.from('tournament_squads').upsert({tournament_id:tid,team_id:s(form,'team_id')},{onConflict:'tournament_id,team_id',ignoreDuplicates:true}); if(error) throw error; revalidatePath(back); go(back,'ok','Squad workspace ready.'); }
+  catch(e:any){go(back,'error',friendlyError(e,'Could not create squad.'));}
+}
+
+export async function addSquadPlayer(form: FormData) {
+  const supabase=await createClient(); const back=returnPath(form);
+  try { const {data:{user}}=await supabase.auth.getUser(); if(!user) throw new Error('Not signed in.'); const {error}=await supabase.from('tournament_squad_players').insert({squad_id:s(form,'squad_id'),player_id:s(form,'player_id'),added_by:user.id}); if(error) throw error; revalidatePath(back); go(back,'ok','Player added to squad.'); }
+  catch(e:any){go(back,'error',friendlyError(e,'Could not add player.'));}
+}
+
+export async function removeSquadPlayer(form: FormData) {
+  const supabase=await createClient(); const back=returnPath(form);
+  try { const {error}=await supabase.from('tournament_squad_players').delete().eq('id',s(form,'squad_player_id')); if(error) throw error; revalidatePath(back); go(back,'ok','Player removed.'); }
+  catch(e:any){go(back,'error',friendlyError(e,'Could not remove player.'));}
+}
+
+export async function submitSquad(form: FormData) {
+  const supabase=await createClient(); const back=returnPath(form);
+  try { const {error}=await supabase.rpc('ips_submit_squad',{p_squad_id:s(form,'squad_id')}); if(error) throw error; revalidatePath(back); go(back,'ok','Squad submitted.'); }
+  catch(e:any){go(back,'error',friendlyError(e,'Could not submit squad.'));}
+}
+
+export async function lockSquad(form: FormData) {
+  const supabase=await createClient(); const back=returnPath(form);
+  try { const {error}=await supabase.rpc('ips_lock_squad',{p_squad_id:s(form,'squad_id')}); if(error) throw error; revalidatePath(back); go(back,'ok','Squad locked.'); }
+  catch(e:any){go(back,'error',friendlyError(e,'Could not lock squad.'));}
+}
+
+export async function requestReplacement(form: FormData) {
+  const supabase=await createClient(); const back=returnPath(form);
+  try { const {data:{user}}=await supabase.auth.getUser(); if(!user) throw new Error('Not signed in.'); const {error}=await supabase.from('squad_change_requests').insert({squad_id:s(form,'squad_id'),outgoing_player_id:s(form,'outgoing_player_id'),incoming_player_id:s(form,'incoming_player_id'),reason:s(form,'reason'),requested_by:user.id}); if(error) throw error; revalidatePath(back); go(back,'ok','Emergency replacement requested.'); }
+  catch(e:any){go(back,'error',friendlyError(e,'Could not request replacement.'));}
+}
+
+export async function reviewReplacement(form: FormData) {
+  const supabase=await createClient(); const back=returnPath(form); const status=s(form,'status');
+  try {
+    if(status==='APPROVED') { const {error}=await supabase.rpc('ips_approve_emergency_replacement',{p_request_id:s(form,'request_id')}); if(error) throw error; }
+    else { const {data:{user}}=await supabase.auth.getUser(); if(!user) throw new Error('Not signed in.'); const {error}=await supabase.from('squad_change_requests').update({status:'REJECTED',reviewed_by:user.id,reviewed_at:new Date().toISOString()}).eq('id',s(form,'request_id')); if(error) throw error; }
+    revalidatePath(back); go(back,'ok',status==='APPROVED'?'Replacement approved.':'Replacement rejected.');
+  } catch(e:any){go(back,'error',friendlyError(e,'Could not review replacement.'));}
+}
+
+export async function createFixture(form: FormData) {
+  const supabase=await createClient(); const tid=s(form,'tournament_id'); const back=returnPath(form,`/manage/tournaments/${tid}`);
+  try {
+    const scheduled=italyLocalToIso(s(form,'scheduled_at')); if(!scheduled) throw new Error('Match date/time is required.');
+    const home=s(form,'home_team_id'), away=s(form,'away_team_id'); if(home===away) throw new Error('Home and away teams must be different.');
+    const payload:any={tournament_id:tid,match_code:normalizeCode(s(form,'match_code')),match_number:Number(s(form,'match_number')),home_team_id:home,away_team_id:away,venue_id:nullable(form,'venue_id'),scheduled_at:scheduled,stage:s(form,'stage')||'LEAGUE',round_label:nullable(form,'round_label'),status:'SCHEDULED'};
+    const {error}=await supabase.from('matches').insert(payload); if(error) throw error; revalidatePath(back); go(back,'ok','Fixture created. Tournament match settings were snapshotted automatically.');
+  } catch(e:any){go(back,'error',friendlyError(e,'Could not create fixture.'));}
+}
+
+export async function updateMatchStatus(form: FormData) {
+  const supabase=await createClient(); const back=returnPath(form);
+  try { const {error}=await supabase.from('matches').update({status:s(form,'status')}).eq('id',s(form,'match_id')); if(error) throw error; revalidatePath(back); go(back,'ok','Match status updated.'); }
+  catch(e:any){go(back,'error',friendlyError(e,'Could not update match.'));}
+}
+
+export async function assignOfficial(form: FormData) {
+  const supabase=await createClient(); const back=returnPath(form);
+  try { const {data:{user}}=await supabase.auth.getUser(); if(!user) throw new Error('Not signed in.'); const {error}=await supabase.from('match_official_assignments').insert({match_id:s(form,'match_id'),user_id:s(form,'user_id'),role:s(form,'role'),designation:s(form,'designation')||'STANDARD',assigned_by:user.id,note:nullable(form,'note')}); if(error) throw error; revalidatePath(back); go(back,'ok','Official assigned.'); }
+  catch(e:any){go(back,'error',friendlyError(e,'Could not assign official.'));}
+}
+
+export async function removeOfficial(form: FormData) {
+  const supabase=await createClient(); const back=returnPath(form);
+  try { const {error}=await supabase.from('match_official_assignments').delete().eq('id',s(form,'assignment_id')); if(error) throw error; revalidatePath(back); go(back,'ok','Official removed.'); }
+  catch(e:any){go(back,'error',friendlyError(e,'Could not remove official.'));}
+}
+
+export async function createCatalogCity(form: FormData) {
+  const supabase=await createClient(); const back=returnPath(form,'/manage/tournaments');
+  try {
+    const name=s(form,'city_name'), code=s(form,'city_code').toUpperCase();
+    if(!name||!code) throw new Error('City name and code are required.');
+    const {error}=await supabase.from('cities').insert({name,code,region:nullable(form,'city_region'),country_code:'IT',status:'ACTIVE'}); if(error) throw error;
+    revalidatePath('/manage/tournaments'); go(back,'ok',`${name} added to the city list.`);
+  } catch(e:any){go(back,'error',friendlyError(e,'Could not add city.'));}
+}
+
+export async function createCatalogSeason(form: FormData) {
+  const supabase=await createClient(); const back=returnPath(form,'/manage/tournaments');
+  try {
+    const name=s(form,'season_name'), code=s(form,'season_code').toUpperCase(), starts=s(form,'season_starts'), ends=s(form,'season_ends');
+    if(!name||!code||!starts||!ends) throw new Error('Season name, code, start and end are required.');
+    const {error}=await supabase.from('seasons').insert({name,code,starts_on:starts,ends_on:ends}); if(error) throw error;
+    revalidatePath('/manage/tournaments'); go(back,'ok',`${name} added to the season list.`);
+  } catch(e:any){go(back,'error',friendlyError(e,'Could not add season.'));}
+}
+
+export async function createCatalogRuleset(form: FormData) {
+  const supabase=await createClient(); const back=returnPath(form,'/manage/tournaments');
+  try {
+    const name=s(form,'ruleset_name'); if(!name) throw new Error('Ruleset name is required.');
+    const mode=s(form,'retirement_mode')||'NONE';
+    const payload:any={
+      name, version:Number(s(form,'ruleset_version')||1), description:nullable(form,'ruleset_description'),
+      balls_per_over:Number(s(form,'balls_per_over')||6), max_overs:Number(s(form,'max_overs')||10),
+      playing_xi_size:Number(s(form,'playing_xi_size')||7), innings_wicket_limit:Number(s(form,'innings_wicket_limit')||0)||null,
+      free_hit_on_no_ball:s(form,'free_hit_on_no_ball')==='on', consecutive_overs_by_same_bowler_allowed:s(form,'consecutive_overs')==='on',
+      max_overs_per_bowler:Number(s(form,'max_overs_per_bowler')||0)||null, retirement_runs:Number(s(form,'retirement_runs')||0)||null,
+      retirement_mode:mode, points_win:Number(s(form,'points_win')||2), points_tie:Number(s(form,'points_tie')||1), points_no_result:Number(s(form,'points_no_result')||1), points_loss:Number(s(form,'points_loss')||0),
+      extras_rules:{}, additional_rules:{}, is_active:true
+    };
+    const {error}=await supabase.from('competition_rulesets').insert(payload); if(error) throw error;
+    revalidatePath('/manage/tournaments'); go(back,'ok',`${name} ruleset added.`);
+  } catch(e:any){go(back,'error',friendlyError(e,'Could not add ruleset.'));}
+}
+
+export async function setPlayingXI(form: FormData) {
+  const supabase=await createClient(); const back=returnPath(form); const ids=form.getAll('player_ids').map(String);
+  try {
+    const {error}=await supabase.rpc('ips_set_match_playing_xi',{p_match_id:s(form,'match_id'),p_team_id:s(form,'team_id'),p_player_ids:ids}); if(error) throw error;
+    revalidatePath(back); go(back,'ok','Playing side saved from the locked squad.');
+  } catch(e:any){go(back,'error',friendlyError(e,'Could not save playing side.'));}
+}
+
+export async function setMatchTeamRoles(form: FormData) {
+  const supabase=await createClient(); const back=returnPath(form);
+  try {
+    const {error}=await supabase.rpc('ips_set_match_team_roles',{p_match_id:s(form,'match_id'),p_team_id:s(form,'team_id'),p_captain_id:s(form,'captain_id'),p_wicketkeeper_id:s(form,'wicketkeeper_id')}); if(error) throw error;
+    revalidatePath(back); go(back,'ok','Captain and wicketkeeper saved.');
+  } catch(e:any){go(back,'error',friendlyError(e,'Could not save team roles.'));}
+}

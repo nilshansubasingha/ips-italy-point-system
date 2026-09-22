@@ -1,0 +1,33 @@
+{
+  "name": "ips-platform",
+  "version": "0.6.2",
+  "private": true,
+  "description": "IPS \u2014 Italy Point System. Project 5.2 professional management, club/team/player registry, private contact identity and admin-managed player media.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n WEB,CONTROLLER,OVERLAY -c blue,green,magenta \"npm run dev -w @ips/web\" \"npm run dev -w @ips/controller\" \"npm run dev -w @ips/overlay\"",
+    "dev:web": "npm run dev -w @ips/web",
+    "dev:controller": "node scripts/sync-public-env.mjs && npm run dev -w @ips/controller",
+    "dev:overlay": "npm run dev -w @ips/overlay",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "db:smoke": "node scripts/db-smoke.mjs",
+    "public:smoke": "node scripts/project2-public-smoke.mjs",
+    "project4:smoke": "node scripts/project4-smoke.mjs",
+    "project5:smoke": "node scripts/project5-smoke.mjs",
+    "predev": "node scripts/sync-public-env.mjs",
+    "project5_1:smoke": "node scripts/project5-1-smoke.mjs",
+    "project5_2:smoke": "node scripts/project5-2-smoke.mjs"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "typescript": "^5.7.3",
+    "@supabase/supabase-js": "^2.49.4"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
