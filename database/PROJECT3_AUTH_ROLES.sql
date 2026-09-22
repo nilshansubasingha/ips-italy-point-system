@@ -1,0 +1,22 @@
+-- IPS Project 3 schema is already installed in the target Supabase project through:
+--   project3_auth_roles_scopes
+--   project3_security_hardening
+--   project3_profile_email
+--
+-- This file is intentionally non-destructive for the Project 3 handoff ZIP.
+-- Use Supabase migration history as the canonical applied schema for the connected project.
+--
+-- Current Project 3 objects:
+--   public.profiles
+--   public.role_grants
+--   public.audit_logs
+--   public.ips_has_role(...)
+--   public.ips_is_owner()
+--   public.ips_my_access_context()
+--   public.ips_can_manage_team(...)
+--   public.ips_can_manage_tournament(...)
+--   public.ips_can_score_match(...)
+--
+-- RLS is enabled on profiles, role_grants and audit_logs.
+-- Do not replace these tables with a second RBAC schema.
+select 'IPS Project 3 auth/RBAC schema already installed' as status;
