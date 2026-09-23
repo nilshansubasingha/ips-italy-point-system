@@ -12,7 +12,7 @@ import {addExistingPlayer,createPlayerForTeam,updateRosterPlayer} from '../../..
 const ROLE_OPTIONS=['Player','Batter','Bowler','All-rounder','Wicketkeeper','Wicketkeeper-batter'];
 
 export default async function AddPlayerPage({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<Record<string,string|string[]|undefined>>}){
- await requireAccount();
+ const account=await requireAccount();
  const {id}=await params;
  const sp=await searchParams;
  const q=typeof sp.q==='string'?sp.q.trim():'';
@@ -38,7 +38,7 @@ export default async function AddPlayerPage({params,searchParams}:{params:Promis
 
  return <main className="shell sports-shell">
    <SiteHeader/>
-   <ManagementNav account={await requireAccount()} active="teams"/>
+   <ManagementNav account={account} active="teams"/>
 
    <section className="manage-titlebar compact">
      <div>
