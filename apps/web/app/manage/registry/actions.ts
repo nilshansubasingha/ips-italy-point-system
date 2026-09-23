@@ -89,8 +89,8 @@ export async function createPlayerForTeam(form:FormData){
       p_shirt_number:shirt?Number(shirt):null,p_email:nullable(form,'email'),p_phone:nullable(form,'phone'),p_whatsapp_consent:s(form,'whatsapp_consent')==='on'
     }); if(error)throw error;
     const player=Array.isArray(data)?data[0]:data;
-    revalidatePath(`/manage/teams/${teamId}`); revalidatePath('/manage/players');
-    go(`/manage/teams/${teamId}`,'ok',`${player?.display_name??'Player'} created and added to the roster.`);
+    revalidatePath(`/manage/teams/${teamId}`); revalidatePath(`/manage/teams/${teamId}/players/add`); revalidatePath('/manage/players');
+    go(`/manage/teams/${teamId}/players/add`,'ok',`${player?.display_name??'Player'} created and added to the roster.`);
   }catch(e:any){go(ret,'error',friendly(e,'Could not create player.'));}
 }
 
@@ -98,8 +98,22 @@ export async function addExistingPlayer(form:FormData){
   const supabase=await createClient(); const teamId=s(form,'team_id'); const ret=back(form,`/manage/teams/${teamId}/players/add`); const shirt=s(form,'shirt_number');
   try{
     const {error}=await supabase.rpc('ips_add_existing_player_to_team',{p_team_id:teamId,p_player_id:s(form,'player_id'),p_shirt_number:shirt?Number(shirt):null}); if(error)throw error;
-    revalidatePath(`/manage/teams/${teamId}`); revalidatePath('/manage/players'); go(`/manage/teams/${teamId}`,'ok','Existing IPS player added to the team.');
+    revalidatePath(`/manage/teams/${teamId}`); revalidatePath(`/manage/teams/${teamId}/players/add`); revalidatePath('/manage/players'); go(`/manage/teams/${teamId}/players/add`,'ok','Existing IPS player added to the team.');
   }catch(e:any){go(ret,'error',friendly(e,'Could not add existing player.'));}
+}
+
+export async function updateRosterPlayer(form:FormData){
+  const supabase=await createClient(); const teamId=s(form,'team_id'); const ret=back(form,`/manage/teams/${teamId}/players/add`); const shirt=s(form,'shirt_number');
+  try{
+    const {error}=await supabase.rpc('ips_update_team_roster_player',{
+      p_membership_id:s(form,'membership_id'),
+      p_shirt_number:shirt?Number(shirt):null,
+      p_team_role:s(form,'team_role')||'Player'
+    });
+    if(error)throw error;
+    revalidatePath(`/manage/teams/${teamId}`); revalidatePath(ret); revalidatePath('/manage/players');
+    go(ret,'ok','Roster role updated.');
+  }catch(e:any){go(ret,'error',friendly(e,'Could not update roster role.'));}
 }
 
 export async function updateMembership(form:FormData){
