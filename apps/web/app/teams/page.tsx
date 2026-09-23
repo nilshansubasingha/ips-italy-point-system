@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import {getTeamDirectory,getTeamIdentityDisplayName} from '@ips/data';
+import {getCities,getTeamDirectory,getTeamIdentityDisplayName} from '@ips/data';
 import {SiteFooter,SiteHeader} from '@/components/site-header';
 import {Crest} from '@/components/identity';
 
@@ -7,8 +7,7 @@ export const dynamic='force-dynamic';
 
 export default async function TeamsPage({searchParams}:{searchParams:Promise<{city?:string}>}){
  const {city}=await searchParams;
- const teams=await getTeamDirectory();
- const cities=Array.from(new Map(teams.filter(t=>t.city).map(t=>[t.city!.id,t.city!])).values());
+ const [teams,cities]=await Promise.all([getTeamDirectory(),getCities()]);
  const visible=city?teams.filter(t=>t.city?.code.toLowerCase()===city.toLowerCase()):teams;
 
  return <main className="shell sports-shell">
