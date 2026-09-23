@@ -33,7 +33,7 @@ export function RankingsPreview({ players, scopeLabel='Italy', stacked=false }: 
   return (
     <div className={`rankings-stage ${stacked?'rankings-stage-stacked':''}`}>
       <div className="rankings-strip-note"><strong>OFFICIAL IPS RANKINGS</strong><span>No unofficial positions or ratings are being fabricated.</span></div>
-      <div className={stacked?'rankings-stack':'rankings-carousel'}>
+      <div className={stacked?'rankings-spaced-grid':'rankings-carousel'}>
         <RankingPanel title="Batting rankings" scopeLabel={scopeLabel} players={candidates} />
         <RankingPanel title="Bowling rankings" scopeLabel={scopeLabel} players={candidates} />
         <RankingPanel title="All-rounder rankings" scopeLabel={scopeLabel} players={candidates} />
