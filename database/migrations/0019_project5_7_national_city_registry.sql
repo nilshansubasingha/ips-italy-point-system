@@ -60,7 +60,7 @@ set search_path=public,auth as $$
         join public.clubs cl on cl.id=s.club_id
         where cl.city_id=c.id and tm.status='ACTIVE' and tm.end_on is null
       )::bigint as player_count,
-      (select count(*) from public.tournaments t where t.city_id=c.id and t.status<>'ARCHIVED')::bigint as tournament_count,
+      (select count(*) from public.tournaments t where t.city_id=c.id and t.status in ('DRAFT','REGISTRATION_OPEN','READY','LIVE','COMPLETED','LOCKED'))::bigint as tournament_count,
       (
         select count(*)
         from public.matches m
