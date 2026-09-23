@@ -1,8 +1,16 @@
 import Link from 'next/link';
 import type { AccountContext } from '@/lib/auth';
+import {createClient} from '@/lib/supabase/server';
 
-export function ManagementNav({account, active}:{account:AccountContext;active?:string}) {
+export async function ManagementNav({account, active}:{account:AccountContext;active?:string}) {
   const owner = account.grants.some(g=>g.role==='OWNER'&&g.scope_type==='GLOBAL');
+  const canReviewRegistrations=account.grants.some(g=>['OWNER','ADMIN','LEADER'].includes(g.role));
+  let registrationCount=0;
+  if(canReviewRegistrations){
+    const supabase=await createClient();
+    const {data}=await supabase.rpc('ips_registration_queue_counts');
+    registrationCount=Number(data?.players??0)+Number(data?.teams??0)+Number(data?.transfers??0);
+  }
   const items = [
     ['overview','Command Centre','/manage'],
     ['tournaments','Tournaments','/manage/tournaments'],
@@ -13,6 +21,7 @@ export function ManagementNav({account, active}:{account:AccountContext;active?:
   return <nav className="management-subnav" aria-label="IPS management">
     <div className="management-subnav-scroll">
       {items.map(([key,label,href])=><Link key={key} href={href} className={active===key?'active':''}>{label}</Link>)}
+      {canReviewRegistrations&&<Link href="/manage/registrations" className={active==='registrations'?'active':''}>Registration Requests{registrationCount>0&&<b className="nav-count-badge">{registrationCount}</b>}</Link>}
       {owner&&<Link href="/manage/roles" className={active==='roles'?'active':''}>Accounts & Roles</Link>}
     </div>
   </nav>;
