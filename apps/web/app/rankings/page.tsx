@@ -1,13 +1,14 @@
 import Link from 'next/link';
-import { getCities, getPlayerDirectory } from '@ips/data';
+import { getActiveCities, getPlayerDirectory } from '@ips/data';
 import { SiteFooter, SiteHeader } from '@/components/site-header';
 import { RankingsPreview } from '@/components/rankings-preview';
+import { ActiveCityFilter } from '@/components/location/active-city-filter';
 
 export const dynamic = 'force-dynamic';
 
 export default async function RankingsPage({searchParams}:{searchParams:Promise<{city?:string}>}) {
   const {city}=await searchParams;
-  const [players,cities]=await Promise.all([getPlayerDirectory(),getCities()]);
+  const [players,cities]=await Promise.all([getPlayerDirectory(),getActiveCities(50)]);
   const selectedCity=city?cities.find(c=>c.code.toLowerCase()===city.toLowerCase())??null:null;
   const visible=selectedCity?players.filter(p=>p.city?.id===selectedCity.id):players;
   const scopeLabel=selectedCity?.name??'Italy';
@@ -29,10 +30,7 @@ export default async function RankingsPage({searchParams}:{searchParams:Promise<
       </section>
 
       <section className="directory-toolbar-wide rankings-scope-toolbar">
-        <div className="directory-filter">
-          <Link className={!selectedCity?'active':''} href="/rankings">Italy</Link>
-          {cities.map(c=><Link key={c.id} className={selectedCity?.id===c.id?'active':''} href={`/rankings?city=${c.code.toLowerCase()}`}>{c.name}</Link>)}
-        </div>
+        <ActiveCityFilter cities={cities} basePath="/rankings" selectedCode={city} allLabel="Italy"/>
         <div className="directory-count"><strong>{visible.length}</strong> players in scope</div>
       </section>
 
