@@ -32,7 +32,7 @@ export default async function AddPlayerPage({params,searchParams}:{params:Promis
 
  let results:any[]=[];
  if(q.length>=2){
-   const r=await supabase.rpc('ips_registry_player_search',{p_team_id:id,p_query:q});
+   const r=await supabase.rpc('ips_registry_player_search_v2',{p_team_id:id,p_query:q});
    if(!r.error)results=r.data??[];
  }
 
@@ -68,7 +68,7 @@ export default async function AddPlayerPage({params,searchParams}:{params:Promis
              <div>
                <span>{p.matched_by}</span>
                <h3>{p.display_name}</h3>
-               <p>{p.ips_code} · {p.primary_role||'Player'}{p.current_team_name?` · ${p.current_team_name}`:' · Unattached'}</p>
+               <p>{p.ips_code} · {p.primary_role||'Player'}{p.current_team_identity_name?` · ${String(p.current_team_identity_name).replace(/\s+Cricket Club$/i,'')}`:' · Unattached'}{p.birth_year?` · born ${p.birth_year}`:''}</p>
              </div>
              {p.is_on_target_team
                ?<b className="already-chip">Already on team</b>
@@ -93,12 +93,12 @@ export default async function AddPlayerPage({params,searchParams}:{params:Promis
            <input type="hidden" name="return_to" value={`/manage/teams/${id}/players/add`}/>
            <div className="form-block flat">
              <div className="form-split">
-               <label><span>Full / display name *</span><input name="display_name" required placeholder="D. Fernando"/></label>
-               <label><span>Shirt number</span><input name="shirt_number" type="number" min="0" max="999" placeholder="18"/></label>
+               <label><span>Full legal name *</span><input name="full_name" required placeholder="Dinesh Fernando"/><small className="field-note">Private identity field used for duplicate checks.</small></label>
+               <label><span>Public display name *</span><input name="display_name" required placeholder="D. Fernando"/><small className="field-note">Used on scorecards, profiles and rankings.</small></label>
              </div>
              <div className="form-split">
-               <label><span>Given name</span><input name="given_name"/></label>
-               <label><span>Family name</span><input name="family_name"/></label>
+               <label><span>Date of birth</span><input name="date_of_birth" type="date"/><small className="field-note">Optional and private. Helps distinguish players with the same name.</small></label>
+               <label><span>Shirt number</span><input name="shirt_number" type="number" min="0" max="999" placeholder="18"/></label>
              </div>
              <div className="form-split">
                <label><span>Primary role</span><select name="primary_role" defaultValue=""><option value="">Player</option><option>Batter</option><option>Bowler</option><option>All-rounder</option><option>Wicketkeeper</option><option>Wicketkeeper-batter</option></select></label>
@@ -116,7 +116,7 @@ export default async function AddPlayerPage({params,searchParams}:{params:Promis
              <label className="consent-check"><input type="checkbox" name="whatsapp_consent"/><span><b>WhatsApp updates allowed</b><small>Record consent now; actual WhatsApp messaging is not enabled yet.</small></span></label>
            </div>
 
-           <div className="registry-identity-note"><b>IPS creates the permanent identity automatically.</b><span>The permanent player identity stays separate from the team-specific roster role shown on the right.</span></div>
+           <div className="registry-identity-note"><b>Search first. Create only when the person is genuinely new.</b><span>IPS blocks strong email/phone or full-name + date-of-birth matches. Same display names are allowed because two different people may both be “H. Silva”.</span></div>
            <button className="button-primary">Create player & add to team →</button>
          </form>
        </section>
