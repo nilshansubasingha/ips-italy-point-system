@@ -6,7 +6,7 @@ import {requireAccount,hasManagementRole} from '@/lib/auth';
 import {createClient} from '@/lib/supabase/server';
 import {Crest} from '@/components/identity';
 import {ConfirmSubmitButton} from '@/components/manage/confirm-submit-button';
-import {deleteTeam} from './registry/actions';
+import {deleteTeam} from '../registry/actions';
 
 export default async function ManageTeamsPage({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}){
  const account=await requireAccount(); if(!hasManagementRole(account))return null; const sp=await searchParams; const error=typeof sp.error==='string'?sp.error:null; const ok=typeof sp.ok==='string'?sp.ok:null; const supabase=await createClient();
