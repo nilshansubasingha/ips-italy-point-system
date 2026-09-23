@@ -27,6 +27,9 @@ export type ClubRow = {
   founded_year: number | null;
   verified: boolean;
   status: string;
+  description?: string | null;
+  website_url?: string | null;
+  logo_path?: string | null;
 };
 
 export type TeamRow = {
