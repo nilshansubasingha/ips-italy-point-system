@@ -246,6 +246,20 @@ async function selectAll<T>(client: SupabaseClient, table: string, orderColumn?:
   return (data ?? []) as T[];
 }
 
+async function selectByIds<T extends { id: string }>(client: SupabaseClient, table: string, ids: string[], orderColumn?: string): Promise<T[]> {
+  const unique = Array.from(new Set(ids.filter(Boolean)));
+  if (!unique.length) return [];
+  const result: T[] = [];
+  for (let i = 0; i < unique.length; i += 200) {
+    let query = client.from(table).select('*').in('id', unique.slice(i, i + 200));
+    if (orderColumn) query = query.order(orderColumn, { ascending: true });
+    const { data, error } = await query;
+    if (error) throw new Error(`${table}: ${error.message}`);
+    result.push(...((data ?? []) as T[]));
+  }
+  return result;
+}
+
 const countTables = [
   'cities',
   'clubs',
@@ -318,14 +332,14 @@ export async function getActiveCities(limit = 50): Promise<ActiveCityRow[]> {
 }
 
 async function getFixtureContextsFromBaseTables(client: SupabaseClient): Promise<FixtureContextRow[]> {
-  const [matches, tournaments, cities, venues, teams, rulesets] = await Promise.all([
+  const [matches, tournaments, venues, teams, rulesets] = await Promise.all([
     selectAll<any>(client, 'matches', 'scheduled_at'),
     selectAll<TournamentRow>(client, 'tournaments', 'starts_at'),
-    selectAll<CityRow>(client, 'cities', 'name'),
     selectAll<any>(client, 'venues', 'name'),
     selectAll<TeamRow>(client, 'teams', 'name'),
     selectAll<RulesetRow>(client, 'competition_rulesets', 'name'),
   ]);
+  const cities = await selectByIds<CityRow>(client, 'cities', tournaments.map((row) => row.city_id), 'name');
 
   const tournamentMap = byId(tournaments);
   const cityMap = byId(cities);
@@ -389,12 +403,12 @@ export async function getClubDirectory(): Promise<ClubDirectoryItem[]> {
   const client = getPublicSupabaseClient();
   if (!client) return [];
 
-  const [cities, clubs, teams, memberships] = await Promise.all([
-    selectAll<CityRow>(client, 'cities', 'name'),
+  const [clubs, teams, memberships] = await Promise.all([
     selectAll<ClubRow>(client, 'clubs', 'name'),
     selectAll<TeamRow>(client, 'teams', 'name'),
     selectAll<MembershipRow>(client, 'team_memberships', 'start_on'),
   ]);
+  const cities = await selectByIds<CityRow>(client, 'cities', clubs.map((row) => row.city_id), 'name');
 
   const cityMap = byId(cities);
   const activeMemberships = memberships.filter((row) => row.status === 'ACTIVE' && !row.end_on);
@@ -436,13 +450,13 @@ export async function getPlayerDirectory(): Promise<PlayerDirectoryItem[]> {
   const client = getPublicSupabaseClient();
   if (!client) return [];
 
-  const [players, memberships, teams, clubs, cities] = await Promise.all([
+  const [players, memberships, teams, clubs] = await Promise.all([
     selectAll<PlayerRow>(client, 'players', 'display_name'),
     selectAll<MembershipRow>(client, 'team_memberships', 'start_on'),
     selectAll<TeamRow>(client, 'teams', 'name'),
     selectAll<ClubRow>(client, 'clubs', 'name'),
-    selectAll<CityRow>(client, 'cities', 'name'),
   ]);
+  const cities = await selectByIds<CityRow>(client, 'cities', clubs.map((row) => row.city_id), 'name');
 
   const teamMap = byId(teams);
   const clubMap = byId(clubs);
@@ -465,16 +479,16 @@ export async function getPlayerBySlug(slug: string): Promise<PlayerDetail | null
   const client = getPublicSupabaseClient();
   if (!client) return null;
 
-  const [directory, memberships, teams, clubs, cities] = await Promise.all([
+  const [directory, memberships, teams, clubs] = await Promise.all([
     getPlayerDirectory(),
     selectAll<MembershipRow>(client, 'team_memberships', 'start_on'),
     selectAll<TeamRow>(client, 'teams', 'name'),
     selectAll<ClubRow>(client, 'clubs', 'name'),
-    selectAll<CityRow>(client, 'cities', 'name'),
   ]);
 
   const player = directory.find((item) => item.slug === slug);
   if (!player) return null;
+  const cities = await selectByIds<CityRow>(client, 'cities', clubs.map((row) => row.city_id), 'name');
   const teamMap = byId(teams);
   const clubMap = byId(clubs);
   const cityMap = byId(cities);
@@ -495,12 +509,12 @@ export async function getTournamentDirectory(): Promise<TournamentDirectoryItem[
   const client = getPublicSupabaseClient();
   if (!client) return [];
 
-  const [cities, tournaments, tournamentTeams, fixtures] = await Promise.all([
-    selectAll<CityRow>(client, 'cities', 'name'),
+  const [tournaments, tournamentTeams, fixtures] = await Promise.all([
     selectAll<TournamentRow>(client, 'tournaments', 'starts_at'),
     selectAll<TournamentTeamRow>(client, 'tournament_teams'),
     getFixtureContexts(),
   ]);
+  const cities = await selectByIds<CityRow>(client, 'cities', tournaments.map((row) => row.city_id), 'name');
   const cityMap = byId(cities);
 
   return tournaments.map((tournament) => ({
