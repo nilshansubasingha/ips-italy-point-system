@@ -7,8 +7,7 @@ export const dynamic='force-dynamic';
 
 export default async function SignupPage() {
   const supabase=await createClient();
-  const [{data:cities},{data:teamIdentities},{data:sides}]=await Promise.all([
-    supabase.from('cities').select('id,name,code').eq('status','ACTIVE').order('name'),
+  const [{data:teamIdentities},{data:sides}]=await Promise.all([
     supabase.from('clubs').select('id,name,city_id').eq('status','ACTIVE').order('name'),
     supabase.from('teams').select('id,club_id,name,side_label,side_order').eq('status','ACTIVE').order('side_order')
   ]);
@@ -30,6 +29,6 @@ export default async function SignupPage() {
       <div><span className="eyebrow light">JOIN IPS</span><h1>Your account.<br/><b>Your cricket identity.</b></h1><p>Create the account first. IPS then checks existing player identities and sends the registration to the correct City or Team administrators for approval.</p></div>
       <div className="auth-flow"><span>Account</span><i>→</i><span>Identity check</span><i>→</i><span>Approval</span></div>
     </section>
-    <section className="auth-card-panel"><div className="auth-card auth-card-wide"><span className="micro-label">CREATE PLAYER ACCOUNT</span><h2>Join the IPS network</h2><p>Full name and city help IPS prevent duplicate players. Date of birth and phone are optional and private.</p><AuthForm mode="signup" registrationOptions={{cities:cities??[],teams}} /></div></section>
+    <section className="auth-card-panel"><div className="auth-card auth-card-wide"><span className="micro-label">CREATE PLAYER ACCOUNT</span><h2>Join the IPS network</h2><p>Full name and city help IPS prevent duplicate players. Date of birth and phone are optional and private.</p><AuthForm mode="signup" registrationOptions={{teams}} /></div></section>
   </main>;
 }
