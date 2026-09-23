@@ -18,6 +18,67 @@ function friendly(e:any,fallback:string){
   return m;
 }
 
+export async function createTeamIdentity(form:FormData){
+  const supabase=await createClient(); const ret=back(form,'/manage/teams/new');
+  try{
+    const {data,error}=await supabase.rpc('ips_create_team_identity',{
+      p_city_id:s(form,'city_id'),
+      p_name:s(form,'name'),
+      p_short_name:nullable(form,'short_name'),
+      p_category:s(form,'category')||'OPEN',
+      p_structure:s(form,'structure')||'SINGLE'
+    });
+    if(error)throw error;
+    const identity=Array.isArray(data)?data[0]:data;
+    revalidatePath('/manage/teams'); revalidatePath('/teams'); revalidatePath('/');
+    go(`/manage/teams/${identity.id}`,'ok','Team created. You can now manage its side(s) and players.');
+  }catch(e:any){go(ret,'error',friendly(e,'Could not create team.'));}
+}
+
+export async function updateTeamIdentity(form:FormData){
+  const supabase=await createClient(); const id=s(form,'team_identity_id'); const ret=back(form,`/manage/teams/${id}`);
+  try{
+    const founded=s(form,'founded_year');
+    const {error}=await supabase.rpc('ips_update_team_identity',{
+      p_team_identity_id:id,
+      p_name:s(form,'name'),
+      p_short_name:nullable(form,'short_name'),
+      p_founded_year:founded?Number(founded):null,
+      p_website_url:nullable(form,'website_url'),
+      p_description:nullable(form,'description')
+    });
+    if(error)throw error;
+    revalidatePath(ret); revalidatePath('/manage/teams'); revalidatePath('/teams'); revalidatePath('/');
+    go(ret,'ok','Team identity updated.');
+  }catch(e:any){go(ret,'error',friendly(e,'Could not update team.'));}
+}
+
+export async function addTeamSide(form:FormData){
+  const supabase=await createClient(); const id=s(form,'team_identity_id'); const ret=back(form,`/manage/teams/${id}`);
+  try{
+    const {data,error}=await supabase.rpc('ips_add_team_side',{
+      p_team_identity_id:id,
+      p_side_label:s(form,'side_label'),
+      p_category:s(form,'category')||'OPEN'
+    });
+    if(error)throw error;
+    const side=Array.isArray(data)?data[0]:data;
+    revalidatePath(ret); revalidatePath('/manage/teams'); revalidatePath('/teams');
+    go(ret,'ok',`${side?.name??'Team side'} added.`);
+  }catch(e:any){go(ret,'error',friendly(e,'Could not add team side.'));}
+}
+
+export async function deleteTeamIdentity(form:FormData){
+  const supabase=await createClient(); const id=s(form,'team_identity_id');
+  try{
+    const {data:identity,error:readError}=await supabase.from('clubs').select('name,logo_path').eq('id',id).single(); if(readError)throw readError;
+    const {error}=await supabase.rpc('ips_delete_team_identity',{p_team_identity_id:id}); if(error)throw error;
+    if(identity?.logo_path)await supabase.storage.from('ips-media').remove([identity.logo_path]);
+    revalidatePath('/manage/teams'); revalidatePath('/teams'); revalidatePath('/players'); revalidatePath('/');
+    go('/manage/teams','ok',`${identity?.name??'Team'} permanently deleted.`);
+  }catch(e:any){go(`/manage/teams/${id}`,'error',friendly(e,'Could not delete team.'));}
+}
+
 export async function createClub(form:FormData){
   const supabase=await createClient(); const ret=back(form,'/manage/clubs');
   try{
