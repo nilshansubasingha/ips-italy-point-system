@@ -13,7 +13,7 @@ export async function SiteHeader() {
       <nav className="main-nav" aria-label="Primary navigation">
         <Link href="/match-centre"><span className="live-dot"/>Match Centre</Link>
         <Link href="/tournaments">Tournaments</Link>
-        <Link href="/clubs">Clubs</Link>
+        <Link href="/teams">Teams</Link>
         <Link href="/players">Players</Link>
         <Link href="/rankings">Rankings</Link>
       </nav>
