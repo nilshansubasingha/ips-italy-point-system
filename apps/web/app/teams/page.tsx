@@ -1,13 +1,14 @@
 import Link from 'next/link';
-import {getCities,getTeamDirectory,getTeamIdentityDisplayName} from '@ips/data';
+import {getActiveCities,getTeamDirectory,getTeamIdentityDisplayName} from '@ips/data';
 import {SiteFooter,SiteHeader} from '@/components/site-header';
 import {Crest} from '@/components/identity';
+import {ActiveCityFilter} from '@/components/location/active-city-filter';
 
 export const dynamic='force-dynamic';
 
 export default async function TeamsPage({searchParams}:{searchParams:Promise<{city?:string}>}){
  const {city}=await searchParams;
- const [teams,cities]=await Promise.all([getTeamDirectory(),getCities()]);
+ const [teams,cities]=await Promise.all([getTeamDirectory(),getActiveCities(50)]);
  const visible=city?teams.filter(t=>t.city?.code.toLowerCase()===city.toLowerCase()):teams;
 
  return <main className="shell sports-shell">
@@ -18,10 +19,7 @@ export default async function TeamsPage({searchParams}:{searchParams:Promise<{ci
    </section>
 
    <section className="directory-toolbar-wide">
-     <div className="directory-filter">
-       <Link className={!city?'active':''} href="/teams">All Italy</Link>
-       {cities.map(c=><Link key={c.id} className={city?.toLowerCase()===c.code.toLowerCase()?'active':''} href={`/teams?city=${c.code.toLowerCase()}`}>{c.name}</Link>)}
-     </div>
+     <ActiveCityFilter cities={cities} basePath="/teams" selectedCode={city}/>
      <div className="directory-count"><strong>{visible.length}</strong> teams</div>
    </section>
 
