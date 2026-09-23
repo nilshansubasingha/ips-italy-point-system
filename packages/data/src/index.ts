@@ -37,6 +37,8 @@ export type TeamRow = {
   slug: string;
   logo_url: string | null;
   status: string;
+  side_label: string | null;
+  side_order: number | null;
 };
 
 export type PlayerRow = {
@@ -61,6 +63,7 @@ export type MembershipRow = {
   end_on: string | null;
   is_primary: boolean;
   shirt_number: number | null;
+  team_role?: string | null;
   status: string;
 };
 
@@ -156,6 +159,9 @@ export type ClubDirectoryItem = ClubRow & {
   teams: TeamRow[];
   activePlayerCount: number;
 };
+
+export type TeamIdentityDirectoryItem = ClubDirectoryItem;
+export type TeamIdentityDetail = ClubDetail;
 
 export type PlayerDirectoryItem = PlayerRow & {
   currentTeam: TeamRow | null;
@@ -383,6 +389,22 @@ export async function getClubBySlug(slug: string): Promise<ClubDetail | null> {
   const club = clubs.find((item) => item.slug === slug);
   if (!club) return null;
   return { ...club, players: players.filter((player) => player.currentClub?.id === club.id) };
+}
+
+export async function getTeamDirectory(): Promise<TeamIdentityDirectoryItem[]> {
+  return getClubDirectory();
+}
+
+export async function getTeamBySlug(slug: string): Promise<TeamIdentityDetail | null> {
+  return getClubBySlug(slug);
+}
+
+export function getTeamIdentityDisplayName(team: TeamIdentityDirectoryItem | TeamIdentityDetail): string {
+  const activeSides = team.teams.filter((side) => side.status === 'ACTIVE');
+  if (activeSides.length === 1 && (activeSides[0].side_label ?? 'MAIN') === 'MAIN') {
+    return activeSides[0].name;
+  }
+  return team.name.replace(/\s+Cricket Club$/i, '');
 }
 
 export async function getPlayerDirectory(): Promise<PlayerDirectoryItem[]> {
