@@ -314,3 +314,34 @@
 }
 .auth-form input::placeholder,.auth-form textarea::placeholder,.professional-form input::placeholder,.professional-form textarea::placeholder,.compact-form input::placeholder,.compact-form textarea::placeholder{color:#82959e;opacity:1}
 .auth-form select:disabled,.professional-form select:disabled,.compact-form select:disabled,.auth-form input:disabled,.professional-form input:disabled,.compact-form input:disabled{opacity:.62;cursor:not-allowed;background-color:#f0f4f5}
+
+
+/* Project 5.7 — nationwide location search */
+.city-search-field{position:relative;min-width:0}
+.city-search-field>label{display:grid;gap:7px}
+.city-search-field>label>span{font-size:9px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);font-weight:900}
+.city-search-control{position:relative}
+.city-search-control input{width:100%;min-height:48px;border:1px solid #d1dee4;background:#f8fbfb;border-radius:12px;padding:13px 42px 13px 14px;color:var(--ink);font:inherit;font-size:12px;outline:none;box-sizing:border-box}
+.city-search-control.open input,.city-search-control input:focus{border-color:#79bea4;background:#fff;box-shadow:0 0 0 3px rgba(8,132,82,.08)}
+.city-search-icon,.city-clear{position:absolute;right:12px;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:24px;height:24px;border:0;background:transparent;color:#6c828d;font-size:16px}
+.city-clear{cursor:pointer;border-radius:999px;font-size:18px;line-height:1}.city-clear:hover{background:#edf3f5;color:#173247}
+.city-search-results{position:absolute;z-index:80;left:0;right:0;top:calc(100% + 7px);max-height:320px;overflow:auto;background:#fff;border:1px solid #d9e5e9;border-radius:14px;padding:6px;box-shadow:0 22px 60px rgba(5,24,42,.16)}
+.city-search-results>button{width:100%;display:grid;gap:3px;text-align:left;border:0;background:transparent;border-radius:10px;padding:10px 11px;cursor:pointer;color:var(--ink)}
+.city-search-results>button:hover{background:#f1f8f5}.city-search-results strong{font-size:10px}.city-search-results span{font-size:8px;color:#728994}
+.city-search-state{padding:12px;font-size:9px;color:#718793;text-align:left}
+
+.active-city-filter{position:relative;min-width:0;flex:1}
+.active-city-filter-quick{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.active-city-filter-quick>a,.active-city-filter-quick>button{border:1px solid #d6e2e7;background:#fff;color:var(--ink);border-radius:11px;padding:9px 13px;text-decoration:none;font-size:9px;font-weight:900;white-space:nowrap;cursor:pointer}
+.active-city-filter-quick>a.active,.active-city-filter-quick>button.active{background:#071c30;color:#fff;border-color:#071c30}
+.active-city-filter-quick>button span{margin-left:4px;color:inherit}
+.active-city-filter-panel{position:absolute;z-index:60;left:0;top:calc(100% + 8px);width:min(520px,calc(100vw - 40px));background:#fff;border:1px solid #d9e5e9;border-radius:16px;padding:10px;box-shadow:0 22px 60px rgba(5,24,42,.14)}
+.active-city-filter-panel>input{width:100%;border:1px solid #d1dee4;background:#f8fbfb;border-radius:11px;padding:11px 12px;font:inherit;font-size:10px;outline:none}.active-city-filter-panel>input:focus{border-color:#79bea4;box-shadow:0 0 0 3px rgba(8,132,82,.08)}
+.active-city-filter-results{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:8px;max-height:300px;overflow:auto}
+.active-city-filter-results>a{display:grid;gap:2px;padding:9px 10px;border-radius:10px;text-decoration:none}.active-city-filter-results>a:hover{background:#f1f8f5}.active-city-filter-results strong{font-size:9px}.active-city-filter-results span{font-size:7px;color:#788d98}
+.directory-toolbar-wide>.active-city-filter{margin-right:auto}
+
+@media(max-width:760px){
+  .active-city-filter-panel{position:fixed;left:14px;right:14px;top:auto;bottom:16px;width:auto;max-height:70vh}
+  .active-city-filter-results{grid-template-columns:1fr}
+}
