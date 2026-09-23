@@ -143,9 +143,9 @@ export async function deletePlayer(form:FormData){
 export async function createPlayerForTeam(form:FormData){
   const supabase=await createClient(); const teamId=s(form,'team_id'); const ret=back(form,`/manage/teams/${teamId}/players/add`);
   try{
-    const shirt=s(form,'shirt_number');
-    const {data,error}=await supabase.rpc('ips_create_player_for_team',{
-      p_team_id:teamId,p_display_name:s(form,'display_name'),p_given_name:nullable(form,'given_name'),p_family_name:nullable(form,'family_name'),
+    const shirt=s(form,'shirt_number'); const dob=s(form,'date_of_birth');
+    const {data,error}=await supabase.rpc('ips_create_player_for_team_v2',{
+      p_team_id:teamId,p_full_name:s(form,'full_name'),p_display_name:s(form,'display_name'),p_date_of_birth:dob||null,
       p_primary_role:nullable(form,'primary_role'),p_batting_style:nullable(form,'batting_style'),p_bowling_style:nullable(form,'bowling_style'),
       p_shirt_number:shirt?Number(shirt):null,p_email:nullable(form,'email'),p_phone:nullable(form,'phone'),p_whatsapp_consent:s(form,'whatsapp_consent')==='on'
     }); if(error)throw error;
