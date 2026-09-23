@@ -186,16 +186,16 @@
 .player-grid-wide{grid-template-columns:repeat(5,minmax(0,1fr))}
 .player-tile{min-height:220px;padding:14px}.player-tile>.player-avatar{margin:12px auto 8px}
 
-/* Rankings page: separate the three disciplines instead of one fused table */
+/* Rankings page: three independent cards with breathing room */
 .rankings-stage-stacked{background:transparent;border:0;border-radius:0;overflow:visible}
-.rankings-stage-stacked .rankings-strip-note{border-radius:15px;margin-bottom:18px}
-.rankings-stack{display:grid;gap:34px}
-.rankings-stack .ranking-panel{border:1px solid var(--line);border-radius:20px;overflow:hidden;background:#fff;box-shadow:0 14px 36px rgba(5,24,42,.045)}
-.rankings-stack .ranking-panel-head{min-height:84px}
-.rankings-stack .ranking-panel:nth-child(2) .ranking-panel-head{border-bottom-color:var(--cyan)}
-.rankings-stack .ranking-panel:nth-child(3) .ranking-panel-head{border-bottom-color:#1d68d9}
-.rankings-stack .ranking-row{grid-template-columns:40px 42px minmax(0,1fr) 90px;min-height:66px;padding:10px 18px}
-.rankings-stack .ranking-panel-foot{padding:14px 18px}
+.rankings-stage-stacked .rankings-strip-note{border-radius:15px;margin-bottom:22px}
+.rankings-spaced-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px;align-items:start}
+.rankings-spaced-grid .ranking-panel{border:1px solid var(--line);border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 14px 34px rgba(5,24,42,.04)}
+.rankings-spaced-grid .ranking-panel-head{min-height:84px}
+.rankings-spaced-grid .ranking-panel:nth-child(2) .ranking-panel-head{border-bottom-color:var(--cyan)}
+.rankings-spaced-grid .ranking-panel:nth-child(3) .ranking-panel-head{border-bottom-color:#1d68d9}
+.rankings-spaced-grid .ranking-row{grid-template-columns:34px 38px minmax(0,1fr) 64px;min-height:62px;padding:9px 13px}
+.rankings-spaced-grid .ranking-panel-foot{padding:12px 14px}
 .rankings-scope-toolbar{margin-bottom:24px}
 
 @media(max-width:1400px){
@@ -212,8 +212,12 @@
 @media(max-width:820px){
   .team-directory-grid,.team-identity-admin-grid,.team-side-admin-grid,.public-side-card-grid,.team-public-roster-grid,.roster-card-grid,.team-structure-preview{grid-template-columns:1fr}
   .player-grid-wide{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .rankings-stack{gap:22px}
+  .rankings-spaced-grid{grid-template-columns:1fr;gap:22px}
 }
 @media(max-width:520px){
   .player-grid-wide{grid-template-columns:1fr}
+}
+
+@media(max-width:1180px) and (min-width:821px){
+  .rankings-spaced-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
 }
