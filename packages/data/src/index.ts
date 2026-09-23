@@ -12,9 +12,23 @@ export type CityRow = {
   id: string;
   code: string;
   name: string;
+  alternate_name?: string | null;
   region: string | null;
+  region_code?: string | null;
+  province_name?: string | null;
+  province_code?: string | null;
+  province_abbr?: string | null;
+  istat_code?: string | null;
   country_code: string;
   status: string;
+};
+
+export type ActiveCityRow = CityRow & {
+  team_count: number;
+  player_count: number;
+  tournament_count: number;
+  fixture_count: number;
+  activity_score: number;
 };
 
 export type ClubRow = {
@@ -295,6 +309,14 @@ export async function getCities(): Promise<CityRow[]> {
   return (data ?? []) as CityRow[];
 }
 
+export async function getActiveCities(limit = 50): Promise<ActiveCityRow[]> {
+  const client = getPublicSupabaseClient();
+  if (!client) return [];
+  const { data, error } = await client.rpc('ips_active_cities', { p_limit: limit });
+  if (error) throw new Error(`active cities: ${error.message}`);
+  return (data ?? []) as ActiveCityRow[];
+}
+
 async function getFixtureContextsFromBaseTables(client: SupabaseClient): Promise<FixtureContextRow[]> {
   const [matches, tournaments, cities, venues, teams, rulesets] = await Promise.all([
     selectAll<any>(client, 'matches', 'scheduled_at'),
@@ -521,17 +543,25 @@ export async function getTournamentBySlug(slug: string): Promise<TournamentDetai
 }
 
 export async function getCityByCode(code: string): Promise<CityDetail | null> {
-  const [cities, clubs, players, tournaments, fixtures] = await Promise.all([
-    getCities(),
+  const client = getPublicSupabaseClient();
+  if (!client) return null;
+  const { data: city, error } = await client
+    .from('cities')
+    .select('*')
+    .eq('status', 'ACTIVE')
+    .ilike('code', code)
+    .maybeSingle();
+  if (error) throw new Error(`city: ${error.message}`);
+  if (!city) return null;
+
+  const [clubs, players, tournaments, fixtures] = await Promise.all([
     getClubDirectory(),
     getPlayerDirectory(),
     getTournamentDirectory(),
     getFixtureContexts(),
   ]);
-  const city = cities.find((row) => row.code.toLowerCase() === code.toLowerCase());
-  if (!city) return null;
   return {
-    ...city,
+    ...(city as CityRow),
     clubs: clubs.filter((row) => row.city_id === city.id),
     players: players.filter((row) => row.city?.id === city.id),
     tournaments: tournaments.filter((row) => row.city_id === city.id),
