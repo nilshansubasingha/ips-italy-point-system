@@ -1,20 +1,20 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import {CitySearchSelect,type CitySearchOption} from '@/components/location/city-search-select';
 
-type City={id:string;name:string};
 type Season={id:string;name:string};
 type Venue={id:string;city_id:string;name:string};
 type Ruleset={id:string;name:string;version:number;max_overs:number;balls_per_over:number;playing_xi_size:number;innings_wicket_limit:number|null;max_overs_per_bowler:number|null};
 
 function slugify(value:string){return value.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').replace(/-+/g,'-');}
 
-export function TournamentCreatorFields({cities,seasons,rulesets,venues}:{cities:City[];seasons:Season[];rulesets:Ruleset[];venues:Venue[]}){
+export function TournamentCreatorFields({allowedCities,seasons,rulesets,venues}:{allowedCities?:CitySearchOption[];seasons:Season[];rulesets:Ruleset[];venues:Venue[]}){
   const first=rulesets[0];
   const [name,setName]=useState('');
   const [slug,setSlug]=useState('');
   const [slugTouched,setSlugTouched]=useState(false);
-  const [cityId,setCityId]=useState(cities[0]?.id??'');
+  const [cityId,setCityId]=useState(allowedCities?.[0]?.id??'');
   const [rulesetId,setRulesetId]=useState(first?.id??'');
   const [players,setPlayers]=useState(first?.playing_xi_size??6);
   const [overs,setOvers]=useState(first?.max_overs??5);
@@ -40,7 +40,7 @@ export function TournamentCreatorFields({cities,seasons,rulesets,venues}:{cities
       <div className="creator-section-head"><span>01</span><div><strong>Competition identity</strong><small>Name, URL and national catalogue context.</small></div></div>
       <label className="creator-span-2"><span>Name</span><input name="name" required value={name} onChange={e=>changeName(e.target.value)} placeholder="Napoli Summer Cup 2027"/></label>
       <div className="form-split"><label><span>Code</span><input name="code" required placeholder="NAP-SUM-27"/></label><label><span>URL slug</span><input name="slug" value={slug} onChange={e=>{setSlugTouched(true);setSlug(slugify(e.target.value))}} placeholder="generated-from-name"/><small className="field-hint">Auto-generated; editable.</small></label></div>
-      <div className="form-split"><label><span>City</span><select name="city_id" required value={cityId} onChange={e=>setCityId(e.target.value)}>{cities.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label><label><span>Season</span><select name="season_id" required>{seasons.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label></div>
+      <div className="form-split"><CitySearchSelect name="city_id" value={cityId} required label="City" allowedCities={allowedCities} onChange={(id)=>setCityId(id)}/><label><span>Season</span><select name="season_id" required>{seasons.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label></div>
       <label className="creator-span-2"><span>Short description</span><input name="short_description" placeholder="Optional public description"/></label>
     </section>
 
