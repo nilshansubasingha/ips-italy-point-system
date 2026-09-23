@@ -8,6 +8,7 @@ import {requireAccount} from '@/lib/auth';
 import {createClient} from '@/lib/supabase/server';
 import {createTeamIdentity} from '../../registry/actions';
 import {TeamStructureSelector} from '@/components/manage/team-structure-selector';
+import {CitySearchSelect} from '@/components/location/city-search-select';
 
 export default async function NewTeamPage({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}){
   const account=await requireAccount();
@@ -15,12 +16,14 @@ export default async function NewTeamPage({searchParams}:{searchParams:Promise<R
   const error=typeof sp.error==='string'?sp.error:null;
   const supabase=await createClient();
 
-  const {data:allCities}=await supabase.from('cities').select('id,name').eq('status','ACTIVE').order('name');
   const global=account.grants.some(g=>(g.role==='OWNER'&&g.scope_type==='GLOBAL')||(g.role==='ADMIN'&&g.scope_type==='GLOBAL'));
-  const cityScopes=new Set(account.grants.filter(g=>g.role==='ADMIN'&&g.scope_type==='CITY'&&g.city_id).map(g=>g.city_id as string));
-  const cities=(allCities??[]).filter((c:any)=>global||cityScopes.has(c.id));
-
-  if(!cities.length) redirect('/manage/teams?error='+encodeURIComponent('A City Admin, Global Admin or Owner scope is required to create a Team.'));
+  const cityScopeIds=account.grants.filter(g=>g.role==='ADMIN'&&g.scope_type==='CITY'&&g.city_id).map(g=>g.city_id as string);
+  let allowedCities:any[]|undefined=undefined;
+  if(!global){
+    if(!cityScopeIds.length) redirect('/manage/teams?error='+encodeURIComponent('A City Admin, Global Admin or Owner scope is required to create a Team.'));
+    const {data}=await supabase.from('cities').select('id,name,code,region,province_name,province_abbr,istat_code').in('id',cityScopeIds).order('name');
+    allowedCities=data??[];
+  }
 
   return <main className="shell sports-shell">
     <SiteHeader/>
@@ -41,7 +44,7 @@ export default async function NewTeamPage({searchParams}:{searchParams:Promise<R
           <div className="form-block-head"><span>01</span><div><strong>Team identity</strong><small>This is the name supporters, players and rankings will see.</small></div></div>
           <label className="wide"><span>Team name *</span><input name="name" required placeholder="Napoli Youth"/></label>
           <label><span>Short name</span><input name="short_name" placeholder="Napoli Youth"/></label>
-          <label><span>City *</span><select name="city_id" required>{cities.map((c:any)=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
+          <CitySearchSelect name="city_id" required label="City" allowedCities={allowedCities}/>
           <label><span>Category</span><select name="category" defaultValue="OPEN"><option value="OPEN">Open</option><option value="MEN">Men</option><option value="WOMEN">Women</option><option value="YOUTH">Youth</option><option value="VETERANS">Veterans</option></select></label>
           <TeamStructureSelector/>
         </div>
