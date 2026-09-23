@@ -19,7 +19,7 @@ export default async function TeamRequestRosterPage({params,searchParams}:{param
   const members=request.members??[];
   const matches=await Promise.all(members.map(async(m:any)=>{
     const {data}=await supabase.rpc('ips_team_member_possible_matches',{p_member_id:m.id});
-    return [m.id,data??[]] as const;
+    return [m.id,(data??[]) as any[]] as const;
   }));
   const matchMap=new Map(matches);
 
@@ -56,7 +56,7 @@ export default async function TeamRequestRosterPage({params,searchParams}:{param
       <div className="surface-head"><div><span className="eyebrow">MEMBERS</span><h2>Requested Team roster</h2></div><span>{members.length} names</span></div>
       <div className="request-member-grid">
         {members.map((m:any)=>{
-          const possible=matchMap.get(m.id)??[];
+          const possible=(matchMap.get(m.id)??[]) as any[];
           return <article className="request-member-card" key={m.id}>
             <div className="request-member-head"><div><span>{m.side_label==='MAIN'?'MAIN':`${m.side_label} TEAM`}</span><h3>{m.display_name}</h3><p>{m.full_name}{m.birth_year?` · born ${m.birth_year}`:''}</p></div><b>{m.status}</b></div>
             {possible.length>0&&<div className="possible-match-box"><strong>Possible IPS matches</strong>{possible.slice(0,3).map((p:any)=><div key={p.player_id}><span>{p.display_name} · {p.ips_code}</span><small>{p.current_team_name??'Unattached'}{p.birth_year?` · born ${p.birth_year}`:''} · {p.match_reason}</small></div>)}</div>}
