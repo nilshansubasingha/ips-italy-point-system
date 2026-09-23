@@ -20,7 +20,7 @@ export default async function TeamRegistrationDetail({params,searchParams}:{para
   const members=req.members??[];
   const candidatePairs=await Promise.all(members.map(async(m:any)=>{
     const {data}=await supabase.rpc('ips_team_member_possible_matches',{p_member_id:m.id});
-    return [m.id,data??[]] as const;
+    return [m.id,(data??[]) as any[]] as const;
   }));
   const candidates=new Map(candidatePairs);
 
@@ -65,7 +65,7 @@ export default async function TeamRegistrationDetail({params,searchParams}:{para
       <div className="surface-head"><div><span className="eyebrow">PROVISIONAL ROSTER</span><h2>Resolve each person safely</h2></div><span>{members.length} names</span></div>
       <div className="team-member-review-grid">
         {members.map((m:any)=>{
-          const possible=candidates.get(m.id)??[];
+          const possible=(candidates.get(m.id)??[]) as any[];
           const resolved=['APPROVED','TRANSFER_REQUIRED'].includes(m.status);
           return <article className="team-member-review-card" key={m.id}>
             <div className="request-member-head"><div><span>{m.side_label==='MAIN'?'MAIN':`${m.side_label} TEAM`}</span><h3>{m.display_name}</h3><p>{m.full_name}{m.birth_year?` · born ${m.birth_year}`:''}</p></div><b>{m.status}</b></div>
