@@ -158,8 +158,10 @@ export async function createPlayerForTeam(form:FormData){
 export async function addExistingPlayer(form:FormData){
   const supabase=await createClient(); const teamId=s(form,'team_id'); const ret=back(form,`/manage/teams/${teamId}/players/add`); const shirt=s(form,'shirt_number');
   try{
-    const {error}=await supabase.rpc('ips_add_existing_player_to_team',{p_team_id:teamId,p_player_id:s(form,'player_id'),p_shirt_number:shirt?Number(shirt):null}); if(error)throw error;
-    revalidatePath(`/manage/teams/${teamId}`); revalidatePath(`/manage/teams/${teamId}/players/add`); revalidatePath('/manage/players'); go(`/manage/teams/${teamId}/players/add`,'ok','Existing IPS player added to the team.');
+    const {data,error}=await supabase.rpc('ips_request_existing_player_for_team',{p_team_id:teamId,p_player_id:s(form,'player_id'),p_shirt_number:shirt?Number(shirt):null}); if(error)throw error;
+    revalidatePath(`/manage/teams/${teamId}`); revalidatePath(`/manage/teams/${teamId}/players/add`); revalidatePath('/manage/players'); revalidatePath('/manage/registrations');
+    const status=data?.status;
+    go(`/manage/teams/${teamId}/players/add`,'ok',status==='TRANSFER_REQUIRED'?'Player is active on another Team. A transfer request was created instead of duplicating the membership.':status==='SIDE_MOVED'?'Player moved to this competitive side.':'Existing IPS player added to the Team.');
   }catch(e:any){go(ret,'error',friendly(e,'Could not add existing player.'));}
 }
 
