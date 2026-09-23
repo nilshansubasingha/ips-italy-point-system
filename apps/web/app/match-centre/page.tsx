@@ -1,11 +1,11 @@
-import { getCities, getFixtureContexts } from '@ips/data';
+import { getActiveCities, getFixtureContexts } from '@ips/data';
 import { MatchCentre } from '@/components/match-centre';
 import { SiteFooter, SiteHeader } from '@/components/site-header';
 
 export const dynamic = 'force-dynamic';
 
 export default async function MatchCentrePage() {
-  const [cities, fixtures] = await Promise.all([getCities(), getFixtureContexts()]);
+  const [cities, fixtures] = await Promise.all([getActiveCities(50), getFixtureContexts()]);
   const live = fixtures.filter(f => f.match_status === 'LIVE').length;
   const upcoming = fixtures.filter(f => ['READY','SCHEDULED'].includes(f.match_status)).length;
   const finished = fixtures.length - live - upcoming;
