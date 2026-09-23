@@ -221,3 +221,15 @@
 @media(max-width:1180px) and (min-width:821px){
   .rankings-spaced-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
 }
+
+.team-structure-selector{grid-column:1/-1;border:0;padding:0;margin:0;min-width:0}
+.team-structure-selector legend{font-size:8px;font-weight:950;letter-spacing:.08em;text-transform:uppercase;color:#718793;margin-bottom:8px}
+.team-structure-choice-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.team-structure-choice-grid button{position:relative;text-align:left;border:1px solid #dce7eb;border-radius:13px;background:#f8fbfa;padding:14px 14px 14px 42px;cursor:pointer;min-height:86px;color:var(--ink)}
+.team-structure-choice-grid button:hover{border-color:#9bcdb9;background:#f3faf7}
+.team-structure-choice-grid button.active{border-color:#12855d;background:#edf9f4;box-shadow:0 0 0 2px rgba(18,133,93,.08)}
+.team-structure-choice-grid strong,.team-structure-choice-grid small{display:block}
+.team-structure-choice-grid strong{font-size:11px}.team-structure-choice-grid small{font-size:8px;line-height:1.45;color:#738792;margin-top:4px}
+.choice-check{position:absolute;left:13px;top:14px;display:grid;place-items:center;width:20px;height:20px;border-radius:999px;border:1px solid #b8cbc3;background:#fff;color:#08734d;font-size:11px;font-weight:950}
+.team-structure-choice-grid button.active .choice-check{background:#dff4ea;border-color:#66b796}
+@media(max-width:820px){.team-structure-choice-grid{grid-template-columns:1fr}}
