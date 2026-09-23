@@ -10,6 +10,7 @@ function slugify(value:string){return value.toLowerCase().normalize('NFKD').repl
 function go(path:string,kind:'ok'|'error',message:string):never{redirect(`${path}${path.includes('?')?'&':'?'}${kind}=${encodeURIComponent(message)}`);}
 function back(form:FormData,fallback:string){return s(form,'return_to')||fallback;}
 function friendly(e:any,fallback:string){
+  if(String(e?.digest??'').startsWith('NEXT_REDIRECT')) throw e;
   const m=String(e?.message??fallback);
   if(m.includes('duplicate key')&&m.includes('clubs_slug')) return 'A club with that URL identity already exists.';
   if(m.includes('duplicate key')&&m.includes('teams_slug')) return 'A team with that URL identity already exists.';
@@ -54,6 +55,28 @@ export async function updateTeam(form:FormData){
     const {error}=await supabase.from('teams').update({name:s(form,'name'),short_name:nullable(form,'short_name'),category:s(form,'category')||'OPEN'}).eq('id',id); if(error)throw error;
     revalidatePath(ret); go(ret,'ok','Team details updated.');
   }catch(e:any){go(ret,'error',friendly(e,'Could not update team.'));}
+}
+
+export async function deleteTeam(form:FormData){
+  const supabase=await createClient(); const id=s(form,'team_id');
+  try{
+    const {data:team,error:readError}=await supabase.from('teams').select('name,logo_path').eq('id',id).single(); if(readError)throw readError;
+    const {error}=await supabase.rpc('ips_delete_team',{p_team_id:id}); if(error)throw error;
+    if(team?.logo_path)await supabase.storage.from('ips-media').remove([team.logo_path]);
+    revalidatePath('/manage/teams'); revalidatePath('/clubs'); revalidatePath('/players');
+    go('/manage/teams','ok',`${team?.name??'Team'} permanently deleted.`);
+  }catch(e:any){go(`/manage/teams/${id}`,'error',friendly(e,'Could not delete team.'));}
+}
+
+export async function deletePlayer(form:FormData){
+  const supabase=await createClient(); const id=s(form,'player_id');
+  try{
+    const {data:player,error:readError}=await supabase.from('players').select('display_name,profile_image_path').eq('id',id).single(); if(readError)throw readError;
+    const {error}=await supabase.rpc('ips_delete_player',{p_player_id:id}); if(error)throw error;
+    if(player?.profile_image_path)await supabase.storage.from('ips-media').remove([player.profile_image_path]);
+    revalidatePath('/manage/players'); revalidatePath('/players'); revalidatePath('/manage/teams');
+    go('/manage/players','ok',`${player?.display_name??'Player'} permanently deleted.`);
+  }catch(e:any){go(`/manage/players/${id}`,'error',friendly(e,'Could not delete player.'));}
 }
 
 export async function createPlayerForTeam(form:FormData){
