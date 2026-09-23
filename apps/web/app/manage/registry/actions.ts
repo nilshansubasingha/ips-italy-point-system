@@ -119,14 +119,14 @@ export async function updateTeam(form:FormData){
 }
 
 export async function deleteTeam(form:FormData){
-  const supabase=await createClient(); const id=s(form,'team_id');
+  const supabase=await createClient(); const id=s(form,'team_id'); const ret=back(form,'/manage/teams');
   try{
     const {data:team,error:readError}=await supabase.from('teams').select('name,logo_path').eq('id',id).single(); if(readError)throw readError;
     const {error}=await supabase.rpc('ips_delete_team',{p_team_id:id}); if(error)throw error;
     if(team?.logo_path)await supabase.storage.from('ips-media').remove([team.logo_path]);
-    revalidatePath('/manage/teams'); revalidatePath('/clubs'); revalidatePath('/players');
-    go('/manage/teams','ok',`${team?.name??'Team'} permanently deleted.`);
-  }catch(e:any){go(`/manage/teams/${id}`,'error',friendly(e,'Could not delete team.'));}
+    revalidatePath('/manage/teams'); revalidatePath('/teams'); revalidatePath('/players'); revalidatePath(ret);
+    go(ret,'ok',`${team?.name??'Team side'} permanently deleted.`);
+  }catch(e:any){go(ret,'error',friendly(e,'Could not delete team side.'));}
 }
 
 export async function deletePlayer(form:FormData){
