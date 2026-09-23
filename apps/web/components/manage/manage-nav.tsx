@@ -6,7 +6,6 @@ export function ManagementNav({account, active}:{account:AccountContext;active?:
   const items = [
     ['overview','Command Centre','/manage'],
     ['tournaments','Tournaments','/manage/tournaments'],
-    ['clubs','Clubs','/manage/clubs'],
     ['teams','Teams','/manage/teams'],
     ['players','Players','/manage/players'],
     ['venues','Venues','/manage/venues'],
