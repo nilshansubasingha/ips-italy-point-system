@@ -7,6 +7,7 @@ import {ManagementNav} from '@/components/manage/manage-nav';
 import {requireAccount} from '@/lib/auth';
 import {createClient} from '@/lib/supabase/server';
 import {createTeamIdentity} from '../../registry/actions';
+import {TeamStructureSelector} from '@/components/manage/team-structure-selector';
 
 export default async function NewTeamPage({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}){
   const account=await requireAccount();
@@ -42,12 +43,7 @@ export default async function NewTeamPage({searchParams}:{searchParams:Promise<R
           <label><span>Short name</span><input name="short_name" placeholder="Napoli Youth"/></label>
           <label><span>City *</span><select name="city_id" required>{cities.map((c:any)=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
           <label><span>Category</span><select name="category" defaultValue="OPEN"><option value="OPEN">Open</option><option value="MEN">Men</option><option value="WOMEN">Women</option><option value="YOUTH">Youth</option><option value="VETERANS">Veterans</option></select></label>
-          <label><span>Team structure *</span><select name="structure" defaultValue="SINGLE"><option value="SINGLE">Single side</option><option value="A_B">A + B sides</option><option value="A_B_C">A + B + C sides</option></select></label>
-        </div>
-
-        <div className="team-structure-preview">
-          <div><strong>Single side</strong><span>Vesuvio Kings → one roster and one competitive side.</span></div>
-          <div><strong>A / B / C</strong><span>Napoli Youth → one public Team profile with separate A, B or C rosters and fixtures.</span></div>
+          <TeamStructureSelector/>
         </div>
 
         <div className="registry-identity-note"><b>One Team identity. Optional multiple sides.</b><span>Fixtures and tournament squads use the competitive side, while the public directory keeps the Team together.</span></div>
