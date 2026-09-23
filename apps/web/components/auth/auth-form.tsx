@@ -4,14 +4,14 @@ import { FormEvent, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import {CitySearchSelect} from '@/components/location/city-search-select';
 
 type Mode = 'login' | 'signup';
 type LoginMethod = 'email' | 'phone';
-type CityOption={id:string;name:string;code:string};
-type SideOption={id:string;name:string;label:string;order:number};
+ type SideOption={id:string;name:string;label:string;order:number};
 type TeamOption={id:string;name:string;city_id:string;sides:SideOption[]};
 
-export function AuthForm({ mode, registrationOptions }:{mode:Mode;registrationOptions?:{cities:CityOption[];teams:TeamOption[]}}) {
+export function AuthForm({ mode, registrationOptions }:{mode:Mode;registrationOptions?:{teams:TeamOption[]}}) {
   const router = useRouter();
   const params = useSearchParams();
   const phoneAuthEnabled = process.env.NEXT_PUBLIC_PHONE_AUTH_ENABLED === 'true';
@@ -127,7 +127,7 @@ export function AuthForm({ mode, registrationOptions }:{mode:Mode;registrationOp
 
     {!login&&registrationOptions&&<>
       <div className="signup-section-head"><span>02</span><div><strong>Cricket registration</strong><small>Choose the city and Team you currently belong to.</small></div></div>
-      <label><span>City *</span><select name="cityId" value={cityId} onChange={e=>{setCityId(e.target.value);setTeamChoice('')}} required><option value="">Select city</option>{registrationOptions.cities.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
+      <CitySearchSelect name="cityId" value={cityId} required label="City" onChange={(id)=>{setCityId(id);setTeamChoice('')}}/>
       <label><span>Your Team *</span><select name="teamIdentityId" value={teamChoice} onChange={e=>setTeamChoice(e.target.value)} required>
         <option value="">Select Team</option>
         <option value="NO_TEAM">No current Team</option>
