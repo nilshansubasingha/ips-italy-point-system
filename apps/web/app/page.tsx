@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Pill } from '@ips/ui';
-import { getCities, getClubDirectory, getDatabaseHealth, getFixtureContexts, getPlayerDirectory, getTournamentDirectory } from '@ips/data';
+import { getCities, getDatabaseHealth, getFixtureContexts, getPlayerDirectory, getTeamDirectory, getTeamIdentityDisplayName, getTournamentDirectory } from '@ips/data';
 import { SiteFooter, SiteHeader } from '@/components/site-header';
 import { MatchCentre } from '@/components/match-centre';
 import { Crest, PlayerAvatar } from '@/components/identity';
@@ -10,8 +10,8 @@ import { formatDate } from '@/lib/format';
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
-  const [health, cities, clubs, players, tournaments, fixtures] = await Promise.all([
-    getDatabaseHealth(), getCities(), getClubDirectory(), getPlayerDirectory(), getTournamentDirectory(), getFixtureContexts(),
+  const [health, cities, teamIdentities, players, tournaments, fixtures] = await Promise.all([
+    getDatabaseHealth(), getCities(), getTeamDirectory(), getPlayerDirectory(), getTournamentDirectory(), getFixtureContexts(),
   ]);
   const featuredFixture = fixtures.find((f) => f.match_status === 'LIVE') ?? fixtures[0] ?? null;
   const featuredTournament = tournaments.find((t) => t.status === 'LIVE') ?? tournaments[0] ?? null;
@@ -24,7 +24,7 @@ export default async function Home() {
         <div className="hero-copy">
           <div className="eyebrow">ITALY POINT SYSTEM · SOFTBALL CRICKET</div>
           <h1>One game.<br/><span>One national system.</span></h1>
-          <p>Clubs, permanent player identities, tournaments, fixtures, live scoring, rankings, records, media and broadcast — connected through the same IPS data layer.</p>
+          <p>Teams, permanent player identities, tournaments, fixtures, live scoring, rankings, records, media and broadcast — connected through the same IPS data layer.</p>
           <div className="hero-actions">
             <Link className="button-primary" href="/match-centre">Open Match Centre <b>→</b></Link>
             <Link className="button-secondary" href="/rankings">Explore rankings</Link>
@@ -36,7 +36,7 @@ export default async function Home() {
           </div>
           <div className="hero-stat-ribbon">
             <div><strong>{cities.length}</strong><span>Cities</span></div>
-            <div><strong>{clubs.length}</strong><span>Clubs</span></div>
+            <div><strong>{teamIdentities.length}</strong><span>Teams</span></div>
             <div><strong>{players.length}</strong><span>Players</span></div>
             <div><strong>{tournaments.length}</strong><span>Tournaments</span></div>
           </div>
@@ -76,13 +76,17 @@ export default async function Home() {
 
       <section className="sports-section premium-directory-section">
         <div className="directory-feature-column">
-          <div className="sports-section-head premium-section-head"><div><span className="eyebrow">CLUB DIRECTORY</span><h2>Canonical club identities.</h2></div><Link href="/clubs">All clubs →</Link></div>
+          <div className="sports-section-head premium-section-head"><div><span className="eyebrow">TEAM DIRECTORY</span><h2>One Team identity. Optional A/B/C sides.</h2></div><Link href="/teams">All teams →</Link></div>
           <div className="club-grid">
-            {clubs.slice(0, 6).map((club) => <Link className="club-card premium-club-card" href={`/clubs/${club.slug}`} key={club.id}>
-              <Crest name={club.name} imageUrl={club.logo_url} large />
-              <div className="club-card-copy"><span>{club.city?.name ?? 'Italy'} · {club.verified ? 'Verified' : 'Club'}</span><h3>{club.name}</h3><div className="club-card-stats"><b>{club.teams.length}</b> teams <b>{club.activePlayerCount}</b> players</div></div>
-              <span className="card-arrow">↗</span>
-            </Link>)}
+            {teamIdentities.slice(0, 6).map((team) => {
+              const name=getTeamIdentityDisplayName(team);
+              const sideCount=team.teams.filter(side=>side.status==='ACTIVE').length;
+              return <Link className="club-card premium-club-card" href={`/teams/${team.slug}`} key={team.id}>
+                <Crest name={name} imageUrl={team.logo_url} large />
+                <div className="club-card-copy"><span>{team.city?.name ?? 'Italy'} · IPS Team</span><h3>{name}</h3><div className="club-card-stats"><b>{sideCount}</b> {sideCount===1?'side':'sides'} <b>{team.activePlayerCount}</b> players</div></div>
+                <span className="card-arrow">↗</span>
+              </Link>;
+            })}
           </div>
         </div>
         <aside className="directory-side-rail">
@@ -118,7 +122,7 @@ export default async function Home() {
       </section>
 
       <section className="sports-section city-band premium-city-band">
-        <div><span className="eyebrow light">CITY HUBS</span><h2>Local communities.<br/>One stronger Italy.</h2><p>City identity connects clubs, players, competitions and fixtures without fragmenting the national dataset.</p></div>
+        <div><span className="eyebrow light">CITY HUBS</span><h2>Local communities.<br/>One stronger Italy.</h2><p>City identity connects teams, players, competitions and fixtures without fragmenting the national dataset.</p></div>
         <div className="city-links">{cities.map((city) => <Link href={`/cities/${city.code.toLowerCase()}`} key={city.id}><span className="city-pin">●</span><strong>{city.name}</strong><span>{city.region ?? 'Italy'}</span><i>→</i></Link>)}</div>
       </section>
       <SiteFooter />
