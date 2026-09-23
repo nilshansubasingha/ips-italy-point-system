@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Pill } from '@ips/ui';
-import { getCities, getDatabaseHealth, getFixtureContexts, getPlayerDirectory, getTeamDirectory, getTeamIdentityDisplayName, getTournamentDirectory } from '@ips/data';
+import { getActiveCities, getDatabaseHealth, getFixtureContexts, getPlayerDirectory, getTeamDirectory, getTeamIdentityDisplayName, getTournamentDirectory } from '@ips/data';
 import { SiteFooter, SiteHeader } from '@/components/site-header';
 import { MatchCentre } from '@/components/match-centre';
 import { Crest, PlayerAvatar } from '@/components/identity';
@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function Home() {
   const [health, cities, teamIdentities, players, tournaments, fixtures] = await Promise.all([
-    getDatabaseHealth(), getCities(), getTeamDirectory(), getPlayerDirectory(), getTournamentDirectory(), getFixtureContexts(),
+    getDatabaseHealth(), getActiveCities(50), getTeamDirectory(), getPlayerDirectory(), getTournamentDirectory(), getFixtureContexts(),
   ]);
   const featuredFixture = fixtures.find((f) => f.match_status === 'LIVE') ?? fixtures[0] ?? null;
   const featuredTournament = tournaments.find((t) => t.status === 'LIVE') ?? tournaments[0] ?? null;
