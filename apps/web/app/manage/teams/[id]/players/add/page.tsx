@@ -21,7 +21,7 @@ export default async function AddPlayerPage({params,searchParams}:{params:Promis
  const supabase=await createClient();
 
  const [{data:team},{data:canManage},{data:members}]=await Promise.all([
-   supabase.from('teams').select('id,name,club:clubs(name)').eq('id',id).maybeSingle(),
+   supabase.from('teams').select('id,name,side_label,club:clubs(id,name)').eq('id',id).maybeSingle(),
    supabase.rpc('ips_can_manage_team',{p_team_id:id}),
    supabase.from('team_memberships')
      .select('id,player_id,shirt_number,team_role,is_primary,player:players(id,ips_code,display_name,primary_role,profile_image_url)')
@@ -42,9 +42,9 @@ export default async function AddPlayerPage({params,searchParams}:{params:Promis
 
    <section className="manage-titlebar compact">
      <div>
-       <Link className="back-link" href={`/manage/teams/${id}`}>← {team.name}</Link>
+       <Link className="back-link" href={`/manage/teams/${(team.club as any)?.id}`}>← {String((team.club as any)?.name??'Team').replace(/\s+Cricket Club$/i,'')}</Link>
        <span className="eyebrow">ROSTER BUILDER</span>
-       <h1>Add & manage players</h1>
+       <h1>{team.side_label==='MAIN'?'Team roster':`${team.side_label} Team roster`}</h1>
        <p>Search IPS first. Create a new permanent player only when no existing identity matches. Your current team roster stays visible on the right while you work.</p>
      </div>
    </section>
@@ -128,7 +128,7 @@ export default async function AddPlayerPage({params,searchParams}:{params:Promis
          <strong>{members?.length??0}</strong>
        </div>
 
-       <div className="roster-rail-list">
+       <div className="roster-rail-list roster-card-grid">
          {(members??[]).map((m:any)=>{
            const p=m.player;
            const teamRole=m.team_role||p?.primary_role||'Player';
