@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import type {CSSProperties} from 'react';
 import type { PlayerDirectoryItem } from '@ips/data';
 import { PlayerAvatar } from './identity';
 
@@ -21,7 +22,7 @@ function RankingPanel({title,scopeLabel,formatLabel,players,columns,footnote}:Ra
         <span className="preview-badge">Awaiting certified data</span>
       </div>
 
-      <div className="ranking-table-head" style={{'--ranking-cols':columns.length} as React.CSSProperties}>
+      <div className="ranking-table-head" style={{'--ranking-cols':columns.length} as CSSProperties}>
         <span>POS</span><span>PLAYER</span>
         {columns.map(column=><span key={column.key} className={column.wide?'wide':''}>{column.label}</span>)}
       </div>
@@ -30,7 +31,7 @@ function RankingPanel({title,scopeLabel,formatLabel,players,columns,footnote}:Ra
         {players.slice(0,5).map(player=>(
           <Link
             className="ranking-row ranking-row-table"
-            style={{'--ranking-cols':columns.length} as React.CSSProperties}
+            style={{'--ranking-cols':columns.length} as CSSProperties}
             href={'/players/'+player.slug}
             key={player.id}
           >
