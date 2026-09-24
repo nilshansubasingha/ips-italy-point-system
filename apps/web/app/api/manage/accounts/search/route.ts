@@ -193,7 +193,6 @@ export async function GET(request:NextRequest){
         display_name:profile.display_name??profile.full_name??profile.email??'IPS account',
         full_name:profile.full_name,
         email:profile.email,
-        phone:profile.phone,
         status:profile.status,
         linked_player:player?{
           id:player.id,
