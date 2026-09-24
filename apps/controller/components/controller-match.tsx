@@ -169,9 +169,28 @@ function TopOverRows({scoring}:{scoring:ScoringContext}){
   </div>;
 }
 
-function OverHistoryPanel({history}:{history:OverHistoryItem[]}){
+function OverHistoryPanel({scoring}:{scoring:ScoringContext}){
   const [expanded,setExpanded]=useState(false);
-  const ordered=[...history].sort((a,b)=>b.over_no-a.over_no);
+  const history=scoring.over_history??[];
+  const historyHasCurrent=history.some(over=>over.current);
+  const currentBowler=scoring.bowler_stats.find(player=>player.player_id===scoring.bowler_id);
+  const syntheticCurrent:OverHistoryItem|null=
+    scoring.started&&!scoring.innings_complete&&!scoring.match_complete&&!scoring.awaiting_bowler&&!historyHasCurrent
+      ?{
+          over_no:Math.floor(scoring.legal_balls/Math.max(scoring.balls_per_over,1))+1,
+          runs:0,
+          wickets:0,
+          legal_balls:0,
+          complete:false,
+          current:true,
+          bowler_id:scoring.bowler_id,
+          bowler_name:currentBowler?.name??null,
+          score_after:scoring.runs,
+          wickets_after:scoring.wickets,
+          balls:scoring.current_over??[]
+        }
+      :null;
+  const ordered=[...(syntheticCurrent?[syntheticCurrent]:[]),...history].sort((a,b)=>b.over_no-a.over_no);
   const visible=expanded?ordered:ordered.slice(0,3);
 
   return <section className="p6-over-history">
@@ -548,7 +567,7 @@ export function ControllerMatch({
           </div>
         </section>}
 
-        <OverHistoryPanel history={scoring.over_history??[]}/>
+        <OverHistoryPanel scoring={scoring}/>
 
         {scoring.match_complete&&<section className="p6-match-complete">
           <span>MATCH COMPLETE</span>
