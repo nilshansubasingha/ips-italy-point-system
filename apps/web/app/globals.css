@@ -1527,3 +1527,91 @@
     grid-template-columns:1fr 1fr;
   }
 }
+
+
+/* Project 5.11 — combined Controller-readiness editing */
+.match-playing-sides-editor{
+  display:grid;
+  gap:12px;
+}
+.xi-selector-live{
+  display:grid;
+  gap:8px;
+}
+.xi-live-note{
+  display:block;
+  color:#7b909b;
+  font-size:7px;
+  font-weight:800;
+}
+.playing-sides-savebar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  padding:13px 14px;
+  border:1px solid #cfe4db;
+  border-radius:14px;
+  background:linear-gradient(135deg,#f7fbf9,#edf8f4);
+}
+.playing-sides-savebar>div>span,
+.playing-sides-savebar>div>strong,
+.playing-sides-savebar>div>small{display:block}
+.playing-sides-savebar>div>span{
+  color:var(--green);
+  font-size:7px;
+  font-weight:950;
+  letter-spacing:.11em;
+}
+.playing-sides-savebar>div>strong{
+  margin-top:3px;
+  color:var(--ink);
+  font-size:10px;
+}
+.playing-sides-savebar>div>small{
+  margin-top:3px;
+  color:#738993;
+  font-size:7px;
+}
+.playing-sides-savebar>button{
+  flex:0 0 auto;
+  min-height:39px;
+  border:0;
+  border-radius:10px;
+  background:#087f56;
+  color:#fff;
+  padding:9px 15px;
+  font-size:8px;
+  font-weight:950;
+  cursor:pointer;
+}
+.playing-sides-savebar>button:disabled{
+  opacity:.42;
+  cursor:not-allowed;
+}
+.playing-sides-message{
+  padding:9px 11px;
+  border-radius:10px;
+  font-size:8px;
+  font-weight:850;
+}
+.playing-sides-message.ok{
+  border:1px solid #bfe4d1;
+  background:#eaf8f1;
+  color:#08734d;
+}
+.playing-sides-message.error{
+  border:1px solid #f0c6ca;
+  background:#fff0f1;
+  color:#a72e38;
+}
+
+@media(max-width:760px){
+  .playing-sides-savebar{
+    align-items:stretch;
+    flex-direction:column;
+  }
+  .playing-sides-savebar>button{
+    width:100%;
+  }
+}
