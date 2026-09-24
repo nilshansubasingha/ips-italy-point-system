@@ -490,7 +490,7 @@ with pkg as (
     'ACTIVE'
   )
   on conflict(slug) do update set name=excluded.name,description=excluded.description,is_factory=true,theme=excluded.theme,status='ACTIVE'
-  returning id
+  returning id,theme
 ),
 scene_rows(scene_key,name,category,replacement_group,priority) as (
  values
