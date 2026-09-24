@@ -555,3 +555,43 @@
   .access-directory-toolbar{align-items:stretch;flex-direction:column}
   .access-directory-toolbar>label{min-width:0}
 }
+
+
+/* Project 5.8.3 — Add ground city options + generated slug */
+.venue-create-form .venue-field-help{
+  display:block;
+  margin-top:-2px;
+  color:#96afba;
+  font-size:7px;
+  line-height:1.45;
+}
+.venue-create-form .venue-other-city{
+  padding:11px 12px;
+  border:1px dashed rgba(126,221,183,.34);
+  border-radius:12px;
+  background:rgba(15,129,88,.08);
+}
+.venue-slug-preview{
+  display:grid;
+  gap:3px;
+  padding:11px 12px;
+  border:1px solid rgba(255,255,255,.13);
+  border-radius:12px;
+  background:rgba(255,255,255,.05);
+}
+.venue-slug-preview>span{
+  color:#7eddb7;
+  font-size:7px;
+  font-weight:950;
+  letter-spacing:.11em;
+}
+.venue-slug-preview>strong{
+  color:#fff;
+  font-size:10px;
+  overflow-wrap:anywhere;
+}
+.venue-slug-preview>small{
+  color:#9db6c2;
+  font-size:7px;
+  line-height:1.4;
+}
