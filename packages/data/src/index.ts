@@ -110,6 +110,27 @@ export type TournamentRow = {
   status: string;
 };
 
+
+export type RankingDefinitionColumn = {
+  key: string;
+  label: string;
+};
+
+export type RankingDefinitionRow = {
+  id: string;
+  ranking_key: string;
+  title: string;
+  source_key: string;
+  section: 'PRIMARY' | 'MILESTONE';
+  columns: RankingDefinitionColumn[];
+  sort_direction: 'ASC' | 'DESC';
+  sort_order: number;
+  description: string | null;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
 export type TournamentTeamRow = {
   id: string;
   tournament_id: string;
@@ -554,6 +575,22 @@ export async function getTournamentBySlug(slug: string): Promise<TournamentDetai
     teams: joinedTeams,
     fixtures: fixtures.filter((row) => row.tournament_id === tournament.id),
   };
+}
+
+
+export async function getRankingDefinitions(): Promise<RankingDefinitionRow[]> {
+  const client = getPublicSupabaseClient();
+  if (!client) return [];
+
+  const { data, error } = await client
+    .from('ranking_definitions')
+    .select('*')
+    .eq('enabled', true)
+    .order('section', { ascending: true })
+    .order('sort_order', { ascending: true });
+
+  if (error) throw new Error(`ranking definitions: ${error.message}`);
+  return (data ?? []) as RankingDefinitionRow[];
 }
 
 export async function getCityByCode(code: string): Promise<CityDetail | null> {
