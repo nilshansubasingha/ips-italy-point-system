@@ -1445,3 +1445,85 @@
   }
   .controller-access-actions{justify-content:flex-start}
 }
+
+
+/* Controller access — compact tile inside Assign access */
+.controller-access-tile{
+  min-height:84px;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+  padding:12px;
+  border:1px solid rgba(95,198,155,.34);
+  border-radius:13px;
+  background:linear-gradient(145deg,rgba(11,98,80,.28),rgba(7,52,74,.34));
+  color:#fff;
+}
+.controller-access-tile>div:first-child{
+  min-width:0;
+}
+.controller-access-tile span,
+.controller-access-tile strong,
+.controller-access-tile small{
+  display:block;
+}
+.controller-access-tile span{
+  color:#79deb8;
+  font-size:6.5px;
+  font-weight:950;
+  letter-spacing:.11em;
+}
+.controller-access-tile strong{
+  margin-top:4px;
+  font-size:9px;
+  line-height:1.25;
+}
+.controller-access-tile small{
+  margin-top:4px;
+  color:#a8c0cb;
+  font-size:6.6px;
+  line-height:1.35;
+}
+.controller-access-tile-actions{
+  display:grid;
+  gap:5px;
+  flex:0 0 auto;
+}
+.controller-access-tile-actions a{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:28px;
+  padding:6px 8px;
+  border:1px solid rgba(255,255,255,.13);
+  border-radius:8px;
+  background:rgba(255,255,255,.07);
+  color:#e9f7f1;
+  text-decoration:none;
+  white-space:nowrap;
+  font-size:6.5px;
+  font-weight:950;
+}
+.controller-access-tile-actions a:first-child{
+  border-color:rgba(93,218,167,.42);
+  background:#087f56;
+  color:#fff;
+}
+.controller-access-tile-actions a:hover{
+  border-color:#73d9af;
+  background:rgba(255,255,255,.12);
+}
+.controller-access-tile-actions a:first-child:hover{
+  background:#099664;
+}
+
+@media(max-width:720px){
+  .controller-access-tile{
+    flex-direction:column;
+  }
+  .controller-access-tile-actions{
+    width:100%;
+    grid-template-columns:1fr 1fr;
+  }
+}
