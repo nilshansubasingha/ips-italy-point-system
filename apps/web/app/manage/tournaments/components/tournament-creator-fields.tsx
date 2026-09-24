@@ -8,6 +8,15 @@ type Venue={id:string;city_id:string;name:string};
 type Ruleset={id:string;name:string;version:number;max_overs:number;balls_per_over:number;playing_xi_size:number;innings_wicket_limit:number|null;max_overs_per_bowler:number|null};
 
 function slugify(value:string){return value.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').replace(/-+/g,'-');}
+function codeFrom(name:string,seasonName:string){
+  const words=name.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toUpperCase().match(/[A-Z0-9]+/g)??[];
+  let stem='';
+  if(words.length>=4)stem=words.map(word=>word[0]).join('').slice(0,12);
+  else stem=words.map(word=>word.slice(0,3)).join('-');
+  if(stem.length<3&&words[0])stem=words[0].slice(0,6);
+  const year=(seasonName.match(/\b(20\d{2})\b/)?.[1]??'').slice(-2);
+  return [stem||'TOU',year].filter(Boolean).join('-').slice(0,32);
+}
 
 export function TournamentCreatorFields({allowedCities,seasons,rulesets,venues}:{allowedCities?:CitySearchOption[];seasons:Season[];rulesets:Ruleset[];venues:Venue[]}){
   const first=rulesets[0];
@@ -15,6 +24,7 @@ export function TournamentCreatorFields({allowedCities,seasons,rulesets,venues}:
   const [slug,setSlug]=useState('');
   const [slugTouched,setSlugTouched]=useState(false);
   const [cityId,setCityId]=useState(allowedCities?.[0]?.id??'');
+  const [seasonId,setSeasonId]=useState(seasons[0]?.id??'');
   const [rulesetId,setRulesetId]=useState(first?.id??'');
   const [players,setPlayers]=useState(first?.playing_xi_size??6);
   const [overs,setOvers]=useState(first?.max_overs??5);
@@ -25,6 +35,8 @@ export function TournamentCreatorFields({allowedCities,seasons,rulesets,venues}:
   const [squadSize,setSquadSize]=useState(Math.max((first?.playing_xi_size??6)+2,first?.playing_xi_size??6));
   const cityVenues=useMemo(()=>venues.filter(v=>v.city_id===cityId),[venues,cityId]);
   const selectedRuleset=rulesets.find(r=>r.id===rulesetId)??first;
+  const selectedSeason=seasons.find(s=>s.id===seasonId)??seasons[0];
+  const generatedCode=useMemo(()=>codeFrom(name,selectedSeason?.name??''),[name,selectedSeason]);
 
   function changeName(value:string){setName(value); if(!slugTouched)setSlug(slugify(value));}
   function changeRuleset(value:string){
@@ -39,8 +51,11 @@ export function TournamentCreatorFields({allowedCities,seasons,rulesets,venues}:
     <section className="creator-section">
       <div className="creator-section-head"><span>01</span><div><strong>Competition identity</strong><small>Name, URL and national catalogue context.</small></div></div>
       <label className="creator-span-2"><span>Name</span><input name="name" required value={name} onChange={e=>changeName(e.target.value)} placeholder="Napoli Summer Cup 2027"/></label>
-      <div className="form-split"><label><span>Code</span><input name="code" required placeholder="NAP-SUM-27"/></label><label><span>URL slug</span><input name="slug" value={slug} onChange={e=>{setSlugTouched(true);setSlug(slugify(e.target.value))}} placeholder="generated-from-name"/><small className="field-hint">Auto-generated; editable.</small></label></div>
-      <div className="form-split"><CitySearchSelect name="city_id" value={cityId} required label="City" allowedCities={allowedCities} onChange={(id)=>setCityId(id)}/><label><span>Season</span><select name="season_id" required>{seasons.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label></div>
+      <div className="form-split">
+        <label><span>Code</span><input value={generatedCode} readOnly aria-readonly="true"/><input type="hidden" name="code" value={generatedCode}/><small className="field-hint">Generated automatically from the tournament name and season.</small></label>
+        <label><span>URL slug</span><input name="slug" value={slug} onChange={e=>{setSlugTouched(true);setSlug(slugify(e.target.value))}} placeholder="generated-from-name"/><small className="field-hint">Auto-generated; editable.</small></label>
+      </div>
+      <div className="form-split"><CitySearchSelect name="city_id" value={cityId} required label="City" allowedCities={allowedCities} onChange={(id)=>setCityId(id)}/><label><span>Season</span><select name="season_id" required value={seasonId} onChange={e=>setSeasonId(e.target.value)}>{seasons.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label></div>
       <label className="creator-span-2"><span>Short description</span><input name="short_description" placeholder="Optional public description"/></label>
     </section>
 
