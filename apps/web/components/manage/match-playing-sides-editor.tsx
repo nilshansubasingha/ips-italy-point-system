@@ -33,13 +33,15 @@ function SideCard({
   selected,
   required,
   onToggle,
-  returnTo
+  matchId,
+  returnPath
 }:{
   side:MatchSideEditorData;
   selected:string[];
   required:number;
   onToggle:(id:string,checked:boolean)=>void;
-  returnTo:string;
+  matchId:string;
+  returnPath:string;
 }){
   const savedReady=side.selectedIds.length===required&&!!side.captainId&&!!side.keeperId;
   const full=selected.length>=required;
@@ -77,9 +79,9 @@ function SideCard({
       </div>
 
       {side.selectedIds.length===required&&<form action={setMatchTeamRoles} className="role-selector">
-        <input type="hidden" name="match_id" value={returnTo.split('::')[0]}/>
+        <input type="hidden" name="match_id" value={matchId}/>
         <input type="hidden" name="team_id" value={side.teamId}/>
-        <input type="hidden" name="return_to" value={returnTo.split('::')[1]}/>
+        <input type="hidden" name="return_to" value={returnPath+'#lineups'}/>
         <label><span>Captain</span><select name="captain_id" defaultValue={side.captainId??side.selectedIds[0]}>
           {side.selectedIds.map(id=>{const player=side.roster.find(item=>item.id===id);return <option key={id} value={id}>{player?.displayName??'Player'}</option>})}
         </select></label>
@@ -116,8 +118,10 @@ export function MatchPlayingSidesEditor({
   const [awayIds,setAwayIds]=useState<string[]>(away.selectedIds);
   const [message,setMessage]=useState<{kind:'ok'|'error';text:string}|null>(null);
 
-  useEffect(()=>{if(!sameIds(homeIds,home.selectedIds))setHomeIds(home.selectedIds)},[home.selectedIds.join('|')]);
-  useEffect(()=>{if(!sameIds(awayIds,away.selectedIds))setAwayIds(away.selectedIds)},[away.selectedIds.join('|')]);
+  const savedHomeKey=home.selectedIds.join('|');
+  const savedAwayKey=away.selectedIds.join('|');
+  useEffect(()=>{setHomeIds(home.selectedIds)},[savedHomeKey]);
+  useEffect(()=>{setAwayIds(away.selectedIds)},[savedAwayKey]);
 
   const homeEditable=home.canManage&&home.locked;
   const awayEditable=away.canManage&&away.locked;
@@ -158,12 +162,10 @@ export function MatchPlayingSidesEditor({
     });
   }
 
-  const roleReturn=matchId+'::'+returnPath+'#lineups';
-
   return <div className="match-playing-sides-editor">
     <div className="lineup-side-grid">
-      <SideCard side={home} selected={homeIds} required={required} onToggle={(id,checked)=>toggle('home',id,checked)} returnTo={roleReturn}/>
-      <SideCard side={away} selected={awayIds} required={required} onToggle={(id,checked)=>toggle('away',id,checked)} returnTo={roleReturn}/>
+      <SideCard side={home} selected={homeIds} required={required} onToggle={(id,checked)=>toggle('home',id,checked)} matchId={matchId} returnPath={returnPath}/>
+      <SideCard side={away} selected={awayIds} required={required} onToggle={(id,checked)=>toggle('away',id,checked)} matchId={matchId} returnPath={returnPath}/>
     </div>
 
     {(homeEditable||awayEditable)&&<div className="playing-sides-savebar">
