@@ -56,8 +56,7 @@ function columnKey(label:string){
     '50s':'fifties',
     'fifties':'fifties',
     'hat-tricks':'hat_tricks',
-    'hat tricks':'hat_tricks',
-    'hat-tricks':'hat_tricks'
+    'hat tricks':'hat_tricks'
   };
   return aliases[normalized]??normalizeKey(label);
 }
