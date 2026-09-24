@@ -8,6 +8,8 @@ import {requireAccount,hasManagementRole} from '@/lib/auth';
 import {createClient} from '@/lib/supabase/server';
 import {canCreateVenue} from '@/lib/project4';
 import {VenueCreateForm} from '@/components/manage/venue-create-form';
+import {ConfirmSubmitButton} from '@/components/manage/confirm-submit-button';
+import {deleteVenue,updateVenue} from './actions';
 
 export default async function VenuesPage({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}){
   const account=await requireAccount();
@@ -21,6 +23,7 @@ export default async function VenuesPage({searchParams}:{searchParams:Promise<Re
 
   const global=account.grants.some(g=>(g.role==='OWNER'&&g.scope_type==='GLOBAL')||(g.role==='ADMIN'&&g.scope_type==='GLOBAL'));
   const cityScopeIds=account.grants.filter(g=>g.role==='ADMIN'&&g.scope_type==='CITY'&&g.city_id).map(g=>g.city_id as string);
+  const cityScopeSet=new Set(cityScopeIds);
 
   let availableCities:any[]=[];
   if(global){
@@ -64,15 +67,56 @@ export default async function VenuesPage({searchParams}:{searchParams:Promise<Re
 
     <section className="ops-layout">
       <div className="ops-main">
-        <div className="ops-list">
-          {(venues??[]).map((v:any)=><article key={v.id}>
-            <div>
-              <span>{(v.city as any)?.name??'Italy'}{(v.city as any)?.province_abbr?' · '+(v.city as any).province_abbr:''}</span>
-              <strong>{v.name}</strong>
-              <small>{v.address_text||'Address not set'}</small>
-            </div>
-            <b>{v.status}</b>
-          </article>)}
+        <div className="venue-management-list">
+          {(venues??[]).map((v:any)=>{
+            const city=v.city as any;
+            const canManage=global||cityScopeSet.has(v.city_id);
+            return <article className="venue-management-card" key={v.id}>
+              <div className="venue-management-summary">
+                <div>
+                  <span>{city?.name??'Italy'}{city?.province_abbr?' · '+city.province_abbr:''}</span>
+                  <strong>{v.name}</strong>
+                  <small>{v.address_text||'Address not set'}</small>
+                </div>
+                <b>{v.status}</b>
+              </div>
+
+              {canManage&&<div className="venue-management-actions">
+                <details className="venue-edit-details">
+                  <summary>Edit</summary>
+                  <form action={updateVenue} className="venue-edit-form">
+                    <input type="hidden" name="venue_id" value={v.id}/>
+                    <label>
+                      <span>City</span>
+                      <select name="city_id" defaultValue={v.city_id} required>
+                        {availableCities.map((option:any)=><option key={option.id} value={option.id}>
+                          {option.name+(option.province_abbr?' · '+option.province_abbr:'')}
+                        </option>)}
+                      </select>
+                    </label>
+                    <label><span>Ground name</span><input name="name" defaultValue={v.name} required/></label>
+                    <label><span>Address</span><input name="address_text" defaultValue={v.address_text??''} placeholder="Street / facility"/></label>
+                    <div className="form-split">
+                      <label><span>Latitude</span><input name="latitude" type="number" step="any" defaultValue={v.latitude??''}/></label>
+                      <label><span>Longitude</span><input name="longitude" type="number" step="any" defaultValue={v.longitude??''}/></label>
+                    </div>
+                    <div className="venue-edit-meta"><span>Slug</span><b>{v.slug}</b><small>Regenerated automatically when the ground name changes.</small></div>
+                    <button className="button-primary">Save venue</button>
+                  </form>
+                </details>
+
+                {global&&<form action={deleteVenue}>
+                  <input type="hidden" name="venue_id" value={v.id}/>
+                  <ConfirmSubmitButton
+                    className="registry-delete-button"
+                    message={'Delete '+v.name+'? Scheduled/ready fixture references will be cleared automatically. Started, completed or official match history will block deletion.'}
+                  >
+                    Delete
+                  </ConfirmSubmitButton>
+                </form>}
+              </div>}
+            </article>;
+          })}
         </div>
       </div>
 
