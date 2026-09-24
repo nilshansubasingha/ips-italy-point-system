@@ -50,7 +50,7 @@ export default async function TeamIdentityOperationsPage({params,searchParams}:{
      </div>
      <div className="header-actions">
        {canManage&&<a href="#team-identity" className="button-secondary">Edit team</a>}
-       {canGlobalDelete&&<form action={deleteTeamIdentity}><input type="hidden" name="team_identity_id" value={id}/><ConfirmSubmitButton className="danger-link" message={`Delete ${displayName}? This permanently removes the Team and all unused sides and roster memberships. Players themselves are not deleted. Historical competition use blocks deletion.`}>Delete team</ConfirmSubmitButton></form>}
+       {canGlobalDelete&&<form action={deleteTeamIdentity}><input type="hidden" name="team_identity_id" value={id}/><ConfirmSubmitButton className="danger-link" message={`Delete ${displayName}? This permanently removes the Team and all unused sides and roster memberships. Players themselves are not deleted. Scheduled/ready fixture setup is cleaned automatically. Started, completed or official match history still blocks deletion.`}>Delete team</ConfirmSubmitButton></form>}
      </div>
    </section>
 
@@ -80,7 +80,7 @@ export default async function TeamIdentityOperationsPage({params,searchParams}:{
            <div className="team-side-mini-roster">{sidePlayers.slice(0,5).map((m:any)=><Link href={`/manage/players/${m.player.id}`} key={m.id}><PlayerAvatar name={m.player.display_name} imageUrl={m.player.profile_image_url}/><span>{m.player.display_name}</span></Link>)}</div>
            <div className="team-side-admin-actions">
              <Link className="button-primary" href={`/manage/teams/${side.id}/players/add`}>Manage {label} →</Link>
-             {canGlobalDelete&&(sides?.length??0)>1&&<form action={deleteTeam}><input type="hidden" name="team_id" value={side.id}/><input type="hidden" name="return_to" value={`/manage/teams/${id}`}/><ConfirmSubmitButton className="danger-link" message={`Delete ${side.name}? This removes only this competitive side and its roster memberships. Historical competition use blocks deletion.`}>Delete side</ConfirmSubmitButton></form>}
+             {canGlobalDelete&&(sides?.length??0)>1&&<form action={deleteTeam}><input type="hidden" name="team_id" value={side.id}/><input type="hidden" name="return_to" value={`/manage/teams/${id}`}/><ConfirmSubmitButton className="danger-link" message={`Delete ${side.name}? This removes only this competitive side and its roster memberships. Scheduled/ready fixture setup is cleaned automatically. Started, completed or official match history still blocks deletion.`}>Delete side</ConfirmSubmitButton></form>}
            </div>
          </article>;
        })}

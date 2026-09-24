@@ -78,6 +78,22 @@ export async function updateTournament(form: FormData) {
   } catch(e:any){go(back,'error',friendlyError(e,'Could not update tournament.'));}
 }
 
+export async function deleteTournament(form: FormData) {
+  const supabase=await createClient();
+  const id=s(form,'tournament_id');
+  const back=returnPath(form,id?'/manage/tournaments/'+id:'/manage/tournaments');
+  try {
+    if(!id) throw new Error('Tournament id is required.');
+    const {data:t,error:readError}=await supabase.from('tournaments').select('name').eq('id',id).maybeSingle();
+    if(readError) throw readError;
+    if(!t) throw new Error('Tournament not found.');
+    const {error}=await supabase.rpc('ips_delete_tournament',{p_tournament_id:id});
+    if(error) throw error;
+    revalidatePath('/manage/tournaments'); revalidatePath('/tournaments'); revalidatePath('/manage/teams');
+    go('/manage/tournaments','ok',(t as any).name+' permanently deleted.');
+  } catch(e:any){go(back,'error',friendlyError(e,'Could not delete tournament.'));}
+}
+
 export async function addTournamentTeam(form: FormData) {
   const supabase=await createClient(); const tid=s(form,'tournament_id'); const back=returnPath(form,`/manage/tournaments/${tid}`);
   try { const {error}=await supabase.from('tournament_teams').insert({tournament_id:tid,team_id:s(form,'team_id'),status:'APPLIED',application_note:nullable(form,'application_note')}); if(error) throw error; revalidatePath(back); go(back,'ok','Team application added.'); }

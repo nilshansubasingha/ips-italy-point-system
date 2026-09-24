@@ -763,3 +763,93 @@
   .managed-profile-actions{width:100%}
   .managed-profile-actions>a{width:100%;text-align:center}
 }
+
+
+/* Project 5.9 — registry cleanup controls */
+.player-registry-admin-row{
+  grid-template-columns:minmax(260px,1.3fr) minmax(170px,.8fr) minmax(140px,.6fr) auto;
+}
+.player-registry-person-link{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr);
+  gap:14px;
+  align-items:center;
+  min-width:0;
+  text-decoration:none;
+  color:inherit;
+}
+.player-registry-person-link:hover h3{color:var(--green)}
+.player-registry-actions{
+  display:flex!important;
+  align-items:center;
+  justify-content:flex-end;
+  gap:10px;
+}
+.player-registry-actions>a{
+  text-decoration:none;
+  color:var(--green);
+  font-size:8px;
+  font-weight:950;
+  white-space:nowrap;
+}
+.player-registry-actions form{margin:0}
+.registry-delete-button{
+  border:1px solid #efb4ba!important;
+  background:#fff4f5!important;
+  color:#ae2935!important;
+  border-radius:9px!important;
+  padding:8px 10px!important;
+  font-size:8px!important;
+  font-weight:950!important;
+  cursor:pointer!important;
+  white-space:nowrap;
+}
+.registry-delete-button:hover{background:#ffe9eb!important;border-color:#e58f98!important}
+.prominent-delete{padding:10px 13px!important;font-size:9px!important}
+
+.competition-admin-card{
+  border-top:1px solid #edf2f4;
+  padding:4px 0 8px;
+}
+.competition-admin-card:first-child{border-top:0}
+.competition-admin-card>.competition-row{border-top:0}
+.competition-admin-actions{
+  display:flex;
+  justify-content:flex-end;
+  align-items:center;
+  gap:8px;
+  padding:0 7px 5px;
+}
+.competition-admin-actions>a{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:31px;
+  padding:7px 10px;
+  border:1px solid #d8e4e8;
+  border-radius:9px;
+  background:#f8fbfb;
+  color:#24485d;
+  text-decoration:none;
+  font-size:8px;
+  font-weight:950;
+}
+.competition-admin-actions>a:hover{border-color:#9dcab8;color:var(--green)}
+.competition-admin-actions form{margin:0}
+.tournament-detail-actions{
+  display:flex;
+  justify-content:flex-end;
+  align-items:center;
+  gap:9px;
+  margin:-8px 0 18px;
+}
+.tournament-detail-actions form{margin:0}
+
+@media(max-width:820px){
+  .player-registry-admin-row{grid-template-columns:minmax(0,1fr) auto}
+  .player-registry-person-link{grid-column:1/-1}
+  .player-registry-admin-row>div:not(.player-registry-actions){padding-left:50px}
+  .player-registry-actions{grid-column:1/-1;padding-left:50px;justify-content:flex-start}
+  .competition-admin-actions{justify-content:flex-start;padding-left:13px}
+  .tournament-detail-actions{justify-content:flex-start;flex-wrap:wrap}
+}
