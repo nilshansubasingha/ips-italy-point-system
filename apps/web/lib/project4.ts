@@ -17,6 +17,14 @@ export function isTournamentAdminGrant(g: RoleGrant) {
   return g.role === 'OWNER' || (g.role === 'ADMIN' && ['GLOBAL','CITY','TOURNAMENT'].includes(g.scope_type));
 }
 
+export function formatItalyDate(value: string | null | undefined) {
+  if (!value) return '—';
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: ITALY_TZ,
+    day: '2-digit', month: 'short', year: 'numeric',
+  }).format(new Date(value));
+}
+
 export function formatItalyDateTime(value: string | null | undefined) {
   if (!value) return '—';
   return new Intl.DateTimeFormat('en-GB', {
