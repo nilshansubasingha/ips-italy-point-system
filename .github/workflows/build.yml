@@ -2,7 +2,7 @@ name: IPS Web Build
 
 on:
   push:
-    branches: [main]
+    branches: [main, ui/controller-access-in-assign-panel]
   workflow_dispatch:
 
 jobs:
