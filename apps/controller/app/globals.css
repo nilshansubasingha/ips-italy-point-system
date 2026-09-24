@@ -1046,3 +1046,441 @@
   }
   .p6-scorecard-head small{display:none}
 }
+
+
+/* Project 6.2 — dense responsive scorer cockpit */
+.p6-live{
+  display:grid;
+  grid-template-columns:minmax(260px,.78fr) minmax(0,1.22fr);
+  grid-template-areas:
+    "score players"
+    "history history"
+    "actions actions";
+  gap:0;
+  background:#f7fafb;
+}
+.p6-scoreboard{
+  grid-area:score;
+  min-height:0;
+  padding:14px 15px;
+  justify-content:flex-start;
+  border-right:1px solid rgba(255,255,255,.08);
+}
+.p6-scoreboard:after{
+  width:170px;
+  height:170px;
+  right:-95px;
+  top:-95px;
+  border-width:24px;
+}
+.p6-score-top{
+  grid-template-columns:minmax(0,1fr) auto auto;
+  gap:10px;
+  align-items:center;
+}
+.p6-score-top>div:first-child strong{
+  max-width:190px;
+  overflow:hidden;
+  font-size:16px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.p6-score{
+  justify-self:center;
+}
+.p6-score b{
+  font-size:52px;
+}
+.p6-score span{
+  font-size:21px;
+}
+.p6-over{
+  min-width:52px;
+}
+.p6-over strong{
+  font-size:18px;
+}
+.p6-score-bottom{
+  gap:6px 11px;
+  margin-top:10px;
+  padding-top:9px;
+}
+.p6-score-bottom span{
+  font-size:6.5px;
+}
+.p6-active-players{
+  grid-area:players;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  grid-auto-rows:auto;
+  align-content:start;
+  gap:7px;
+  padding:9px;
+}
+.p6-player-live{
+  min-height:76px;
+  padding:9px 10px;
+  justify-content:flex-start;
+}
+.p6-player-live.bowler{
+  grid-column:1/-1;
+  min-height:72px;
+}
+.p6-player-title{
+  min-height:14px;
+}
+.p6-player-main{
+  margin-top:3px;
+}
+.p6-player-main>strong{
+  max-width:70%;
+  font-size:11px;
+}
+.p6-player-main>div b{
+  font-size:20px;
+}
+.p6-player-numbers{
+  gap:9px;
+  margin-top:4px;
+  font-size:6.5px;
+}
+.p6-over-history{
+  grid-area:history;
+  padding:9px 10px 10px;
+  border-top:1px solid #dde6e9;
+  background:#f1f5f6;
+}
+.p6-over-history>header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:7px;
+}
+.p6-over-history>header span,
+.p6-over-history>header strong{
+  display:block;
+}
+.p6-over-history>header span{
+  color:#6f858f;
+  font-size:6px;
+  font-weight:950;
+  letter-spacing:.1em;
+}
+.p6-over-history>header strong{
+  margin-top:2px;
+  color:#183044;
+  font-size:8px;
+}
+.p6-over-history>header button{
+  min-height:28px;
+  border:1px solid #ccdade;
+  border-radius:8px;
+  background:#fff;
+  color:#087653;
+  padding:5px 8px;
+  font-size:6.5px;
+  font-weight:950;
+  cursor:pointer;
+}
+.p6-over-history-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:7px;
+}
+.p6-over-history-grid>article{
+  min-width:0;
+  padding:8px 9px;
+  border:1px solid #d6e0e4;
+  border-radius:11px;
+  background:#fff;
+}
+.p6-over-history-grid>article.current{
+  border-color:#46b98a;
+  box-shadow:inset 3px 0 0 #0a9360;
+}
+.p6-over-history-grid>article.empty{
+  grid-column:1/-1;
+}
+.p6-over-history-top{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:8px;
+}
+.p6-over-history-top>div:first-child span,
+.p6-over-history-top>div:first-child strong{
+  display:block;
+}
+.p6-over-history-top>div:first-child span{
+  color:#087b56;
+  font-size:6px;
+  font-weight:950;
+  letter-spacing:.09em;
+}
+.p6-over-history-top>div:first-child strong{
+  max-width:130px;
+  margin-top:2px;
+  overflow:hidden;
+  font-size:8px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.p6-over-history-top>div:last-child{
+  display:flex;
+  align-items:baseline;
+  gap:3px;
+  flex:0 0 auto;
+}
+.p6-over-history-top>div:last-child b{
+  font-size:16px;
+}
+.p6-over-history-top>div:last-child small{
+  color:#758993;
+  font-size:5.5px;
+  font-weight:900;
+}
+.p6-history-balls{
+  display:flex;
+  flex-wrap:wrap;
+  gap:4px;
+  min-height:25px;
+  margin-top:6px;
+}
+.p6-history-balls i{
+  min-width:23px;
+  height:23px;
+  display:grid;
+  place-items:center;
+  padding:0 4px;
+  border:1px solid #d7e0e4;
+  border-radius:999px;
+  background:#f7f9fa;
+  color:#233c4c;
+  font-size:6.5px;
+  font-style:normal;
+  font-weight:950;
+}
+.p6-history-balls i.wicket{
+  background:#ffe8ea;
+  border-color:#efc6cb;
+  color:#b3323e;
+}
+.p6-history-balls i.four{
+  background:#ebf2ff;
+  border-color:#ceddfa;
+  color:#275ca8;
+}
+.p6-history-balls i.six{
+  background:#e8f7ef;
+  border-color:#c5e6d5;
+  color:#08764e;
+}
+.p6-over-history-grid>article footer{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin-top:6px;
+  padding-top:5px;
+  border-top:1px solid #edf1f2;
+}
+.p6-over-history-grid>article footer span{
+  color:#7a8d96;
+  font-size:5.5px;
+  font-weight:950;
+  letter-spacing:.07em;
+}
+.p6-over-history-grid>article.current footer span{
+  color:#087b56;
+}
+.p6-over-history-grid>article footer b{
+  font-size:7px;
+}
+.p6-actions{
+  grid-area:actions;
+  padding-top:9px;
+}
+.p6-action-caption{
+  min-height:15px;
+}
+.p6-run-grid button{
+  min-height:52px;
+}
+.p6-run-grid button>span{
+  font-size:20px;
+}
+.p6-wicket{
+  min-height:52px;
+}
+.p6-extras button{
+  min-height:45px;
+}
+.p6-scorecard{
+  margin-top:0;
+}
+
+@media(max-width:920px){
+  .project6-shell{
+    width:min(100%,820px);
+  }
+  .p6-live{
+    grid-template-columns:minmax(230px,.82fr) minmax(0,1.18fr);
+  }
+  .p6-score-top{
+    grid-template-columns:1fr auto;
+  }
+  .p6-over{
+    grid-column:1/-1;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding-top:7px;
+    border-top:1px solid rgba(255,255,255,.1);
+    text-align:left;
+  }
+  .p6-over strong{margin:0}
+  .p6-actions{
+    grid-template-columns:minmax(0,1fr) 160px;
+    grid-template-areas:
+      "caption caption"
+      "runs wicket"
+      "extras extras";
+  }
+  .p6-extras{
+    grid-template-columns:repeat(4,1fr);
+  }
+}
+@media(max-width:700px){
+  .p6-live{
+    grid-template-columns:1fr;
+    grid-template-areas:
+      "score"
+      "players"
+      "history"
+      "actions";
+  }
+  .p6-scoreboard{
+    border-right:0;
+  }
+  .p6-score-top{
+    grid-template-columns:minmax(0,1fr) auto auto;
+  }
+  .p6-over{
+    grid-column:auto;
+    display:block;
+    padding-top:0;
+    border-top:0;
+    text-align:right;
+  }
+  .p6-over strong{margin-top:3px}
+  .p6-active-players{
+    border-bottom:1px solid #e0e7ea;
+  }
+  .p6-over-history-grid{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+  .p6-actions{
+    grid-template-columns:1fr;
+    grid-template-areas:
+      "caption"
+      "runs"
+      "wicket"
+      "extras";
+  }
+  .p6-extras{
+    grid-template-columns:1fr 1fr;
+  }
+}
+@media(max-width:500px){
+  .project6-shell{
+    padding:0 4px 20px;
+  }
+  .p6-engine-head{
+    align-items:flex-start;
+  }
+  .p6-engine-title small{
+    max-width:190px;
+  }
+  .p6-scoreboard{
+    padding:11px;
+  }
+  .p6-score-top{
+    grid-template-columns:minmax(0,1fr) auto;
+  }
+  .p6-score{
+    justify-self:end;
+  }
+  .p6-over{
+    grid-column:1/-1;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-top:5px;
+    padding-top:6px;
+    border-top:1px solid rgba(255,255,255,.1);
+    text-align:left;
+  }
+  .p6-over strong{margin:0}
+  .p6-score b{
+    font-size:44px;
+  }
+  .p6-active-players{
+    grid-template-columns:1fr 1fr;
+    padding:6px;
+  }
+  .p6-player-live{
+    min-height:70px;
+    padding:8px;
+  }
+  .p6-player-main>strong{
+    max-width:62%;
+    font-size:9px;
+  }
+  .p6-player-main>div b{
+    font-size:17px;
+  }
+  .p6-player-numbers{
+    gap:6px;
+    font-size:5.8px;
+  }
+  .p6-over-history{
+    padding:7px;
+  }
+  .p6-over-history-grid{
+    grid-template-columns:1fr;
+    gap:5px;
+  }
+  .p6-over-history-grid>article{
+    padding:7px 8px;
+  }
+  .p6-over-history-grid>article.empty{
+    grid-column:auto;
+  }
+  .p6-history-balls{
+    min-height:22px;
+  }
+  .p6-history-balls i{
+    min-width:21px;
+    height:21px;
+  }
+  .p6-run-grid{
+    grid-template-columns:repeat(3,1fr);
+  }
+  .p6-run-grid button{
+    min-height:50px;
+  }
+  .p6-extras button{
+    min-height:44px;
+  }
+}
+@media(max-width:350px){
+  .p6-active-players{
+    grid-template-columns:1fr;
+  }
+  .p6-player-live.bowler{
+    grid-column:auto;
+  }
+  .p6-engine-state{
+    display:none;
+  }
+}
