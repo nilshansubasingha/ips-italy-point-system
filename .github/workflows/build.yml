@@ -2,7 +2,7 @@ name: IPS Web Build
 
 on:
   push:
-    branches: [main]
+    branches: [main, fix/city-search-uncontrolled-selection]
   workflow_dispatch:
 
 jobs:
