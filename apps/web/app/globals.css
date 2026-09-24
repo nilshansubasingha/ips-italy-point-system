@@ -853,3 +853,132 @@
   .competition-admin-actions{justify-content:flex-start;padding-left:13px}
   .tournament-detail-actions{justify-content:flex-start;flex-wrap:wrap}
 }
+
+
+/* Project 5.9 — venue management controls */
+.venue-management-list{display:grid;gap:10px}
+.venue-management-card{
+  border:1px solid var(--line);
+  border-radius:17px;
+  background:#fff;
+  overflow:hidden;
+  box-shadow:0 10px 32px rgba(5,24,42,.035);
+}
+.venue-management-summary{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  padding:16px 20px;
+}
+.venue-management-summary>div>span,
+.venue-management-summary>div>strong,
+.venue-management-summary>div>small{display:block}
+.venue-management-summary>div>span{
+  color:var(--green);
+  font-size:7px;
+  font-weight:950;
+  letter-spacing:.06em;
+}
+.venue-management-summary>div>strong{
+  margin:4px 0 3px;
+  font-size:15px;
+}
+.venue-management-summary>div>small{
+  color:#80939d;
+  font-size:8px;
+}
+.venue-management-summary>b{
+  color:var(--green);
+  font-size:8px;
+}
+.venue-management-actions{
+  display:flex;
+  align-items:flex-start;
+  justify-content:flex-end;
+  gap:8px;
+  padding:0 16px 14px;
+  border-top:1px solid #edf2f4;
+  padding-top:12px;
+}
+.venue-management-actions>form{margin:0}
+.venue-edit-details{
+  flex:1;
+  border:1px solid #d9e5e9;
+  border-radius:11px;
+  background:#f9fbfc;
+}
+.venue-edit-details>summary{
+  cursor:pointer;
+  list-style:none;
+  padding:9px 12px;
+  color:#274d61;
+  font-size:8px;
+  font-weight:950;
+}
+.venue-edit-details>summary::-webkit-details-marker{display:none}
+.venue-edit-details[open]>summary{
+  border-bottom:1px solid #dfe8ec;
+  color:var(--green);
+}
+.venue-edit-form{
+  display:grid;
+  gap:10px;
+  padding:13px;
+}
+.venue-edit-form label>span{
+  display:block;
+  margin-bottom:5px;
+  color:#718793;
+  font-size:7px;
+  font-weight:950;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.venue-edit-form input,
+.venue-edit-form select{
+  width:100%;
+  min-height:39px;
+  border:1px solid #d0dee4;
+  border-radius:9px;
+  background:#fff;
+  color:var(--ink);
+  padding:8px 10px;
+  font:inherit;
+  font-size:9px;
+  outline:none;
+}
+.venue-edit-form input:focus,
+.venue-edit-form select:focus{
+  border-color:#70bea1;
+  box-shadow:0 0 0 3px rgba(8,132,82,.08);
+}
+.venue-edit-meta{
+  padding:9px 10px;
+  border-radius:9px;
+  background:#eef5f3;
+}
+.venue-edit-meta span,
+.venue-edit-meta b,
+.venue-edit-meta small{display:block}
+.venue-edit-meta span{
+  color:var(--green);
+  font-size:7px;
+  font-weight:950;
+  letter-spacing:.08em;
+}
+.venue-edit-meta b{
+  margin:3px 0;
+  font-size:9px;
+  overflow-wrap:anywhere;
+}
+.venue-edit-meta small{
+  color:#7e929d;
+  font-size:7px;
+}
+
+@media(max-width:720px){
+  .venue-management-summary{align-items:flex-start}
+  .venue-management-actions{flex-direction:column}
+  .venue-edit-details{width:100%}
+}
