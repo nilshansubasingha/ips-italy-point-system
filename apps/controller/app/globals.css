@@ -3048,7 +3048,7 @@
     display:none;
   }
   .p6-actions{
-    width:100%;
+    width:min(100%,330px);
   }
   .p6-action-caption{
     min-height:13px;
