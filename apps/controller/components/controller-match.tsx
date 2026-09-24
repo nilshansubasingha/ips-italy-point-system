@@ -31,11 +31,11 @@ type MatchFormat={
 type Context={match:any;tournament:any;venue:any;rules:any;match_format:MatchFormat;home:Side;away:Side;officials:any[]};
 
 type BatterStat={
-  player_id:string;name:string;ips_code:string;lineup_order:number;
+  player_id:string;name:string;ips_code:string;profile_image_url?:string|null;lineup_order:number;
   runs:number;balls:number;fours:number;sixes:number;strike_rate:number;dismissed:boolean
 };
 type BowlerStat={
-  player_id:string;name:string;ips_code:string;lineup_order:number;
+  player_id:string;name:string;ips_code:string;profile_image_url?:string|null;lineup_order:number;
   legal_balls:number;overs:string;runs:number;wickets:number;economy:number
 };
 type Candidate={player_id:string;name:string;ips_code:string;available:boolean;reason:string|null};
@@ -103,6 +103,20 @@ function SidePanel({side,required}:{side:Side;required:number}){
   </article>;
 }
 
+
+function ActivePlayerAvatar({name,url}:{name:string;url?:string|null}){
+  const initials=name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0,2)
+    .map(part=>part[0]?.toUpperCase())
+    .join('')||'?';
+
+  return <span className="p6-active-avatar" aria-hidden="true">
+    {url?<img src={url} alt="" width="48" height="48" decoding="async"/>:<b>{initials}</b>}
+  </span>;
+}
+
 function PlayerScoreCard({
   role,
   stat,
@@ -112,34 +126,74 @@ function PlayerScoreCard({
   stat:BatterStat|undefined;
   active?:boolean
 }){
+  const name=stat?.name??'—';
   return <article className={'p6-player-live '+(active?'active':'')}>
-    <div className="p6-player-title"><span>{role}</span>{active&&<b>● ON STRIKE</b>}</div>
-    <div className="p6-player-main"><strong>{stat?.name??'—'}</strong><div><b>{stat?.runs??0}</b><span>({stat?.balls??0})</span></div></div>
-    <div className="p6-player-numbers"><span>4s <b>{stat?.fours??0}</b></span><span>6s <b>{stat?.sixes??0}</b></span><span>SR <b>{Number(stat?.strike_rate??0).toFixed(1)}</b></span></div>
+    <ActivePlayerAvatar name={name} url={stat?.profile_image_url}/>
+    <div className="p6-player-live-content">
+      <div className="p6-player-title"><span>{role}</span>{active&&<b>● ON STRIKE</b>}</div>
+      <div className="p6-player-main"><strong>{name}</strong><div><b>{stat?.runs??0}</b><span>({stat?.balls??0})</span></div></div>
+      <div className="p6-player-numbers"><span><em>4s</em> <b>{stat?.fours??0}</b></span><span><em>6s</em> <b>{stat?.sixes??0}</b></span><span><em>SR</em> <b>{Number(stat?.strike_rate??0).toFixed(1)}</b></span></div>
+    </div>
   </article>;
 }
 
 function BowlerScoreCard({stat}:{stat:BowlerStat|undefined}){
+  const name=stat?.name??'Select bowler';
   return <article className="p6-player-live bowler">
-    <div className="p6-player-title"><span>BOWLER</span><b>● CURRENT</b></div>
-    <div className="p6-player-main"><strong>{stat?.name??'Select bowler'}</strong><div><b>{stat?.wickets??0}/{stat?.runs??0}</b></div></div>
-    <div className="p6-player-numbers"><span>OV <b>{stat?.overs??'0.0'}</b></span><span>R <b>{stat?.runs??0}</b></span><span>ECON <b>{Number(stat?.economy??0).toFixed(2)}</b></span></div>
+    <ActivePlayerAvatar name={name} url={stat?.profile_image_url}/>
+    <div className="p6-player-live-content">
+      <div className="p6-player-title"><span>BOWLER</span><b>● CURRENT</b></div>
+      <div className="p6-player-main"><strong>{name}</strong><div><b>{stat?.wickets??0}/{stat?.runs??0}</b></div></div>
+      <div className="p6-player-numbers"><span><em>OV</em> <b>{stat?.overs??'0.0'}</b></span><span><em>R</em> <b>{stat?.runs??0}</b></span><span><em>ECON</em> <b>{Number(stat?.economy??0).toFixed(2)}</b></span></div>
+    </div>
   </article>;
 }
 
 
 
+
+function CurrentOverPanel({
+  scoring,
+  bowler
+}:{
+  scoring:ScoringContext;
+  bowler:BowlerStat|undefined;
+}){
+  const liveOver=(scoring.over_history??[]).find(over=>over.current);
+  const overNo=liveOver?.over_no??(Math.floor(scoring.legal_balls/Math.max(scoring.balls_per_over,1))+1);
+  const balls=scoring.awaiting_bowler?[]:scoring.current_over;
+  const overRuns=liveOver?.runs??0;
+  const overWickets=liveOver?.wickets??0;
+
+  return <section className="p6-current-over">
+    <div className="p6-current-over-meta">
+      <span>CURRENT OVER</span>
+      <strong>OVER {overNo}</strong>
+      <small>{scoring.awaiting_bowler?'Over complete · select next bowler':bowler?.name??'Bowler TBC'}</small>
+    </div>
+    <div className="p6-current-over-balls">
+      {balls.length?balls.map(ball=><i key={ball.id} className={ball.is_wicket?'wicket':ball.label.includes('4')?'four':ball.label.includes('6')?'six':''}>{ball.label}</i>):<span>{scoring.awaiting_bowler?'Waiting for next bowler':'No balls yet'}</span>}
+    </div>
+    <div className="p6-current-over-summary">
+      <b>{overRuns}</b>
+      <span>{overRuns===1?'RUN':'RUNS'}{overWickets?' · '+overWickets+'W':''}</span>
+      <strong>{scoring.runs}/{scoring.wickets}</strong>
+    </div>
+  </section>;
+}
+
 function OverHistoryPanel({history}:{history:OverHistoryItem[]}){
   const [expanded,setExpanded]=useState(false);
-  const visible=expanded?history:history.slice(0,3);
+  const previous=history.filter(over=>!over.current);
+  const visible=expanded?previous:previous.slice(0,3);
 
   return <section className="p6-over-history">
     <header>
-      <div><span>OVER HISTORY</span><strong>{history.length?Math.min(history.length,3)+' recent overs':'Waiting for first delivery'}</strong></div>
-      {history.length>3&&<button type="button" onClick={()=>setExpanded(value=>!value)}>{expanded?'Show latest 3':'Show all '+history.length+' overs'}</button>}
+      <div><span>OVER HISTORY</span><strong>{previous.length?Math.min(previous.length,3)+' previous overs':'Previous overs appear here'}</strong></div>
+      {previous.length>3&&<button type="button" onClick={()=>setExpanded(value=>!value)}>{expanded?'Show latest 3':'Show all '+previous.length+' overs'}</button>}
     </header>
     <div className="p6-over-history-grid">
-      {visible.length?visible.map(over=><article key={over.over_no} className={over.current?'current':''}>
+      {visible.length?visible.map(over=><article key={over.over_no}>
         <div className="p6-over-history-top">
           <div><span>OVER {over.over_no}</span><strong>{over.bowler_name??'Bowler'}</strong></div>
           <div><b>{over.runs}</b><small>{over.runs===1?'RUN':'RUNS'}{over.wickets?' · '+over.wickets+'W':''}</small></div>
@@ -147,10 +201,9 @@ function OverHistoryPanel({history}:{history:OverHistoryItem[]}){
         <div className="p6-history-balls">
           {over.balls.map(ball=><i key={ball.id} className={ball.is_wicket?'wicket':ball.label.includes('4')?'four':ball.label.includes('6')?'six':''}>{ball.label}</i>)}
         </div>
-        <footer><span>{over.current?'CURRENT':over.complete?'COMPLETE':'PARTIAL'}</span><b>{over.score_after}/{over.wickets_after}</b></footer>
+        <footer><span>{over.complete?'COMPLETE':'PARTIAL'}</span><b>END {over.score_after}/{over.wickets_after}</b></footer>
       </article>):<article className="empty">
-        <div><span>OVER 1</span><strong>No deliveries yet</strong></div>
-        <footer><span>CURRENT</span><b>0/0</b></footer>
+        <div><span>HISTORY</span><strong>Complete the first over to start the history.</strong></div>
       </article>}
     </div>
   </section>;
@@ -479,6 +532,7 @@ export function ControllerMatch({
           <BowlerScoreCard stat={currentBowler}/>
         </section>
 
+        <CurrentOverPanel scoring={scoring} bowler={currentBowler}/>
         <OverHistoryPanel history={scoring.over_history??[]}/>
 
         {!scoring.innings_complete&&!scoring.match_complete&&<section className="controller-action-zone p6-actions">
