@@ -79,7 +79,7 @@ begin
     group by xi.player_id,p.display_name,p.ips_code,p.profile_image_url,xi.lineup_order
   ),
   bowler_stats as (
-    select xi.player_id,p.display_name,p.ips_code,xi.lineup_order,
+    select xi.player_id,p.display_name,p.ips_code,p.profile_image_url,xi.lineup_order,
       count(*) filter (where ad.bowler_id=xi.player_id and ad.legal_delivery)::integer as legal_balls,
       coalesce(sum(case when ad.bowler_id=xi.player_id then ad.runs_off_bat+ad.wide_runs+ad.no_ball_runs else 0 end),0)::integer as runs,
       count(*) filter (
