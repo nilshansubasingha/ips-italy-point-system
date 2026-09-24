@@ -3167,3 +3167,25 @@
     font-size:8px;
   }
 }
+
+.p6-sheet-recovery{
+  display:flex;
+  gap:8px;
+  margin:10px 0 12px;
+}
+.p6-sheet-recovery button{
+  flex:1;
+  min-height:34px;
+  border:1px solid #d4dfe4;
+  border-radius:9px;
+  background:#fff;
+  color:#405664;
+  font-size:8px;
+  font-weight:900;
+}
+.p6-sheet-recovery button:last-child{
+  color:#9f3e47;
+}
+.p6-sheet-recovery button:disabled{
+  opacity:.4;
+}
