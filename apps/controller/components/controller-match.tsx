@@ -114,6 +114,46 @@ function BowlerScoreCard({stat}:{stat:BowlerStat|undefined}){
   </article>;
 }
 
+
+function OtherPlayersScorecard({
+  scoring,
+  strikerId,
+  nonStrikerId,
+  bowlerId
+}:{
+  scoring:ScoringContext;
+  strikerId:string|null;
+  nonStrikerId:string|null;
+  bowlerId:string|null;
+}){
+  const otherBatters=scoring.batter_stats.filter(player=>player.player_id!==strikerId&&player.player_id!==nonStrikerId);
+  const otherBowlers=scoring.bowler_stats.filter(player=>player.player_id!==bowlerId);
+  if(!scoring.started)return null;
+
+  return <section className="p6-scorecard">
+    <div className="p6-scorecard-head">
+      <div><span>LIVE SCORECARD</span><strong>Other players</strong></div>
+      <small>Current batters and bowler stay pinned in the Scoring Engine above.</small>
+    </div>
+    <div className="p6-scorecard-grid">
+      <div className="p6-score-table">
+        <header><span>BATTING</span><b>R&nbsp;&nbsp;B&nbsp;&nbsp;4&nbsp;&nbsp;6&nbsp;&nbsp;SR</b></header>
+        {otherBatters.length?otherBatters.map(player=><div key={player.player_id} className={player.dismissed?'dismissed':''}>
+          <span><strong>{player.name}</strong><small>{player.dismissed?'OUT':'YET TO BAT'}</small></span>
+          <b>{player.runs}&nbsp;&nbsp;{player.balls}&nbsp;&nbsp;{player.fours}&nbsp;&nbsp;{player.sixes}&nbsp;&nbsp;{Number(player.strike_rate||0).toFixed(1)}</b>
+        </div>):<p>No other batters.</p>}
+      </div>
+      <div className="p6-score-table">
+        <header><span>BOWLING</span><b>OV&nbsp;&nbsp;R&nbsp;&nbsp;W&nbsp;&nbsp;ECON</b></header>
+        {otherBowlers.length?otherBowlers.map(player=><div key={player.player_id}>
+          <span><strong>{player.name}</strong><small>{player.ips_code}</small></span>
+          <b>{player.overs}&nbsp;&nbsp;{player.runs}&nbsp;&nbsp;{player.wickets}&nbsp;&nbsp;{Number(player.economy||0).toFixed(2)}</b>
+        </div>):<p>No other bowlers.</p>}
+      </div>
+    </div>
+  </section>;
+}
+
 function ChoiceSheet({
   title,
   kicker,
@@ -312,15 +352,17 @@ export function ControllerMatch({
       <Link className="header-menu back-control" href="/">←</Link>
     </header>
 
-    <section className={'import-status p6-status '+(ready?'ok':'blocked')}>
-      <div><span className="status-dot"/><strong>{ready?'OFFICIAL MATCH READY':'SETUP REQUIRED'}</strong></div>
-      <span>{context.tournament.name}</span>
-    </section>
-
     <section className="p6-engine">
       <div className="p6-engine-head">
-        <div><span>SCORING ENGINE</span><h1>{scoring.started?'Live match control':'Start scoring'}</h1></div>
-        <div className="p6-format-chip">{format.overs_per_innings} OV · {format.players_per_side} PLAYERS</div>
+        <div className="p6-engine-title">
+          <span>SCORING ENGINE</span>
+          <h1>{scoring.started?'Live scoring':'Start scoring'}</h1>
+          <small>{context.match.code} · {context.tournament.name}</small>
+        </div>
+        <div className="p6-engine-state">
+          <b className={ready?'ready':'blocked'}><i/> {ready?'READY':'SETUP REQUIRED'}</b>
+          <span>{format.overs_per_innings} OV · {format.players_per_side} PLAYERS</span>
+        </div>
       </div>
 
       {(notice||errorMessage)&&<div className={'p6-inline-message '+(notice?.type??'error')}>{notice?.text??errorMessage}</div>}
@@ -420,8 +462,8 @@ export function ControllerMatch({
           <div className="extras-grid p6-extras">
             <button type="button" disabled={scoringLocked} onClick={()=>setSheet({kind:'extra',extra:'WIDE'})}><strong>WD</strong><span>+0 · +1 · +2 · +3 · +4</span></button>
             <button type="button" disabled={scoringLocked} onClick={()=>setSheet({kind:'extra',extra:'NO_BALL'})}><strong>NB</strong><span>+0 · +1 · +2 · +3 · +4</span></button>
-            <button type="button" disabled={scoringLocked} onClick={()=>setSheet({kind:'extra',extra:'BYE'})}><strong>B</strong><span>Bye</span></button>
-            <button type="button" disabled={scoringLocked} onClick={()=>setSheet({kind:'extra',extra:'LEG_BYE'})}><strong>LB</strong><span>Leg bye</span></button>
+            <button type="button" disabled={scoringLocked} onClick={()=>setSheet({kind:'extra',extra:'BYE'})}><strong>B</strong><span>+1 · +2 · +3 · +4</span></button>
+            <button type="button" disabled={scoringLocked} onClick={()=>setSheet({kind:'extra',extra:'LEG_BYE'})}><strong>LB</strong><span>+1 · +2 · +3 · +4</span></button>
           </div>
         </section>}
 
@@ -433,8 +475,10 @@ export function ControllerMatch({
       </div>}
     </section>
 
+    <OtherPlayersScorecard scoring={scoring} strikerId={scoring.striker_id} nonStrikerId={scoring.non_striker_id} bowlerId={scoring.bowler_id}/>
+
     <section className="p6-support">
-      <details open>
+      <details>
         <summary><span>PLAYING SIDES</span><b>Players & roles</b></summary>
         <div className="p6-side-grid"><SidePanel side={context.home} required={required}/><SidePanel side={context.away} required={required}/></div>
       </details>
