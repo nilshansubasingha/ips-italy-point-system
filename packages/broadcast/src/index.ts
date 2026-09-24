@@ -63,7 +63,7 @@ export const animationSchema=z.object({
 
 export const elementTypeSchema=z.enum([
   'GROUP','TEXT','RECT','ROUNDED_RECT','ELLIPSE','LINE','POLYGON','PATH','SVG','IMAGE','VIDEO',
-  'ICON','FRAME','CONTAINER','MASK','DATA','EFFECT','PARTICLES'
+  'ICON','FRAME','CONTAINER','MASK','DATA','EFFECT','PARTICLES','REPEATER'
 ]);
 export const elementSchema:z.ZodType<any>=z.lazy(()=>z.object({
   id:z.string().min(1),name:z.string().min(1),type:elementTypeSchema,parentId:z.string().nullable().default(null),
@@ -73,6 +73,15 @@ export const elementSchema:z.ZodType<any>=z.lazy(()=>z.object({
   asset:z.object({url:z.string().default(''),fit:z.enum(['CONTAIN','COVER','FILL']).default('CONTAIN'),objectPosition:z.string().default('50% 50%')}).optional(),
   pathData:z.string().optional(),points:z.array(z.object({x:z.number(),y:z.number()})).optional(),
   effect:z.object({kind:z.string(),params:z.record(z.unknown()).default({})}).optional(),
+  repeat:z.object({
+    path:z.string(),
+    limit:z.number().int().positive().max(50).default(20),
+    direction:z.enum(['VERTICAL','HORIZONTAL']).default('VERTICAL'),
+    gap:z.number().default(0),
+    itemWidth:z.number().positive(),
+    itemHeight:z.number().positive(),
+    template:z.array(z.any())
+  }).optional(),
   bindings:z.array(bindingSchema).default([]),conditions:conditionGroupSchema.optional(),
   animation:animationSchema.default({})
 }));
