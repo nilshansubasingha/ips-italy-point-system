@@ -2,7 +2,7 @@ name: IPS Web Build
 
 on:
   push:
-    branches: [main, fix/tournament-create-and-city-select]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
