@@ -2447,6 +2447,7 @@
   grid-template-areas:
     "score players"
     "score current"
+    "score tools"
     "score actions"
     "score scorecard";
   align-items:start;
@@ -2471,6 +2472,42 @@
   grid-area:current;
   padding:5px 10px;
   background:#f6f9fa;
+}
+.p6-score-tools{
+  grid-area:tools;
+  display:flex;
+  justify-content:flex-end;
+  gap:7px;
+  padding:3px 10px 1px;
+  background:#f6f9fa;
+}
+.p6-score-tools button{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  min-height:32px;
+  padding:0 11px;
+  border:1px solid #d4dfe4;
+  border-radius:9px;
+  background:#fff;
+  color:#405664;
+  font-size:7px;
+  font-weight:950;
+  letter-spacing:.06em;
+}
+.p6-score-tools button b{
+  font-size:15px;
+  line-height:1;
+}
+.p6-score-tools button.undo{
+  color:#1d5f9f;
+}
+.p6-score-tools button.reset{
+  color:#a04049;
+}
+.p6-score-tools button:disabled{
+  opacity:.38;
+  cursor:not-allowed;
 }
 .p6-actions{
   grid-area:actions;
@@ -2878,6 +2915,7 @@
       "score"
       "players"
       "current"
+      "tools"
       "actions"
       "scorecard";
   }
@@ -3062,5 +3100,70 @@
   .p6-secondary-extras button{
     flex:1;
     min-height:29px;
+  }
+}
+
+
+/* Project 6.5 recovery + persisted innings break */
+.p6-break-note{
+  margin:7px 0 0;
+  color:#667c88;
+  font-size:9px;
+  font-weight:700;
+  line-height:1.45;
+}
+.p6-recovery-confirm{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:9px;
+  margin-top:14px;
+}
+.p6-recovery-confirm button{
+  min-height:42px;
+  border-radius:10px;
+  font-size:9px;
+  font-weight:950;
+}
+.p6-recovery-confirm .secondary{
+  border:1px solid #cedae0;
+  background:#fff;
+  color:#304b5c;
+}
+.p6-recovery-confirm .primary{
+  border:1px solid #b8d4ed;
+  background:#edf6ff;
+  color:#155b98;
+}
+.p6-recovery-confirm .danger{
+  border:1px solid #e6a8ae;
+  background:#fff0f1;
+  color:#a5303b;
+}
+.p6-reset-warning{
+  margin-top:10px;
+  padding:9px 10px;
+  border:1px solid #efd4b0;
+  border-radius:9px;
+  background:#fff8ec;
+  color:#8b5a12;
+  font-size:8px;
+  font-weight:800;
+  line-height:1.45;
+}
+@media(max-width:560px){
+  .p6-score-tools{
+    justify-content:center;
+    padding:3px 7px 1px;
+  }
+  .p6-score-tools button{
+    flex:1;
+    justify-content:center;
+    max-width:158px;
+    min-height:30px;
+    padding:0 8px;
+    font-size:6.5px;
+  }
+  .p6-break-note{
+    font-size:8px;
   }
 }
