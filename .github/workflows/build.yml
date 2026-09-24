@@ -2,7 +2,7 @@ name: IPS Web Build
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/venue-city-options-auto-slug]
   workflow_dispatch:
 
 jobs:
