@@ -20,6 +20,7 @@ export function CitySearchSelect({
   label='City',
   placeholder='Search municipality…',
   allowedCities,
+  initialCity,
   className=''
 }:{
   name:string;
@@ -29,10 +30,11 @@ export function CitySearchSelect({
   label?:string;
   placeholder?:string;
   allowedCities?:CitySearchOption[];
+  initialCity?:CitySearchOption|null;
   className?:string;
 }){
   const [selected,setSelected]=useState<CitySearchOption|null>(()=>{
-    return allowedCities?.find(c=>c.id===value)??null;
+    return allowedCities?.find(c=>c.id===value)??(initialCity?.id===value?initialCity:null);
   });
   const [query,setQuery]=useState(selected?.name??'');
   const [results,setResults]=useState<CitySearchOption[]>([]);
@@ -45,9 +47,9 @@ export function CitySearchSelect({
       return;
     }
     if(selected?.id===value)return;
-    const local=allowedCities?.find(c=>c.id===value);
+    const local=allowedCities?.find(c=>c.id===value)??(initialCity?.id===value?initialCity:null);
     if(local){setSelected(local);setQuery(local.name);}
-  },[value,allowedCities,selected]);
+  },[value,allowedCities,initialCity,selected]);
 
   const localResults=useMemo(()=>{
     if(!allowedCities)return [];

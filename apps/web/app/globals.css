@@ -595,3 +595,171 @@
   font-size:7px;
   line-height:1.4;
 }
+
+
+/* Project 5.8.4 — managed account profiles */
+.grant-create-card-wide select option{
+  color:var(--ink)!important;
+  background:#fff!important;
+}
+.access-directory-profile-link{
+  color:inherit;
+  text-decoration:none;
+  border-radius:11px;
+  transition:background .16s ease,transform .16s ease;
+}
+.access-directory-profile-link:hover{
+  background:#f1f8f5;
+  transform:translateX(2px);
+}
+.access-directory-profile-link:hover strong{
+  color:var(--green);
+}
+
+.managed-profile-hero{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:24px;
+  margin:22px 0 18px;
+  padding:24px 26px;
+  border:1px solid var(--line);
+  border-radius:22px;
+  background:linear-gradient(135deg,#fff,#f4f8f9);
+  box-shadow:0 14px 34px rgba(4,24,40,.05);
+}
+.managed-profile-identity{
+  display:flex;
+  align-items:center;
+  gap:17px;
+  min-width:0;
+}
+.managed-profile-identity h1{
+  margin:5px 0 4px;
+  font-size:32px;
+  letter-spacing:-.035em;
+}
+.managed-profile-identity p{
+  margin:0;
+  color:#708791;
+  font-size:9px;
+}
+.managed-profile-actions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.managed-profile-layout{
+  display:grid;
+  grid-template-columns:minmax(0,1.35fr) minmax(320px,.65fr);
+  gap:20px;
+  align-items:start;
+}
+.managed-profile-form label>small{
+  display:block;
+  margin-top:-2px;
+  color:#8499a3;
+  font-size:7px;
+  line-height:1.45;
+}
+.managed-profile-form input:disabled{
+  color:#637983;
+  background:#f0f4f5;
+  opacity:1;
+}
+.managed-profile-readonly{
+  display:grid;
+  gap:4px;
+  padding:12px 13px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:#f7fafb;
+}
+.managed-profile-readonly>span{
+  color:#758b95;
+  font-size:7px;
+  font-weight:950;
+  letter-spacing:.1em;
+}
+.managed-profile-readonly>strong{
+  font-size:11px;
+}
+.managed-profile-readonly>small{
+  color:#81959f;
+  font-size:7px;
+}
+.managed-profile-grants{
+  display:grid;
+  gap:8px;
+}
+.managed-profile-grants article{
+  display:grid;
+  gap:3px;
+  padding:11px 12px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:#f8fbfb;
+}
+.managed-profile-grants article>span{
+  color:var(--green);
+  font-size:7px;
+  font-weight:950;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.managed-profile-grants article>strong{
+  font-size:10px;
+}
+.managed-profile-grants article>small{
+  color:#7c919b;
+  font-size:7px;
+}
+.managed-player-link-card{
+  display:grid;
+  grid-template-columns:44px minmax(0,1fr);
+  gap:11px;
+  align-items:center;
+  padding:12px;
+  border:1px solid var(--line);
+  border-radius:13px;
+  background:#f7faf9;
+}
+.managed-player-link-card strong,
+.managed-player-link-card span,
+.managed-player-link-card small{
+  display:block;
+}
+.managed-player-link-card strong{
+  font-size:11px;
+}
+.managed-player-link-card span{
+  margin-top:2px;
+  color:var(--green);
+  font-size:8px;
+  font-weight:900;
+}
+.managed-player-link-card small{
+  margin-top:4px;
+  color:#778d97;
+  font-size:7px;
+}
+.managed-profile-player-button{
+  display:block;
+  margin-top:10px;
+  text-align:center;
+}
+
+@media(max-width:900px){
+  .managed-profile-layout{grid-template-columns:1fr}
+}
+@media(max-width:640px){
+  .managed-profile-hero{
+    align-items:flex-start;
+    flex-direction:column;
+    padding:20px;
+  }
+  .managed-profile-identity h1{font-size:26px}
+  .managed-profile-actions{width:100%}
+  .managed-profile-actions>a{width:100%;text-align:center}
+}
