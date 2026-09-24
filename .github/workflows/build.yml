@@ -2,7 +2,7 @@ name: IPS Web Build
 
 on:
   push:
-    branches: [main]
+    branches: [main, fix/access-city-filter-placement]
   workflow_dispatch:
 
 jobs:
