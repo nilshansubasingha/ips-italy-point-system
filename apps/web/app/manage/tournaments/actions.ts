@@ -14,7 +14,28 @@ function go(path: string, kind: 'ok'|'error', message: string): never {
 function returnPath(form: FormData, fallback='/manage/tournaments') { return s(form,'return_to') || fallback; }
 function slugify(value:string){ return value.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').replace(/-+/g,'-'); }
 function normalizeCode(value:string){ return value.toUpperCase().replace(/[^A-Z0-9-]+/g,'-').replace(/^-+|-+$/g,'').replace(/-+/g,'-'); }
+async function uniqueTournamentCode(supabase:any,name:string,seasonId:string){
+  const {data:season,error:seasonError}=await supabase.from('seasons').select('name').eq('id',seasonId).maybeSingle();
+  if(seasonError)throw seasonError;
+
+  const words=name.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toUpperCase().match(/[A-Z0-9]+/g)??[];
+  let stem='';
+  if(words.length>=4)stem=words.map((word:string)=>word[0]).join('').slice(0,12);
+  else stem=words.map((word:string)=>word.slice(0,3)).join('-');
+  if(stem.length<3&&words[0])stem=words[0].slice(0,6);
+
+  const year=(String(season?.name??'').match(/\b(20\d{2})\b/)?.[1]??'').slice(-2);
+  const base=normalizeCode([stem||'TOU',year].filter(Boolean).join('-')).slice(0,28);
+  const candidates=[base,...Array.from({length:20},(_,index)=>normalizeCode(base+'-'+(index+2)).slice(0,32))];
+  const {data:used,error}=await supabase.from('tournaments').select('code').in('code',candidates);
+  if(error)throw error;
+  const usedSet=new Set((used??[]).map((row:any)=>row.code));
+  const available=candidates.find(code=>!usedSet.has(code));
+  if(!available)throw new Error('Could not generate a unique tournament code. Please rename the tournament slightly.');
+  return available;
+}
 function friendlyError(error:any, fallback:string){
+  if(String(error?.digest??'').startsWith('NEXT_REDIRECT')||String(error?.message??'')==='NEXT_REDIRECT') throw error;
   const message=String(error?.message??fallback);
   if(message.includes('tournaments_slug_check')) return 'The tournament URL slug is invalid. Use lowercase letters, numbers and single hyphens only.';
   if(message.includes('tournaments_code_check')) return 'The tournament code can only contain capital letters, numbers and hyphens.';
@@ -27,11 +48,11 @@ export async function createTournament(form: FormData) {
   const supabase = await createClient(); const back=returnPath(form);
   try {
     const name=s(form,'name');
-    const code=normalizeCode(s(form,'code'));
+    const seasonId=s(form,'season_id');
     const slug=slugify(s(form,'slug')||name);
     const starts=italyLocalToIso(s(form,'starts_at'));
-    if (!code || !name || !slug || !starts) throw new Error('Name, code and start time are required. The slug can be generated automatically from the name.');
-    if(!/^[A-Z0-9-]{3,32}$/.test(code)) throw new Error('Tournament code must be 3–32 characters using capital letters, numbers or hyphens.');
+    if (!name || !seasonId || !slug || !starts) throw new Error('Name, season and start time are required. The code and slug are generated automatically from the competition details.');
+    const code=await uniqueTournamentCode(supabase,name,seasonId);
     if(!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) throw new Error('Tournament URL slug is invalid.');
 
     const playersPerSide=num(form,'players_per_side');
@@ -44,7 +65,7 @@ export async function createTournament(form: FormData) {
     if(!balls || balls<1 || balls>12) throw new Error('Balls per over must be between 1 and 12.');
 
     const payload:any={
-      season_id:s(form,'season_id'), city_id:s(form,'city_id'), ruleset_id:s(form,'ruleset_id'),
+      season_id:seasonId, city_id:s(form,'city_id'), ruleset_id:s(form,'ruleset_id'),
       code,name,slug,format_label:s(form,'format_label')||`${overs} overs`,status:'DRAFT',
       starts_at:starts, ends_at:italyLocalToIso(s(form,'ends_at')),
       registration_deadline:italyLocalToIso(s(form,'registration_deadline')),

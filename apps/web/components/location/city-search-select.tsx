@@ -120,7 +120,11 @@ export function CitySearchSelect({
     {open&&<div className="city-search-results" role="listbox">
       {loading&&<div className="city-search-state">Searching Italy…</div>}
       {!loading&&query.trim().length<(allowedCities?1:2)&&<div className="city-search-state">{allowedCities?'Start typing a city.':'Type at least 2 characters.'}</div>}
-      {!loading&&results.map(city=><button type="button" key={city.id} onMouseDown={e=>e.preventDefault()} onClick={()=>choose(city)}>
+      {!loading&&results.map(city=><button
+        type="button"
+        key={city.id}
+        onPointerDown={e=>{e.preventDefault();choose(city);}}
+      >
         <strong>{city.name}</strong>
         <span>{(city.province_abbr?city.province_abbr+' · ':'')+(city.province_name??'')+(city.region?(city.province_name?' · ':'')+city.region:'')}</span>
       </button>)}

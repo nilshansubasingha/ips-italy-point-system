@@ -10,7 +10,7 @@ function slugify(value:string){return value.toLowerCase().normalize('NFKD').repl
 function go(path:string,kind:'ok'|'error',message:string):never{redirect(`${path}${path.includes('?')?'&':'?'}${kind}=${encodeURIComponent(message)}`);}
 function back(form:FormData,fallback:string){return s(form,'return_to')||fallback;}
 function friendly(e:any,fallback:string){
-  if(String(e?.digest??'').startsWith('NEXT_REDIRECT')) throw e;
+  if(String(e?.digest??'').startsWith('NEXT_REDIRECT')||String(e?.message??'')==='NEXT_REDIRECT') throw e;
   const m=String(e?.message??fallback);
   if(m.includes('duplicate key')&&m.includes('clubs_slug')) return 'A club with that URL identity already exists.';
   if(m.includes('duplicate key')&&m.includes('teams_slug')) return 'A team with that URL identity already exists.';
