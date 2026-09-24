@@ -14,7 +14,7 @@ export type CitySearchOption={
 
 export function CitySearchSelect({
   name,
-  value='',
+  value,
   onChange,
   required=false,
   label='City',
@@ -33,7 +33,9 @@ export function CitySearchSelect({
   initialCity?:CitySearchOption|null;
   className?:string;
 }){
+  const isControlled=value!==undefined;
   const [selected,setSelected]=useState<CitySearchOption|null>(()=>{
+    if(value===undefined)return initialCity??null;
     return allowedCities?.find(c=>c.id===value)??(initialCity?.id===value?initialCity:null);
   });
   const [query,setQuery]=useState(selected?.name??'');
@@ -42,6 +44,7 @@ export function CitySearchSelect({
   const [loading,setLoading]=useState(false);
 
   useEffect(()=>{
+    if(!isControlled)return;
     if(!value){
       if(selected){setSelected(null);setQuery('');}
       return;
@@ -49,7 +52,7 @@ export function CitySearchSelect({
     if(selected?.id===value)return;
     const local=allowedCities?.find(c=>c.id===value)??(initialCity?.id===value?initialCity:null);
     if(local){setSelected(local);setQuery(local.name);}
-  },[value,allowedCities,initialCity,selected]);
+  },[isControlled,value,allowedCities,initialCity,selected]);
 
   const localResults=useMemo(()=>{
     if(!allowedCities)return [];
@@ -123,7 +126,8 @@ export function CitySearchSelect({
       {!loading&&results.map(city=><button
         type="button"
         key={city.id}
-        onPointerDown={e=>{e.preventDefault();choose(city);}}
+        onMouseDown={e=>e.preventDefault()}
+        onClick={()=>choose(city)}
       >
         <strong>{city.name}</strong>
         <span>{(city.province_abbr?city.province_abbr+' · ':'')+(city.province_name??'')+(city.region?(city.province_name?' · ':'')+city.region:'')}</span>
