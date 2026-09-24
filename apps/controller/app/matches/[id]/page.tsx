@@ -14,11 +14,13 @@ export default async function MatchControllerPage({params,searchParams}:{params:
   const supabase=await createClient();
   const {data:{user}}=await supabase.auth.getUser();
   if(!user) return <main className="controller-portal"><div className="portal-card"><h1>Sign in required.</h1><p>Use your IPS account before opening the Match Controller.</p><Link className="portal-button" href={`/auth/login?next=/matches/${id}`}>Sign in to Controller →</Link></div></main>;
-  const [{data,error},{data:scoringData,error:scoringError}]=await Promise.all([
+  const [{data,error},{data:scoringData,error:scoringError},{data:overHistory}]=await Promise.all([
     supabase.rpc('ips_controller_match_context',{p_match_id:id}),
-    supabase.rpc('ips_scoring_context',{p_match_id:id})
+    supabase.rpc('ips_scoring_context',{p_match_id:id}),
+    supabase.rpc('ips_scoring_over_history',{p_match_id:id})
   ]);
   if(error||scoringError) return <main className="controller-portal"><div className="portal-card"><span className="micro">ACCESS / READINESS</span><h1>Controller unavailable.</h1><p>{error?.message||scoringError?.message}</p><Link className="portal-button" href="/">← Controller matches</Link></div></main>;
   if(!data) notFound();
-  return <ControllerMatch context={data as any} initialScoring={scoringData as any} webUrl={WEB_URL} message={ok} errorMessage={errorMessage}/>;
+  const scoringWithHistory={...(scoringData as any),over_history:Array.isArray(overHistory)?overHistory:[]};
+  return <ControllerMatch context={data as any} initialScoring={scoringWithHistory} webUrl={WEB_URL} message={ok} errorMessage={errorMessage}/>;
 }
