@@ -82,7 +82,10 @@ function layerMeta(snapshot:Snapshot,layer:ActiveLayer):VariantMeta|null{
   return snapshot.release?.manifest?.variants?.[layer.variantKey]??null;
 }
 function isExpired(layer:ActiveLayer,meta:VariantMeta|null,now:number){
-  if(layer.persistent||!meta?.durationMs)return false;
+  if(layer.persistent)return false;
+  const explicit=(layer as any).expiresAt?Date.parse((layer as any).expiresAt):NaN;
+  if(Number.isFinite(explicit))return now>=explicit;
+  if(!meta?.durationMs)return false;
   const started=Date.parse(layer.startedAt);
   return Number.isFinite(started)&&now>=started+meta.durationMs;
 }
@@ -108,12 +111,13 @@ function compose(snapshot:Snapshot,now:number){
 function ProgramLayer({snapshot,item,now}:{snapshot:Snapshot;item:{layer:ActiveLayer;meta:VariantMeta};now:number}){
   const {layer,meta}=item;
   const started=Date.parse(layer.startedAt);
-  const end=!layer.persistent&&meta.durationMs&&Number.isFinite(started)?started+meta.durationMs:null;
-  const remaining=end?end-now:null;
+  const explicit=(layer as any).expiresAt?Date.parse((layer as any).expiresAt):NaN;
+  const end=Number.isFinite(explicit)?explicit:(!layer.persistent&&meta.durationMs&&Number.isFinite(started)?started+meta.durationMs:null);
+  const remaining=end!=null?end-now:null;
   const exiting=remaining!=null&&remaining<=360;
   const data=useMemo(()=>({...snapshot.data,director:layer.payload??{},runtime:{variantKey:layer.variantKey,instanceId:layer.instanceId}}),[snapshot.data,layer.payload,layer.variantKey,layer.instanceId]);
   return <div className={'program-layer'+(exiting?' exiting':'')} style={{zIndex:layer.priority}}>
-    <SceneCanvas document={meta.document} data={data}/>
+    <SceneCanvas document={meta.document} data={data} exiting={exiting}/>
   </div>;
 }
 
