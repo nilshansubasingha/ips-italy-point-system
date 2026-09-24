@@ -143,6 +143,21 @@ export function isOwner(context: AccountContext | null) {
   return !!context?.grants.some((g) => g.role === 'OWNER' && g.scope_type === 'GLOBAL');
 }
 
+export type RoleManagementTier = 'OWNER' | 'GLOBAL_ADMIN' | 'CITY_ADMIN' | 'TEAM_ADMIN';
+
+export function getRoleManagementTier(context: AccountContext | null): RoleManagementTier | null {
+  if (!context) return null;
+  if (isOwner(context)) return 'OWNER';
+  if (context.grants.some((g) => g.role === 'ADMIN' && g.scope_type === 'GLOBAL')) return 'GLOBAL_ADMIN';
+  if (context.grants.some((g) => g.role === 'ADMIN' && g.scope_type === 'CITY')) return 'CITY_ADMIN';
+  if (context.grants.some((g) => g.role === 'ADMIN' && (g.scope_type === 'CLUB' || g.scope_type === 'TEAM'))) return 'TEAM_ADMIN';
+  return null;
+}
+
+export function canManageRoles(context: AccountContext | null) {
+  return getRoleManagementTier(context) !== null;
+}
+
 export function hasManagementRole(context: AccountContext | null) {
   return !!context?.grants.some((g) => ['OWNER', 'ADMIN', 'LEADER', 'SCORER'].includes(g.role));
 }
