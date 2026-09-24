@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import {useMemo,useState} from 'react';
 import {revokeRoleGrant} from '@/app/manage/roles/actions';
 
@@ -62,13 +63,13 @@ function AccessGroup({
       {grants.map(grant=>{
         const protectedOwner=protectLastOwner&&grants.length<=1;
         return <article key={grant.id}>
-          <div className="access-directory-person">
+          <Link href={'/manage/accounts/'+grant.user_id} className="access-directory-person access-directory-profile-link">
             <span className="access-directory-avatar">{grant.display_name.slice(0,2).toUpperCase()}</span>
             <div>
               <strong>{grant.display_name}</strong>
               <small>{grant.email??'No email on profile'}</small>
             </div>
-          </div>
+          </Link>
 
           <div className="access-directory-scope">
             <span>{roleLabel(grant)}</span>
