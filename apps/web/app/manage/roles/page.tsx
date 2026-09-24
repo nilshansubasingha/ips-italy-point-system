@@ -4,10 +4,10 @@ export const revalidate=0;
 import {redirect} from 'next/navigation';
 import {SiteFooter,SiteHeader} from '@/components/site-header';
 import {ManagementNav} from '@/components/manage/manage-nav';
+import {RoleGrantForm} from '@/components/manage/role-grant-form';
 import {requireAccount,isOwner,grantScopeId,type RoleGrant} from '@/lib/auth';
 import {createClient} from '@/lib/supabase/server';
-import {CitySearchSelect} from '@/components/location/city-search-select';
-import {createRoleGrant,revokeRoleGrant} from './actions';
+import {revokeRoleGrant} from './actions';
 
 function scopeLabel(scope:string){
   return scope==='CLUB'?'TEAM · ALL SIDES':scope==='TEAM'?'COMPETITIVE SIDE':scope;
@@ -18,17 +18,29 @@ export default async function RoleManagementPage(){
   if(!isOwner(account))redirect('/manage');
   const supabase=await createClient();
 
-  const [{data:profiles},{data:grants},{data:clubs},{data:teams},{data:tournaments},{data:matches},{data:players}]=await Promise.all([
-    supabase.from('profiles').select('id,display_name,status,linked_player_id,created_at').order('created_at'),
+  const [
+    {data:grants},
+    {data:clubs},
+    {data:teams},
+    {data:tournaments},
+    {data:matches},
+    {data:players},
+    {count:profileCount}
+  ]=await Promise.all([
     supabase.from('role_grants').select('*').is('revoked_at',null).order('created_at',{ascending:false}),
-    supabase.from('clubs').select('id,name').order('name'),
-    supabase.from('teams').select('id,name').order('name'),
+    supabase.from('clubs').select('id,name,city_id').order('name'),
+    supabase.from('teams').select('id,name,club_id,side_label').order('name'),
     supabase.from('tournaments').select('id,name').order('starts_at',{ascending:false}),
     supabase.from('matches').select('id,match_code').order('scheduled_at',{ascending:false}),
-    supabase.from('players').select('id,display_name,ips_code').order('display_name')
+    supabase.from('players').select('id,display_name,ips_code').order('display_name'),
+    supabase.from('profiles').select('id',{count:'exact',head:true})
   ]);
 
-  const nameMap=new Map((profiles??[]).map((p:any)=>[p.id,p.display_name]));
+  const grantUserIds=Array.from(new Set((grants??[]).map((grant:any)=>grant.user_id).filter(Boolean)));
+  const grantProfiles=grantUserIds.length
+    ? (await supabase.from('profiles').select('id,display_name').in('id',grantUserIds)).data??[]
+    : [];
+  const nameMap=new Map((grantProfiles??[]).map((p:any)=>[p.id,p.display_name]));
   const activeOwners=(grants??[]).filter((g:any)=>g.role==='OWNER'&&g.scope_type==='GLOBAL'&&!g.revoked_at).length;
 
   return <main className="shell sports-shell">
@@ -39,9 +51,9 @@ export default async function RoleManagementPage(){
       <div>
         <span className="eyebrow">OWNER CONTROL</span>
         <h1>Accounts & scoped roles.</h1>
-        <p>One account can hold multiple roles. City scope now uses the nationwide Italian municipality registry rather than a fixed city list.</p>
+        <p>One account can hold multiple roles. Find the correct registered person with search and cricket-context filters, then assign only the scope they need.</p>
       </div>
-      <div className="role-count-card"><span>ACCOUNTS</span><strong>{profiles?.length??0}</strong><small>{grants?.length??0} active grants</small></div>
+      <div className="role-count-card"><span>ACCOUNTS</span><strong>{profileCount??0}</strong><small>{grants?.length??0} active grants</small></div>
     </section>
 
     <section className="role-admin-layout">
@@ -58,27 +70,16 @@ export default async function RoleManagementPage(){
         </div>
       </div>
 
-      <aside className="grant-create-card">
+      <aside className="grant-create-card grant-create-card-wide">
         <span className="eyebrow light">NEW ROLE GRANT</span>
         <h2>Assign access</h2>
-        <form action={createRoleGrant}>
-          <label><span>Account</span><select name="user_id" required>{(profiles??[]).map((p:any)=><option key={p.id} value={p.id}>{p.display_name}</option>)}</select></label>
-          <div className="form-split">
-            <label><span>Role</span><select name="role"><option>ADMIN</option><option>LEADER</option><option>SCORER</option><option>PLAYER</option><option>OWNER</option></select></label>
-            <label><span>Scope type</span><select name="scope_type"><option value="GLOBAL">GLOBAL</option><option value="CITY">CITY</option><option value="CLUB">TEAM · ALL SIDES</option><option value="TEAM">COMPETITIVE SIDE ONLY</option><option value="TOURNAMENT">TOURNAMENT</option><option value="MATCH">MATCH</option><option value="PLAYER">PLAYER</option></select></label>
-          </div>
-          <details className="scope-selectors">
-            <summary>Select the matching scope record</summary>
-            <CitySearchSelect name="city_id" label="City"/>
-            <label><span>Team identity (all sides)</span><select name="club_id"><option value="">—</option>{(clubs??[]).map((x:any)=><option key={x.id} value={x.id}>{String(x.name).replace(/\s+Cricket Club$/i,'')}</option>)}</select></label>
-            <label><span>Competitive side</span><select name="team_id"><option value="">—</option>{(teams??[]).map((x:any)=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
-            <label><span>Tournament</span><select name="tournament_id"><option value="">—</option>{(tournaments??[]).map((x:any)=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
-            <label><span>Match</span><select name="match_id"><option value="">—</option>{(matches??[]).map((x:any)=><option key={x.id} value={x.id}>{x.match_code}</option>)}</select></label>
-            <label><span>Player</span><select name="player_id"><option value="">—</option>{(players??[]).map((x:any)=><option key={x.id} value={x.id}>{x.display_name} · {x.ips_code}</option>)}</select></label>
-          </details>
-          <label><span>Note</span><input name="note" placeholder="Why this access was granted"/></label>
-          <button className="button-primary">Grant role</button>
-        </form>
+        <RoleGrantForm
+          clubs={(clubs??[]).map((x:any)=>({id:x.id,name:x.name,city_id:x.city_id}))}
+          teams={(teams??[]).map((x:any)=>({id:x.id,name:x.name,club_id:x.club_id,side_label:x.side_label??null}))}
+          tournaments={(tournaments??[]).map((x:any)=>({id:x.id,label:x.name}))}
+          matches={(matches??[]).map((x:any)=>({id:x.id,label:x.match_code}))}
+          players={(players??[]).map((x:any)=>({id:x.id,label:`${x.display_name} · ${x.ips_code}`}))}
+        />
         <p className="grant-help"><b>City administrator:</b> choose <b>ADMIN + CITY</b> and search any Italian municipality. <b>Team administrator:</b> choose <b>ADMIN + TEAM · ALL SIDES</b> and select the Team identity. Use <b>COMPETITIVE SIDE ONLY</b> only when access must be restricted to one A/B/C side. Team and player deletion remain restricted to GLOBAL OWNER / GLOBAL ADMIN.</p>
       </aside>
     </section>
