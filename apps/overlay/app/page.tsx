@@ -1,4 +1,4 @@
-import {LiveOverlay} from './live-overlay';
+import {ProgramRenderer} from './program-renderer';
 
 export default async function Overlay({
   searchParams
@@ -8,5 +8,5 @@ export default async function Overlay({
   const sp=await searchParams;
   const raw=typeof sp.match==='string'?sp.match:typeof sp.matchId==='string'?sp.matchId:null;
   const matchId=raw&&/^[0-9a-f-]{36}$/i.test(raw)?raw:null;
-  return <LiveOverlay matchId={matchId} debug={sp.debug==='1'}/>;
+  return <ProgramRenderer matchId={matchId}/>;
 }
