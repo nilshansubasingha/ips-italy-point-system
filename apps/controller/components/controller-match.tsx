@@ -104,115 +104,107 @@ function SidePanel({side,required}:{side:Side;required:number}){
 }
 
 
-function PlayerScoreCard({
-  role,
-  stat,
-  active
-}:{
-  role:'STRIKER'|'NON-STRIKER';
-  stat:BatterStat|undefined;
-  active?:boolean
-}){
-  const name=stat?.name??'—';
-  return <article className={'p6-player-live '+(active?'active':'')}>
-    <div className="p6-player-live-content">
-      <div className="p6-player-title"><span>{role}</span>{active&&<b>● ON STRIKE</b>}</div>
-      <div className="p6-player-main"><strong>{name}</strong><div><b>{stat?.runs??0}</b><span>({stat?.balls??0})</span></div></div>
-      <div className="p6-player-numbers">
-        <span><em>4s</em><b>{stat?.fours??0}</b></span>
-        <span><em>6s</em><b>{stat?.sixes??0}</b></span>
-        <span><em>SR</em><b>{Number(stat?.strike_rate??0).toFixed(1)}</b></span>
-      </div>
-    </div>
-  </article>;
+function ballTone(ball:OverBall){
+  return ball.is_wicket?'wicket':ball.label.includes('4')?'four':ball.label.includes('6')?'six':'';
 }
 
-function BowlerScoreCard({stat}:{stat:BowlerStat|undefined}){
-  const name=stat?.name??'Select bowler';
-  return <article className="p6-player-live bowler">
-    <div className="p6-player-live-content">
-      <div className="p6-player-title"><span>BOWLER</span><b>● CURRENT</b></div>
-      <div className="p6-player-main"><strong>{name}</strong><div><b>{stat?.wickets??0}/{stat?.runs??0}</b></div></div>
-      <div className="p6-player-numbers">
-        <span><em>OV</em><b>{stat?.overs??'0.0'}</b></span>
-        <span><em>R</em><b>{stat?.runs??0}</b></span>
-        <span><em>ECON</em><b>{Number(stat?.economy??0).toFixed(2)}</b></span>
-      </div>
-    </div>
-  </article>;
+function BallStrip({balls,empty,className='' }:{balls:OverBall[];empty:string;className?:string}){
+  return <div className={'p6-ball-strip '+className}>
+    {balls.length
+      ?balls.map(ball=><i key={ball.id} className={ballTone(ball)}>{ball.label}</i>)
+      :<span>{empty}</span>}
+  </div>;
 }
 
-function TopOverRows({scoring}:{scoring:ScoringContext}){
+function CompactOverHistoryRows({scoring}:{scoring:ScoringContext}){
+  const [expanded,setExpanded]=useState(false);
   const completed=(scoring.over_history??[])
     .filter(over=>!over.current)
     .sort((a,b)=>b.over_no-a.over_no);
-  const previous=completed[0]??null;
-  const liveOver=(scoring.over_history??[]).find(over=>over.current);
-  const currentBalls=scoring.awaiting_bowler?[]:scoring.current_over;
-  const currentNo=liveOver?.over_no??(Math.floor(scoring.legal_balls/Math.max(scoring.balls_per_over,1))+1);
+  const visible=expanded?completed:completed.slice(0,3);
 
-  const renderBalls=(balls:OverBall[],empty:string)=><div className="p6-top-over-balls">
-    {balls.length?balls.map(ball=><i key={ball.id} className={ball.is_wicket?'wicket':ball.label.includes('4')?'four':ball.label.includes('6')?'six':''}>{ball.label}</i>):<span>{empty}</span>}
-  </div>;
-
-  return <div className="p6-top-over-stack">
-    <div className="p6-top-over-row previous">
-      <div className="p6-top-over-label"><span>PREVIOUS OVER</span><b>{previous?'OVER '+previous.over_no:'—'}</b></div>
-      {renderBalls(previous?.balls??[],'No completed over yet')}
-      <strong className="p6-top-over-total">{previous?previous.runs+(previous.wickets?' · '+previous.wickets+'W':''):'—'}</strong>
+  return <section className={'p6-compact-history '+(expanded?'expanded':'')}>
+    <header>
+      <div><span>PREVIOUS OVERS</span><b>{completed.length?Math.min(completed.length,3)+' recent':'Waiting for first completed over'}</b></div>
+      {completed.length>3&&<button type="button" onClick={()=>setExpanded(value=>!value)}>
+        {expanded?'LATEST 3':'SHOW ALL '+completed.length}
+      </button>}
+    </header>
+    <div className="p6-compact-history-rows">
+      {visible.length?visible.map(over=><div className="p6-compact-over-row" key={over.over_no}>
+        <div className="p6-compact-over-name">
+          <span>OVER {over.over_no}</span>
+          <b>{over.bowler_name??'Bowler'}</b>
+        </div>
+        <BallStrip balls={over.balls} empty="—" className="history"/>
+        <div className="p6-compact-over-result">
+          <b>{over.runs}{over.wickets?<small> · {over.wickets}W</small>:null}</b>
+          <span>{over.score_after}/{over.wickets_after}</span>
+        </div>
+      </div>):<div className="p6-compact-over-row empty">
+        <div className="p6-compact-over-name"><span>OVER HISTORY</span><b>No completed over yet</b></div>
+      </div>}
     </div>
-    <div className="p6-top-over-row current">
-      <div className="p6-top-over-label"><span>CURRENT OVER</span><b>OVER {currentNo}</b></div>
-      {renderBalls(currentBalls,scoring.awaiting_bowler?'Select next bowler':'No balls yet')}
-      <strong className="p6-top-over-total">{liveOver?liveOver.runs+(liveOver.wickets?' · '+liveOver.wickets+'W':''):'0'}</strong>
+  </section>;
+}
+
+function BatterSlot({role,stat,active}:{role:'STRIKER'|'NON-STRIKER';stat:BatterStat|undefined;active?:boolean}){
+  return <div className={'p6-batter-slot '+(active?'active':'')}>
+    <div className="p6-batter-slot-head"><span>{role}</span>{active&&<b>● ON STRIKE</b>}</div>
+    <div className="p6-batter-slot-main">
+      <strong>{stat?.name??'—'}</strong>
+      <div><b>{stat?.runs??0}</b><span>({stat?.balls??0})</span></div>
+    </div>
+    <div className="p6-batter-mini">
+      <span>4s <b>{stat?.fours??0}</b></span>
+      <span>6s <b>{stat?.sixes??0}</b></span>
+      <span>SR <b>{Number(stat?.strike_rate??0).toFixed(1)}</b></span>
     </div>
   </div>;
 }
 
-function OverHistoryPanel({scoring}:{scoring:ScoringContext}){
-  const [expanded,setExpanded]=useState(false);
-  const history=scoring.over_history??[];
-  const historyHasCurrent=history.some(over=>over.current);
-  const currentBowler=scoring.bowler_stats.find(player=>player.player_id===scoring.bowler_id);
-  const syntheticCurrent:OverHistoryItem|null=
-    scoring.started&&!scoring.innings_complete&&!scoring.match_complete&&!scoring.awaiting_bowler&&!historyHasCurrent
-      ?{
-          over_no:Math.floor(scoring.legal_balls/Math.max(scoring.balls_per_over,1))+1,
-          runs:0,
-          wickets:0,
-          legal_balls:0,
-          complete:false,
-          current:true,
-          bowler_id:scoring.bowler_id,
-          bowler_name:currentBowler?.name??null,
-          score_after:scoring.runs,
-          wickets_after:scoring.wickets,
-          balls:scoring.current_over??[]
-        }
-      :null;
-  const ordered=[...(syntheticCurrent?[syntheticCurrent]:[]),...history].sort((a,b)=>b.over_no-a.over_no);
-  const visible=expanded?ordered:ordered.slice(0,3);
+function CombinedBattersCard({striker,nonStriker}:{striker:BatterStat|undefined;nonStriker:BatterStat|undefined}){
+  return <article className="p6-batters-card">
+    <BatterSlot role="STRIKER" stat={striker} active/>
+    <BatterSlot role="NON-STRIKER" stat={nonStriker}/>
+  </article>;
+}
 
-  return <section className="p6-over-history">
-    <header>
-      <div><span>OVER HISTORY</span><strong>{ordered.length?Math.min(ordered.length,3)+' recent overs':'Recent overs appear here'}</strong></div>
-      {ordered.length>3&&<button type="button" onClick={()=>setExpanded(value=>!value)}>{expanded?'Show latest 3':'Show all '+ordered.length+' overs'}</button>}
-    </header>
-    <div className="p6-over-history-grid">
-      {visible.length?visible.map(over=><article key={over.over_no} className={over.current?'current':''}>
-        <div className="p6-over-history-top">
-          <div><span>OVER {over.over_no}</span><strong>{over.bowler_name??'Bowler'}</strong></div>
-          <div><b>{over.runs}</b><small>{over.runs===1?'RUN':'RUNS'}{over.wickets?' · '+over.wickets+'W':''}</small></div>
-        </div>
-        <div className="p6-history-balls">
-          {over.balls.map(ball=><i key={ball.id} className={ball.is_wicket?'wicket':ball.label.includes('4')?'four':ball.label.includes('6')?'six':''}>{ball.label}</i>)}
-        </div>
-        <footer><span>{over.current?'CURRENT':over.complete?'COMPLETE':'PARTIAL'}</span><b>{over.current?'LIVE ':'END '}{over.score_after}/{over.wickets_after}</b></footer>
-      </article>):<article className="empty">
-        <div><span>HISTORY</span><strong>Score the first ball to start the history.</strong></div>
-      </article>}
+function BowlerCurrentOverCard({scoring,bowler}:{scoring:ScoringContext;bowler:BowlerStat|undefined}){
+  const bpo=Math.max(scoring.balls_per_over,1);
+  const currentNo=scoring.awaiting_bowler
+    ?Math.max(Math.floor(scoring.legal_balls/bpo),1)
+    :Math.floor(scoring.legal_balls/bpo)+1;
+  const currentRecord=(scoring.over_history??[]).find(over=>over.current)
+    ??(scoring.awaiting_bowler?(scoring.over_history??[]).find(over=>over.over_no===currentNo):undefined);
+  const balls=scoring.current_over??[];
+
+  return <article className="p6-bowler-over-card">
+    <div className="p6-bowler-side">
+      <div className="p6-bowler-side-head"><span>BOWLER</span><b>● CURRENT</b></div>
+      <div className="p6-bowler-side-main">
+        <strong>{bowler?.name??'Select bowler'}</strong>
+        <b>{bowler?.wickets??0}/{bowler?.runs??0}</b>
+      </div>
+      <div className="p6-bowler-mini">
+        <span>OV <b>{bowler?.overs??'0.0'}</b></span>
+        <span>R <b>{bowler?.runs??0}</b></span>
+        <span>ECON <b>{Number(bowler?.economy??0).toFixed(2)}</b></span>
+      </div>
     </div>
-  </section>;
+    <div className="p6-current-over-side">
+      <div className="p6-current-over-side-head">
+        <div><span>CURRENT OVER</span><b>OVER {currentNo}</b></div>
+        <strong>{currentRecord?.runs??0}{currentRecord?.wickets?<small> · {currentRecord.wickets}W</small>:null}</strong>
+      </div>
+      <BallStrip
+        balls={balls}
+        empty={scoring.awaiting_bowler?'Over complete · choose next bowler':'No balls yet'}
+        className="current"
+      />
+      {scoring.free_hit&&<span className="p6-current-free-hit">FREE HIT</span>}
+    </div>
+  </article>;
 }
 
 function OtherPlayersScorecard({
@@ -523,7 +515,7 @@ export function ControllerMatch({
             <div><span>BATTING</span><strong>{battingSide?.team.short_name||battingSide?.team.name||'—'}</strong></div>
             <div className="p6-score"><b>{scoring.runs}</b><span>/{scoring.wickets}</span></div>
           </div>
-          <TopOverRows scoring={scoring}/>
+          <CompactOverHistoryRows scoring={scoring}/>
           <div className="p6-score-bottom">
             <span>BOWLING <b>{bowlingSide?.team.short_name||bowlingSide?.team.name||'—'}</b></span>
             <span className="p6-score-overs"><b>{oversLabel(scoring.legal_balls,scoring.balls_per_over)}</b> OVERS</span>
@@ -534,9 +526,11 @@ export function ControllerMatch({
         </section>
 
         <section className="p6-active-players">
-          <PlayerScoreCard role="STRIKER" stat={striker} active/>
-          <PlayerScoreCard role="NON-STRIKER" stat={nonStriker}/>
-          <BowlerScoreCard stat={currentBowler}/>
+          <CombinedBattersCard striker={striker} nonStriker={nonStriker}/>
+        </section>
+
+        <section className="p6-bowler-current">
+          <BowlerCurrentOverCard scoring={scoring} bowler={currentBowler}/>
         </section>
 
         {!scoring.innings_complete&&!scoring.match_complete&&<section className="controller-action-zone p6-actions">
@@ -567,9 +561,7 @@ export function ControllerMatch({
           </div>
         </section>}
 
-        <OverHistoryPanel scoring={scoring}/>
-
-        {scoring.match_complete&&<section className="p6-match-complete">
+            {scoring.match_complete&&<section className="p6-match-complete">
           <span>MATCH COMPLETE</span>
           <strong>{firstInnings?.runs}/{firstInnings?.wickets} · {secondInnings?.runs}/{secondInnings?.wickets}</strong>
           <small>Scoring is locked. Certification can follow from IPS tournament operations.</small>
