@@ -25,7 +25,13 @@ export default async function VenuesPage({searchParams}:{searchParams:Promise<Re
   let availableCities:any[]=[];
   if(global){
     const {data}=await supabase.rpc('ips_active_cities',{p_limit:50});
-    availableCities=data??[];
+    const cityMap=new Map<string,any>();
+    for(const city of data??[])cityMap.set(city.id,city);
+    for(const venue of venues??[]){
+      const city=(venue as any).city;
+      if(city?.id&&!cityMap.has(city.id))cityMap.set(city.id,city);
+    }
+    availableCities=Array.from(cityMap.values()).sort((a:any,b:any)=>String(a.name).localeCompare(String(b.name),'it'));
   }else if(cityScopeIds.length){
     const {data}=await supabase
       .from('cities')
