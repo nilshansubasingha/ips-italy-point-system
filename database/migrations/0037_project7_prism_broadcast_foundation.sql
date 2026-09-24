@@ -526,7 +526,7 @@ variants as (
   name=excluded.name,presentation=excluded.presentation,is_default=excluded.is_default,priority=excluded.priority,
   replacement_group=excluded.replacement_group,conflict_behavior=excluded.conflict_behavior,
   default_duration_ms=excluded.default_duration_ms,direct_take=excluded.direct_take,automation_eligible=excluded.automation_eligible
- returning id,scene_id,variant_key
+ returning id,scene_id,variant_key,name,presentation,priority,replacement_group,conflict_behavior,default_duration_ms,direct_take,automation_eligible
 ),
 published as (
  insert into public.broadcast_variant_versions(variant_id,version_no,status,document,source,published_at)
