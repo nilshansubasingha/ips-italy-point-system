@@ -68,7 +68,7 @@ export function RoleGrantForm({
   const [scopeClubId,setScopeClubId]=useState('');
 
   useEffect(()=>{
-    if(!levels.includes(accessLevel))setAccessLevel(levels[0]);
+    if(!levels.includes(accessLevel))setAccessLevel(levels[0]??'PLAYER');
   },[accessLevel,levels]);
 
   useEffect(()=>{
