@@ -479,3 +479,79 @@
   .access-level-grid{grid-template-columns:1fr}
   .grant-create-card-wide .access-search-query .access-search-results{position:fixed;left:12px;right:12px;top:auto;bottom:14px;max-height:65vh}
 }
+
+
+/* Project 5.8.2 — access directory city filter + visible search input text */
+.grant-create-card-wide .access-search-input input{
+  color:var(--ink)!important;
+  background:#fff!important;
+  caret-color:var(--green);
+  -webkit-text-fill-color:var(--ink);
+}
+.grant-create-card-wide .access-search-input input::placeholder{
+  color:#81949e!important;
+  opacity:1;
+}
+
+.access-directory-toolbar{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:16px;
+  margin:0 0 14px;
+  padding:13px 14px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:rgba(255,255,255,.82);
+}
+.access-directory-toolbar>div>span,
+.access-directory-toolbar>div>strong,
+.access-directory-toolbar>div>small{display:block}
+.access-directory-toolbar>div>span{
+  font-size:7px;
+  font-weight:950;
+  letter-spacing:.12em;
+  color:var(--green);
+}
+.access-directory-toolbar>div>strong{
+  margin-top:4px;
+  font-size:12px;
+}
+.access-directory-toolbar>div>small{
+  margin-top:3px;
+  color:#7a8f99;
+  font-size:7px;
+}
+.access-directory-toolbar>label{
+  display:grid;
+  gap:5px;
+  min-width:190px;
+}
+.access-directory-toolbar>label>span{
+  font-size:7px;
+  font-weight:950;
+  letter-spacing:.1em;
+  color:#718792;
+  text-transform:uppercase;
+}
+.access-directory-toolbar select{
+  min-height:39px;
+  border:1px solid #d2e0e5;
+  border-radius:10px;
+  background:#fff;
+  color:var(--ink);
+  padding:8px 34px 8px 10px;
+  font:inherit;
+  font-size:9px;
+  font-weight:850;
+  outline:none;
+}
+.access-directory-toolbar select:focus{
+  border-color:#79bea4;
+  box-shadow:0 0 0 3px rgba(8,132,82,.08);
+}
+
+@media(max-width:720px){
+  .access-directory-toolbar{align-items:stretch;flex-direction:column}
+  .access-directory-toolbar>label{min-width:0}
+}
