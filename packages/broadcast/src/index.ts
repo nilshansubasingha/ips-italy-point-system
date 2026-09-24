@@ -94,7 +94,8 @@ export const sequenceDocumentSchema=z.object({schemaVersion:z.literal(1),name:z.
 
 export const programLayerSchema=z.object({
   instanceId:z.string().uuid(),variantKey:z.string(),priority:z.number().int(),replacementGroup:z.string().nullable().default(null),
-  startedAt:z.string(),persistent:z.boolean().default(false),payload:z.record(z.unknown()).default({}),
+  startedAt:z.string(),durationMs:z.number().int().positive().nullable().default(null),expiresAt:z.string().nullable().default(null),
+  persistent:z.boolean().default(false),payload:z.record(z.unknown()).default({}),
   source:z.enum(['DIRECTOR','AUTOMATION','SEQUENCE','RESTORE']).default('DIRECTOR')
 });
 
