@@ -5,6 +5,7 @@ import {createClient} from '@/lib/supabase/server';
 export async function ManagementNav({account, active}:{account:AccountContext;active?:string}) {
   const canManageAccess=canManageRoles(account);
   const canManageRankingCatalogue=account.grants.some(g=>(g.role==='OWNER'&&g.scope_type==='GLOBAL')||(g.role==='ADMIN'&&g.scope_type==='GLOBAL'));
+  const controllerUrl=process.env.NEXT_PUBLIC_CONTROLLER_URL??'http://localhost:3001';
   const canReviewRegistrations=account.grants.some(g=>['OWNER','ADMIN','LEADER'].includes(g.role));
   let registrationCount=0;
   if(canReviewRegistrations){
@@ -25,6 +26,7 @@ export async function ManagementNav({account, active}:{account:AccountContext;ac
       {canManageRankingCatalogue&&<Link href="/manage/rankings" className={active==='rankings'?'active':''}>Rankings</Link>}
       {canReviewRegistrations&&<Link href="/manage/registrations" className={active==='registrations'?'active':''}>Registration Requests{registrationCount>0&&<b className="nav-count-badge">{registrationCount}</b>}</Link>}
       {canManageAccess&&<Link href="/manage/roles" className={active==='roles'?'active':''}>Accounts & Roles</Link>}
+      <a href={controllerUrl} target="_blank" rel="noreferrer">Match Controller ↗</a>
     </div>
   </nav>;
 }
