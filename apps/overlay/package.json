@@ -1,5 +1,5 @@
 {
-  "name": "@ips/renderer",
+  "name": "@ips/overlay",
   "version": "0.2.0",
   "private": true,
   "scripts": {
