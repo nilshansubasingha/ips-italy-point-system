@@ -25,7 +25,7 @@ export default async function ControllerHome() {
         <h2>{m.home_team_name} <i>vs</i> {m.away_team_name}</h2>
         <p>{m.tournament_name}</p><footer><span>{new Date(m.scheduled_at).toLocaleString('en-IT',{timeZone:'Europe/Rome',dateStyle:'medium',timeStyle:'short'})}</span><strong>Open →</strong></footer>
       </Link>)}
-      {!matches.length && <div className="portal-empty"><strong>No controller matches available.</strong><p>Assign this account as a scorer, or open the Controller as a tournament administrator/Owner.</p><Link href={(process.env.NEXT_PUBLIC_IPS_WEB_URL ?? 'http://localhost:3000')+'/manage/tournaments'}>Tournament operations →</Link></div>}
+      {!matches.length && <div className="portal-empty"><strong>No controller matches available.</strong><p>If you are an Owner or tournament administrator, this means IPS currently has no fixture you can open. Create a fixture first. Scorers appear here only after they are assigned to that fixture under Tournament → Officials.</p><Link href={(process.env.NEXT_PUBLIC_IPS_WEB_URL ?? 'http://localhost:3000')+'/manage/tournaments'}>Create / manage fixtures →</Link></div>}
     </section>
   </main>;
 }
