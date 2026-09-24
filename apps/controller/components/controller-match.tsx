@@ -40,6 +40,19 @@ type BowlerStat={
 };
 type Candidate={player_id:string;name:string;ips_code:string;available:boolean;reason:string|null};
 type OverBall={id:string;label:string;legal:boolean;is_wicket:boolean};
+type OverHistoryItem={
+  over_no:number;
+  runs:number;
+  wickets:number;
+  legal_balls:number;
+  complete:boolean;
+  current:boolean;
+  bowler_id:string|null;
+  bowler_name:string|null;
+  score_after:number;
+  wickets_after:number;
+  balls:OverBall[];
+};
 type InningsSummary={
   innings_no:number;batting_team_id:string;bowling_team_id:string;
   runs:number;wickets:number;legal_balls:number;status:string;target_runs:number|null
@@ -51,7 +64,7 @@ type ScoringContext={
   balls_per_over:number;max_balls:number;overs_per_innings:number;effective_wicket_limit:number;
   target_runs:number|null;runs_required:number|null;balls_remaining:number|null;awaiting_bowler:boolean;free_hit:boolean;
   next_batting_team_id:string|null;innings:InningsSummary[];batter_stats:BatterStat[];bowler_stats:BowlerStat[];
-  current_over:OverBall[];next_batters:Candidate[];bowlers:Candidate[];
+  current_over:OverBall[];over_history:OverHistoryItem[];next_batters:Candidate[];bowlers:Candidate[];
 };
 
 type WicketKind='BOWLED'|'CAUGHT'|'RUN_OUT'|'HIT_WICKET';
@@ -114,6 +127,34 @@ function BowlerScoreCard({stat}:{stat:BowlerStat|undefined}){
   </article>;
 }
 
+
+
+function OverHistoryPanel({history}:{history:OverHistoryItem[]}){
+  const [expanded,setExpanded]=useState(false);
+  const visible=expanded?history:history.slice(0,3);
+
+  return <section className="p6-over-history">
+    <header>
+      <div><span>OVER HISTORY</span><strong>{history.length?Math.min(history.length,3)+' recent overs':'Waiting for first delivery'}</strong></div>
+      {history.length>3&&<button type="button" onClick={()=>setExpanded(value=>!value)}>{expanded?'Show latest 3':'Show all '+history.length+' overs'}</button>}
+    </header>
+    <div className="p6-over-history-grid">
+      {visible.length?visible.map(over=><article key={over.over_no} className={over.current?'current':''}>
+        <div className="p6-over-history-top">
+          <div><span>OVER {over.over_no}</span><strong>{over.bowler_name??'Bowler'}</strong></div>
+          <div><b>{over.runs}</b><small>{over.runs===1?'RUN':'RUNS'}{over.wickets?' · '+over.wickets+'W':''}</small></div>
+        </div>
+        <div className="p6-history-balls">
+          {over.balls.map(ball=><i key={ball.id} className={ball.is_wicket?'wicket':ball.label.includes('4')?'four':ball.label.includes('6')?'six':''}>{ball.label}</i>)}
+        </div>
+        <footer><span>{over.current?'CURRENT':over.complete?'COMPLETE':'PARTIAL'}</span><b>{over.score_after}/{over.wickets_after}</b></footer>
+      </article>):<article className="empty">
+        <div><span>OVER 1</span><strong>No deliveries yet</strong></div>
+        <footer><span>CURRENT</span><b>0/0</b></footer>
+      </article>}
+    </div>
+  </section>;
+}
 
 function OtherPlayersScorecard({
   scoring,
@@ -438,10 +479,7 @@ export function ControllerMatch({
           <BowlerScoreCard stat={currentBowler}/>
         </section>
 
-        <section className="p6-over-strip">
-          <div><span>CURRENT OVER</span><strong>{scoring.current_over.length?'Ball by ball':'No deliveries yet'}</strong></div>
-          <div className="p6-over-balls">{scoring.current_over.map(ball=><i key={ball.id} className={ball.is_wicket?'wicket':ball.label.includes('4')?'four':''}>{ball.label}</i>)}</div>
-        </section>
+        <OverHistoryPanel history={scoring.over_history??[]}/>
 
         {!scoring.innings_complete&&!scoring.match_complete&&<section className="controller-action-zone p6-actions">
           <div className="p6-action-caption"><span>RUNS</span>{scoring.awaiting_bowler&&<b>SELECT NEXT BOWLER</b>}</div>
