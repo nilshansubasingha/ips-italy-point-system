@@ -143,7 +143,9 @@ function BowlerScoreCard({stat}:{stat:BowlerStat|undefined}){
 }
 
 function TopOverRows({scoring}:{scoring:ScoringContext}){
-  const completed=(scoring.over_history??[]).filter(over=>!over.current);
+  const completed=(scoring.over_history??[])
+    .filter(over=>!over.current)
+    .sort((a,b)=>b.over_no-a.over_no);
   const previous=completed[0]??null;
   const liveOver=(scoring.over_history??[]).find(over=>over.current);
   const currentBalls=scoring.awaiting_bowler?[]:scoring.current_over;
