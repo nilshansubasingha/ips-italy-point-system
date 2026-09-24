@@ -1401,3 +1401,47 @@
   .ranking-admin-intro{grid-template-columns:1fr}
   .ranking-admin-three{grid-template-columns:1fr}
 }
+
+
+/* Controller access discovery */
+.controller-access-explainer{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:22px;
+  margin:0 0 22px;
+  padding:20px 22px;
+  border:1px solid #cfe1dc;
+  border-radius:18px;
+  background:linear-gradient(135deg,#f7fbfa,#edf8f4);
+}
+.controller-access-explainer h2{
+  margin:5px 0 7px;
+  font-size:22px;
+  letter-spacing:-.035em;
+}
+.controller-access-explainer p{
+  max-width:780px;
+  margin:0;
+  color:#667d88;
+  font-size:9px;
+  line-height:1.6;
+}
+.controller-access-actions{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+  gap:8px;
+  flex:0 0 auto;
+}
+.controller-access-actions a{
+  text-decoration:none;
+  white-space:nowrap;
+}
+@media(max-width:900px){
+  .controller-access-explainer{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+  .controller-access-actions{justify-content:flex-start}
+}
