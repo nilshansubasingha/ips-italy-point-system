@@ -9,3 +9,117 @@
 
 /* Project 5.1 — audited controller match-format override */
 .controller-flash{margin:10px;border-radius:11px;padding:10px 12px;font-size:9px;font-weight:850}.controller-flash.ok{background:#e7f8ef;color:#0c754e;border:1px solid #c9ead8}.controller-flash.error{background:#ffe8e9;color:#a82f39;border:1px solid #f1c9cd}.match-format-card{overflow:hidden}.override-history{margin:10px 0 0!important;padding:8px 9px;border-radius:9px;background:#fff4d8;color:#765b12!important;font-size:8px!important}.match-settings-editor{margin-top:11px;border-top:1px solid #e8eef0;padding-top:10px}.match-settings-editor summary{cursor:pointer;font-size:9px;font-weight:950;color:#087b4f;list-style:none}.match-settings-editor summary::-webkit-details-marker{display:none}.match-settings-editor form{margin-top:10px}.match-settings-grid{display:grid!important;grid-template-columns:repeat(2,1fr)!important;gap:7px!important}.match-settings-grid label,.override-reason{display:block!important;background:transparent!important;padding:0!important}.match-settings-grid label span,.override-reason span{display:block;font-size:7px;color:#718792;font-weight:900;margin-bottom:4px}.match-settings-grid input,.override-reason input{width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:9px;padding:9px;background:#f7fafb;font-size:10px}.override-reason{margin-top:8px}.match-settings-editor button{width:100%;margin-top:9px;border:0;border-radius:10px;padding:11px;background:#087b4f;color:#fff;font-size:9px;font-weight:950}.live-format-warning{margin-top:8px;padding:9px;border-radius:9px;background:#fff0d2;border:1px solid #efd69e}.live-format-warning b{font-size:7px;color:#8a6310;letter-spacing:.1em}.live-format-warning p{margin:3px 0 0!important;font-size:8px!important;color:#765d26!important;line-height:1.45}.match-format-card>div{grid-template-columns:repeat(4,1fr)!important}@media(max-width:420px){.match-settings-grid{grid-template-columns:1fr!important}.match-format-card>div{grid-template-columns:1fr 1fr!important}}
+
+
+/* Railway production auth — controller-local session */
+.controller-auth-page{
+  display:grid;
+  place-items:center;
+}
+.controller-auth-card{
+  width:min(100%,560px);
+  padding:28px;
+  border:1px solid var(--line);
+  border-radius:26px;
+  background:#fff;
+  box-shadow:0 24px 70px rgba(6,25,44,.12);
+}
+.controller-auth-brand{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding-bottom:18px;
+  border-bottom:1px solid #e8eef1;
+}
+.controller-auth-brand span,
+.controller-auth-brand strong{display:block}
+.controller-auth-brand span{
+  color:var(--green);
+  font-size:8px;
+  font-weight:950;
+  letter-spacing:.12em;
+}
+.controller-auth-brand strong{
+  margin-top:3px;
+  font-size:12px;
+}
+.controller-auth-copy{padding:22px 0 16px}
+.controller-auth-copy h1{
+  margin:8px 0 10px;
+  font-size:clamp(34px,7vw,56px);
+  line-height:.95;
+  letter-spacing:-.06em;
+}
+.controller-auth-copy p{
+  margin:0;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.6;
+}
+.controller-login-form{
+  display:grid;
+  gap:12px;
+}
+.controller-login-form label span{
+  display:block;
+  margin-bottom:6px;
+  color:#718793;
+  font-size:8px;
+  font-weight:950;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.controller-login-form input{
+  width:100%;
+  min-height:48px;
+  border:1px solid #cfdde3;
+  border-radius:12px;
+  background:#f9fbfc;
+  color:var(--ink);
+  padding:11px 12px;
+  font:inherit;
+  font-size:12px;
+  outline:none;
+}
+.controller-login-form input:focus{
+  border-color:#69ba9b;
+  box-shadow:0 0 0 3px rgba(8,123,79,.08);
+}
+.controller-login-form button{
+  min-height:49px;
+  border:0;
+  border-radius:12px;
+  background:linear-gradient(135deg,#087b4f,#0aa56a);
+  color:#fff;
+  font-weight:950;
+}
+.controller-login-form button:disabled{opacity:.55;cursor:wait}
+.controller-login-error{
+  padding:10px 12px;
+  border:1px solid #f0c8cd;
+  border-radius:10px;
+  background:#ffe9eb;
+  color:#a72e38;
+  font-size:10px;
+  font-weight:800;
+}
+.controller-auth-foot{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  margin-top:18px;
+  padding-top:15px;
+  border-top:1px solid #e9eef1;
+  font-size:9px;
+}
+.controller-auth-foot span{color:#7d909a}
+.controller-auth-foot a{
+  color:var(--green);
+  font-weight:900;
+  text-decoration:none;
+}
+@media(max-width:560px){
+  .controller-auth-page{padding:14px}
+  .controller-auth-card{padding:20px;border-radius:20px}
+  .controller-auth-foot{align-items:flex-start;flex-direction:column}
+}

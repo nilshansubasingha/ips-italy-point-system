@@ -13,7 +13,7 @@ export default async function MatchControllerPage({params,searchParams}:{params:
   const ok=typeof sp.ok==='string'?sp.ok:null; const errorMessage=typeof sp.error==='string'?sp.error:null;
   const supabase=await createClient();
   const {data:{user}}=await supabase.auth.getUser();
-  if(!user) return <main className="controller-portal"><div className="portal-card"><h1>Sign in required.</h1><p>Use your IPS account before opening the Match Controller.</p><Link className="portal-button" href={`${WEB_URL}/auth/login`}>Sign in →</Link></div></main>;
+  if(!user) return <main className="controller-portal"><div className="portal-card"><h1>Sign in required.</h1><p>Use your IPS account before opening the Match Controller.</p><Link className="portal-button" href={`/auth/login?next=/matches/${id}`}>Sign in to Controller →</Link></div></main>;
   const {data,error}=await supabase.rpc('ips_controller_match_context',{p_match_id:id});
   if(error) return <main className="controller-portal"><div className="portal-card"><span className="micro">ACCESS / READINESS</span><h1>Controller unavailable.</h1><p>{error.message}</p><Link className="portal-button" href="/">← Controller matches</Link></div></main>;
   if(!data) notFound();
