@@ -3,11 +3,12 @@ export const dynamic='force-dynamic'; export const revalidate=0;
 import Link from 'next/link';
 import {notFound} from 'next/navigation';
 import {SiteFooter,SiteHeader} from '@/components/site-header';
+import {ConfirmSubmitButton} from '@/components/manage/confirm-submit-button';
 import {ManagementNav} from '@/components/manage/manage-nav';
 import {requireAccount,hasManagementRole} from '@/lib/auth';
 import {createClient} from '@/lib/supabase/server';
 import {formatItalyDateTime,toItalyInput} from '@/lib/project4';
-import {addTournamentTeam,decideTournamentTeam,ensureSquad,addSquadPlayer,removeSquadPlayer,submitSquad,lockSquad,requestReplacement,reviewReplacement,createFixture,updateMatchStatus,assignOfficial,removeOfficial,updateTournament,setPlayingXI,setMatchTeamRoles} from '../actions';
+import {addTournamentTeam,decideTournamentTeam,ensureSquad,addSquadPlayer,removeSquadPlayer,submitSquad,lockSquad,requestReplacement,reviewReplacement,createFixture,updateMatchStatus,assignOfficial,removeOfficial,updateTournament,deleteTournament,setPlayingXI,setMatchTeamRoles} from '../actions';
 
 function statusLabel(v:string){return v.replaceAll('_',' ')}
 
@@ -35,6 +36,7 @@ export default async function TournamentOpsDetail({params,searchParams}:{params:
     supabase.rpc('ips_can_manage_tournament',{p_tournament_id:id}),
   ]);
   const canTournament=!!canTournamentRes.data;
+  const canGlobalDelete=account.grants.some(g=>(g.role==='OWNER'&&g.scope_type==='GLOBAL')||(g.role==='ADMIN'&&g.scope_type==='GLOBAL'));
   const teamMap=new Map((teams??[]).map((x:any)=>[x.id,x])); const playerMap=new Map((players??[]).map((x:any)=>[x.id,x])); const accountMap=new Map(((accountDirectory as any[])??[]).map((x:any)=>[x.id,x]));
   const tt=(tournamentTeams??[]) as any[]; const confirmed=tt.filter(x=>x.status==='CONFIRMED'); const registeredIds=new Set(tt.map(x=>x.team_id)); const availableTeams=(teams??[]).filter((x:any)=>!registeredIds.has(x.id));
   const squadByTeam=new Map((squads??[]).map((x:any)=>[x.team_id,x]));
@@ -50,6 +52,14 @@ export default async function TournamentOpsDetail({params,searchParams}:{params:
 
   return <main className="shell sports-shell"><SiteHeader/><ManagementNav account={account} active="tournaments"/>
     <section className="ops-detail-hero"><div><Link className="back-link" href="/manage/tournaments">← Tournament operations</Link><span className="eyebrow">{city?.name??'ITALY'} · {t.code}</span><h1>{t.name}</h1><p>{t.format_label} · {ruleset?.name??'Ruleset'} · starts {formatItalyDateTime(t.starts_at)}</p></div><div className="ops-status-card"><span>TOURNAMENT STATUS</span><strong>{statusLabel(t.status)}</strong><small>{confirmed.length} confirmed teams · {(matches??[]).length} fixtures</small></div></section>
+    <div className="tournament-detail-actions">
+      {canTournament&&<a href="#overview" className="button-secondary">Edit tournament</a>}
+      {canGlobalDelete&&<form action={deleteTournament}>
+        <input type="hidden" name="tournament_id" value={id}/>
+        <input type="hidden" name="return_to" value={returnTo}/>
+        <ConfirmSubmitButton className="registry-delete-button prominent-delete" message={'Delete '+t.name+'? This removes tournament registrations, squads, scheduled/ready fixtures and setup data. Started, completed or official match history is protected.'}>Delete tournament</ConfirmSubmitButton>
+      </form>}
+    </div>
     {(error||ok)&&<div className={`ops-message ${error?'error':'success'}`}>{error||ok}</div>}
 
     <nav className="ops-anchor-nav"><a href="#overview">Overview</a><a href="#teams">Teams</a><a href="#squads">Squads</a><a href="#fixtures">Fixtures</a><a href="#lineups">Playing Side</a><a href="#officials">Officials</a><a href="#replacements">Replacements</a></nav>
