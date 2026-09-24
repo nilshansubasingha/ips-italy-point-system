@@ -2,7 +2,7 @@ name: IPS Web Build
 
 on:
   push:
-    branches: [main, fix/controller-access-discovery]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -25,9 +25,3 @@ jobs:
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_build_placeholder
           NEXT_PUBLIC_PHONE_AUTH_ENABLED: "false"
           NEXT_PUBLIC_CONTROLLER_URL: https://controller.example.com
-      - name: Build controller app
-        run: npm run build -w @ips/controller
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_build_placeholder
-          NEXT_PUBLIC_IPS_WEB_URL: https://example.com
