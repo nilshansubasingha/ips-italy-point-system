@@ -52,7 +52,7 @@ export default async function Home() {
                 <span>VS</span>
                 <div><Crest name={featuredFixture.away_team_name} large/><strong>{featuredFixture.away_team_name}</strong></div>
               </div>
-              <div className="featured-match-meta"><div><span>When</span><strong>{formatDate(featuredFixture.scheduled_at, true)}</strong></div><div><span>Format</span><strong>{featuredFixture.overs_per_innings} overs</strong></div><div><span>Code</span><strong>{featuredFixture.match_code}</strong></div></div>
+              <div className="featured-match-meta"><div><span>When</span><strong>{formatDate(featuredFixture.scheduled_at, true, featuredFixture.scheduled_time_tbc)}</strong></div><div><span>Format</span><strong>{featuredFixture.overs_per_innings} overs</strong></div><div><span>Code</span><strong>{featuredFixture.match_code}</strong></div></div>
             </> : <div className="featured-empty">Your first fixture will become the hero match automatically.</div>}
           </article>
 
