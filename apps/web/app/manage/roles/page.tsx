@@ -5,9 +5,9 @@ import {redirect} from 'next/navigation';
 import {SiteFooter,SiteHeader} from '@/components/site-header';
 import {ManagementNav} from '@/components/manage/manage-nav';
 import {RoleGrantForm} from '@/components/manage/role-grant-form';
+import {AccessDirectory,type AccessDirectoryGrant} from '@/components/manage/access-directory';
 import {getRoleManagementTier,requireAccount,type RoleManagementTier} from '@/lib/auth';
 import {createClient} from '@/lib/supabase/server';
-import {revokeRoleGrant} from './actions';
 
 type GrantRow={
   id:string;
@@ -16,73 +16,22 @@ type GrantRow={
   email:string|null;
   role:string;
   scope_type:string;
+  city_id:string|null;
+  club_id:string|null;
+  team_id:string|null;
+  tournament_id:string|null;
+  match_id:string|null;
+  player_id:string|null;
   note:string|null;
   scope_label:string;
   can_revoke:boolean;
 };
-
-function groupFor(grant:GrantRow){
-  if(grant.role==='OWNER'&&grant.scope_type==='GLOBAL')return 'owner';
-  if(grant.role==='ADMIN'&&grant.scope_type==='GLOBAL')return 'admins';
-  if(grant.role==='ADMIN'&&grant.scope_type==='CITY')return 'city';
-  if(grant.role==='ADMIN'&&(grant.scope_type==='CLUB'||grant.scope_type==='TEAM'))return 'team';
-  if(grant.role==='PLAYER')return 'players';
-  return 'operations';
-}
 
 function tierLabel(tier:RoleManagementTier){
   if(tier==='OWNER')return 'Owner';
   if(tier==='GLOBAL_ADMIN')return 'Global Admin';
   if(tier==='CITY_ADMIN')return 'City Admin';
   return 'Team Admin';
-}
-
-function roleLabel(grant:GrantRow){
-  if(grant.role==='OWNER')return 'OWNER';
-  if(grant.role==='ADMIN'&&grant.scope_type==='GLOBAL')return 'GLOBAL ADMIN';
-  if(grant.role==='ADMIN'&&grant.scope_type==='CITY')return 'CITY ADMIN';
-  if(grant.role==='ADMIN'&&grant.scope_type==='CLUB')return 'TEAM ADMIN';
-  if(grant.role==='ADMIN'&&grant.scope_type==='TEAM')return 'SIDE ADMIN';
-  return grant.role;
-}
-
-function AccessGroup({
-  title,
-  note,
-  grants,
-  protectLastOwner=false
-}:{
-  title:string;
-  note:string;
-  grants:GrantRow[];
-  protectLastOwner?:boolean;
-}){
-  return <section className="access-directory-group">
-    <header>
-      <div><span>{title.toUpperCase()}</span><strong>{title}</strong><small>{note}</small></div>
-      <b>{grants.length}</b>
-    </header>
-    <div className="access-directory-list">
-      {grants.map(grant=>{
-        const protectedOwner=protectLastOwner&&grants.length<=1;
-        return <article key={grant.id}>
-          <div className="access-directory-person">
-            <span className="access-directory-avatar">{grant.display_name.slice(0,2).toUpperCase()}</span>
-            <div><strong>{grant.display_name}</strong><small>{grant.email??'No email on profile'}</small></div>
-          </div>
-          <div className="access-directory-scope">
-            <span>{roleLabel(grant)}</span>
-            <b>{grant.scope_label}</b>
-            {grant.note&&<small>{grant.note}</small>}
-          </div>
-          {grant.can_revoke&&!protectedOwner
-            ?<form action={revokeRoleGrant}><input type="hidden" name="id" value={grant.id}/><button>Revoke</button></form>
-            :<em>{protectedOwner?'Protected':'View only'}</em>}
-        </article>;
-      })}
-      {!grants.length&&<div className="access-directory-empty">No active access grants in this level.</div>}
-    </div>
-  </section>;
 }
 
 export default async function RoleManagementPage(){
@@ -124,14 +73,62 @@ export default async function RoleManagementPage(){
         ?allClubs.filter(club=>cityAdminIds.has(club.city_id))
         :allClubs.filter(club=>clubAdminIds.has(club.id)||teamClubIds.has(club.id));
 
-  const grouped={
-    owner:grants.filter(g=>groupFor(g)==='owner'),
-    admins:grants.filter(g=>groupFor(g)==='admins'),
-    city:grants.filter(g=>groupFor(g)==='city'),
-    team:grants.filter(g=>groupFor(g)==='team'),
-    players:grants.filter(g=>groupFor(g)==='players'),
-    operations:grants.filter(g=>groupFor(g)==='operations')
-  };
+  const clubMap=new Map(allClubs.map(club=>[club.id,club]));
+  const teamMap=new Map(allTeams.map(team=>[team.id,team]));
+  const playerIds=Array.from(new Set(grants.filter(g=>g.role==='PLAYER'&&g.player_id).map(g=>g.player_id as string)));
+
+  const membershipRows=playerIds.length
+    ?(await supabase
+      .from('team_memberships')
+      .select('player_id,team_id,is_primary,start_on')
+      .in('player_id',playerIds)
+      .eq('status','ACTIVE')
+      .is('end_on',null)).data??[]
+    :[];
+
+  const membershipByPlayer=new Map<string,{player_id:string;team_id:string;is_primary:boolean;start_on:string}>();
+  (membershipRows as Array<{player_id:string;team_id:string;is_primary:boolean;start_on:string}>)
+    .sort((a,b)=>Number(b.is_primary)-Number(a.is_primary)||String(b.start_on).localeCompare(String(a.start_on)))
+    .forEach(row=>{if(!membershipByPlayer.has(row.player_id))membershipByPlayer.set(row.player_id,row);});
+
+  function grantCityId(grant:GrantRow){
+    if(grant.scope_type==='CITY')return grant.city_id;
+    if(grant.scope_type==='CLUB'&&grant.club_id)return clubMap.get(grant.club_id)?.city_id??null;
+    if(grant.scope_type==='TEAM'&&grant.team_id){
+      const team=teamMap.get(grant.team_id);
+      return team?clubMap.get(team.club_id)?.city_id??null:null;
+    }
+    if(grant.scope_type==='PLAYER'&&grant.player_id){
+      const membership=membershipByPlayer.get(grant.player_id);
+      if(!membership)return null;
+      const team=teamMap.get(membership.team_id);
+      return team?clubMap.get(team.club_id)?.city_id??null:null;
+    }
+    return null;
+  }
+
+  const scopeCityIds=Array.from(new Set(grants.map(grantCityId).filter((id):id is string=>!!id)));
+  const cityRows=scopeCityIds.length
+    ?(await supabase.from('cities').select('id,name,province_abbr').in('id',scopeCityIds).order('name')).data??[]
+    :[];
+  const cityMap=new Map((cityRows as Array<{id:string;name:string;province_abbr:string|null}>).map(city=>[city.id,city]));
+
+  const directoryGrants:AccessDirectoryGrant[]=grants.map(grant=>{
+    const scopeCityId=grantCityId(grant);
+    return {
+      id:grant.id,
+      user_id:grant.user_id,
+      display_name:grant.display_name,
+      email:grant.email,
+      role:grant.role,
+      scope_type:grant.scope_type,
+      note:grant.note,
+      scope_label:grant.scope_label,
+      can_revoke:grant.can_revoke,
+      scope_city_id:scopeCityId,
+      scope_city_name:scopeCityId?cityMap.get(scopeCityId)?.name??null:null
+    };
+  });
 
   return <main className="shell sports-shell">
     <SiteHeader/>
@@ -153,14 +150,14 @@ export default async function RoleManagementPage(){
           <p className="section-note">Owner → Global Admin → City Admin → Team Admin → Player</p>
         </div>
 
-        <div className="access-directory-stack">
-          <AccessGroup title="Owner" note="National ownership and final authority." grants={grouped.owner} protectLastOwner/>
-          <AccessGroup title="Global Admins" note="National administration below Owner level." grants={grouped.admins}/>
-          <AccessGroup title="City Admins" note="Administration restricted to one City." grants={grouped.city}/>
-          <AccessGroup title="Team Admins" note="Administration restricted to one Team or competitive side." grants={grouped.team}/>
-          <AccessGroup title="Players" note="Account access tied to a permanent IPS player identity." grants={grouped.players}/>
-          {!!grouped.operations.length&&<AccessGroup title="Operations" note="Existing scorer, leader and tournament-level operational access." grants={grouped.operations}/>}
-        </div>
+        <AccessDirectory
+          grants={directoryGrants}
+          cities={(cityRows??[]).map((city:any)=>({
+            id:city.id,
+            name:city.name,
+            province_abbr:city.province_abbr??null
+          }))}
+        />
       </div>
 
       <aside className="grant-create-card grant-create-card-wide">
