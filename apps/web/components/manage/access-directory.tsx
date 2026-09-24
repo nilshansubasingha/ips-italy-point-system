@@ -45,21 +45,59 @@ function AccessGroup({
   title,
   note,
   grants,
+  cities=[],
+  cityFilter=false,
   protectLastOwner=false
 }:{
   title:string;
   note:string;
   grants:AccessDirectoryGrant[];
+  cities?:AccessDirectoryCity[];
+  cityFilter?:boolean;
   protectLastOwner?:boolean;
 }){
+  const [cityId,setCityId]=useState('');
+
+  const availableCities=useMemo(()=>{
+    const ids=new Set(grants.map(grant=>grant.scope_city_id).filter((id):id is string=>!!id));
+    return cities.filter(city=>ids.has(city.id));
+  },[grants,cities]);
+
+  const hasUnassigned=grants.some(grant=>!grant.scope_city_id);
+
+  const visibleGrants=useMemo(()=>{
+    if(!cityFilter||!cityId)return grants;
+    if(cityId==='__none__')return grants.filter(grant=>!grant.scope_city_id);
+    return grants.filter(grant=>grant.scope_city_id===cityId);
+  },[grants,cityFilter,cityId]);
+
   return <section className="access-directory-group">
     <header>
-      <div><span>{title.toUpperCase()}</span><strong>{title}</strong><small>{note}</small></div>
-      <b>{grants.length}</b>
+      <div className="access-group-heading">
+        <span>{title.toUpperCase()}</span>
+        <strong>{title}</strong>
+        <small>{note}</small>
+      </div>
+
+      <div className="access-group-controls">
+        {cityFilter&&<label className="access-group-city-filter">
+          <span>City</span>
+          <select value={cityId} onChange={event=>setCityId(event.target.value)}>
+            <option value="">All cities</option>
+            {availableCities.map(city=><option key={city.id} value={city.id}>
+              {city.name+(city.province_abbr?' · '+city.province_abbr:'')}
+            </option>)}
+            {hasUnassigned&&<option value="__none__">No city assigned</option>}
+          </select>
+        </label>}
+        <b title={cityId?visibleGrants.length+' filtered from '+grants.length:grants.length+' active grants'}>
+          {visibleGrants.length}
+        </b>
+      </div>
     </header>
 
     <div className="access-directory-list">
-      {grants.map(grant=>{
+      {visibleGrants.map(grant=>{
         const protectedOwner=protectLastOwner&&grants.length<=1;
         return <article key={grant.id}>
           <div className="access-directory-person">
@@ -83,7 +121,9 @@ function AccessGroup({
         </article>;
       })}
 
-      {!grants.length&&<div className="access-directory-empty">No active access grants in this level.</div>}
+      {!visibleGrants.length&&<div className="access-directory-empty">
+        {cityId?'No active access grants for this city.':'No active access grants in this level.'}
+      </div>}
     </div>
   </section>;
 }
@@ -95,54 +135,54 @@ export function AccessDirectory({
   grants:AccessDirectoryGrant[];
   cities:AccessDirectoryCity[];
 }){
-  const [cityId,setCityId]=useState('');
+  const grouped=useMemo(()=>({
+    owner:grants.filter(g=>groupFor(g)==='owner'),
+    admins:grants.filter(g=>groupFor(g)==='admins'),
+    city:grants.filter(g=>groupFor(g)==='city'),
+    team:grants.filter(g=>groupFor(g)==='team'),
+    players:grants.filter(g=>groupFor(g)==='players'),
+    operations:grants.filter(g=>groupFor(g)==='operations')
+  }),[grants]);
 
-  const grouped=useMemo(()=>{
-    const keep=(grant:AccessDirectoryGrant)=>{
-      const group=groupFor(grant);
-      if(!cityId)return true;
-      if(group==='owner'||group==='admins')return true;
-      return grant.scope_city_id===cityId;
-    };
-
-    const filtered=grants.filter(keep);
-    return {
-      owner:filtered.filter(g=>groupFor(g)==='owner'),
-      admins:filtered.filter(g=>groupFor(g)==='admins'),
-      city:filtered.filter(g=>groupFor(g)==='city'),
-      team:filtered.filter(g=>groupFor(g)==='team'),
-      players:filtered.filter(g=>groupFor(g)==='players'),
-      operations:filtered.filter(g=>groupFor(g)==='operations')
-    };
-  },[grants,cityId]);
-
-  const selectedCity=cities.find(city=>city.id===cityId)??null;
-
-  return <>
-    <div className="access-directory-toolbar">
-      <div>
-        <span>FILTER DIRECTORY</span>
-        <strong>{selectedCity?selectedCity.name:'All registered cities'}</strong>
-        <small>Owner and Global Admins stay visible because they are national roles.</small>
-      </div>
-      <label>
-        <span>City</span>
-        <select value={cityId} onChange={event=>setCityId(event.target.value)}>
-          <option value="">All cities</option>
-          {cities.map(city=><option key={city.id} value={city.id}>
-            {city.name+(city.province_abbr?' · '+city.province_abbr:'')}
-          </option>)}
-        </select>
-      </label>
-    </div>
-
-    <div className="access-directory-stack">
-      <AccessGroup title="Owner" note="National ownership and final authority." grants={grouped.owner} protectLastOwner/>
-      <AccessGroup title="Global Admins" note="National administration below Owner level." grants={grouped.admins}/>
-      <AccessGroup title="City Admins" note="Administration restricted to one City." grants={grouped.city}/>
-      <AccessGroup title="Team Admins" note="Administration restricted to one Team or competitive side." grants={grouped.team}/>
-      <AccessGroup title="Players" note="Account access tied to a permanent IPS player identity." grants={grouped.players}/>
-      {!!grouped.operations.length&&<AccessGroup title="Operations" note="Existing scorer, leader and tournament-level operational access." grants={grouped.operations}/>}
-    </div>
-  </>;
+  return <div className="access-directory-stack">
+    <AccessGroup
+      title="Owner"
+      note="National ownership and final authority."
+      grants={grouped.owner}
+      protectLastOwner
+    />
+    <AccessGroup
+      title="Global Admins"
+      note="National administration below Owner level."
+      grants={grouped.admins}
+    />
+    <AccessGroup
+      title="City Admins"
+      note="Administration restricted to one City."
+      grants={grouped.city}
+      cities={cities}
+      cityFilter
+    />
+    <AccessGroup
+      title="Team Admins"
+      note="Administration restricted to one Team or competitive side."
+      grants={grouped.team}
+      cities={cities}
+      cityFilter
+    />
+    <AccessGroup
+      title="Players"
+      note="Account access tied to a permanent IPS player identity."
+      grants={grouped.players}
+      cities={cities}
+      cityFilter
+    />
+    {!!grouped.operations.length&&<AccessGroup
+      title="Operations"
+      note="Existing scorer, leader and tournament-level operational access."
+      grants={grouped.operations}
+      cities={cities}
+      cityFilter
+    />}
+  </div>;
 }
