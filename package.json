@@ -1,14 +1,14 @@
 {
   "name": "ips-platform",
-  "version": "0.6.2",
+  "version": "0.7.0",
   "private": true,
-  "description": "IPS \u2014 Italy Point System. Project 5.2 professional management, club/team/player registry, private contact identity and admin-managed player media.",
+  "description": "IPS — Italy Point System. PRISM broadcast platform foundation with independent Program Renderer, Director Studio and Overlay Editor.",
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "scripts": {
-    "dev": "concurrently -n WEB,CONTROLLER,OVERLAY -c blue,green,magenta \"npm run dev -w @ips/web\" \"npm run dev -w @ips/controller\" \"npm run dev -w @ips/overlay\"",
+    "dev": "concurrently -n WEB,CONTROLLER,OVERLAY,DIRECTOR,EDITOR -c blue,green,magenta,cyan,yellow \"npm run dev -w @ips/web\" \"npm run dev -w @ips/controller\" \"npm run dev -w @ips/overlay\" \"npm run dev -w @ips/director\" \"npm run dev -w @ips/editor\"",
     "dev:web": "npm run dev -w @ips/web",
     "dev:controller": "node scripts/sync-public-env.mjs && npm run dev -w @ips/controller",
     "dev:overlay": "npm run dev -w @ips/overlay",
@@ -20,7 +20,9 @@
     "project5:smoke": "node scripts/project5-smoke.mjs",
     "predev": "node scripts/sync-public-env.mjs",
     "project5_1:smoke": "node scripts/project5-1-smoke.mjs",
-    "project5_2:smoke": "node scripts/project5-2-smoke.mjs"
+    "project5_2:smoke": "node scripts/project5-2-smoke.mjs",
+    "dev:director": "npm run dev -w @ips/director",
+    "dev:editor": "npm run dev -w @ips/editor"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
