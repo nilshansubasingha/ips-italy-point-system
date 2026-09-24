@@ -48,11 +48,13 @@ const labels:Record<AccessLevel,{title:string;note:string}>={
 export function RoleGrantForm({
   actorTier,
   registeredCities,
-  clubs
+  clubs,
+  controllerUrl
 }:{
   actorTier:RoleManagementTier;
   registeredCities:RegisteredCity[];
   clubs:TeamIdentity[];
+  controllerUrl:string;
 }){
   const levels=useMemo(()=>allowedLevels(actorTier),[actorTier]);
   const [accessLevel,setAccessLevel]=useState<AccessLevel>(initialLevel(actorTier));
@@ -230,6 +232,17 @@ export function RoleGrantForm({
           <strong>{labels[level].title}</strong>
           <small>{labels[level].note}</small>
         </button>)}
+        <div className="controller-access-tile">
+          <div>
+            <span>MATCH CONTROLLER</span>
+            <strong>Scoring access is per fixture.</strong>
+            <small>Owner and tournament administrators inherit access. Assign normal scorers from Tournament → Officials.</small>
+          </div>
+          <div className="controller-access-tile-actions">
+            <a href={controllerUrl} target="_blank" rel="noreferrer">Open Controller ↗</a>
+            <a href="/manage/tournaments">Fixtures & scorers →</a>
+          </div>
+        </div>
       </div>
     </section>
 

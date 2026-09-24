@@ -144,18 +144,6 @@ export default async function RoleManagementPage(){
       <div className="role-count-card"><span>YOUR ACCESS LEVEL</span><strong>{tierLabel(actorTier)}</strong><small>{grants.length} visible active grants</small></div>
     </section>
 
-    <section className="controller-access-explainer">
-      <div>
-        <span className="eyebrow">MATCH CONTROLLER ACCESS</span>
-        <h2>Scoring access is assigned per fixture.</h2>
-        <p><b>Owner</b> already has Controller access automatically. Tournament administrators inherit access for tournaments they manage. A normal scorer is assigned to a specific fixture from <b>Tournament → Officials</b>, which creates match-scoped Controller access.</p>
-      </div>
-      <div className="controller-access-actions">
-        <a className="button-primary" href={controllerUrl} target="_blank" rel="noreferrer">Open Match Controller ↗</a>
-        <a className="button-secondary" href="/manage/tournaments">Manage fixtures & scorers →</a>
-      </div>
-    </section>
-
     <section className="role-admin-layout hierarchical-access-layout">
       <div className="role-admin-main">
         <div className="sports-section-head">
@@ -186,6 +174,7 @@ export default async function RoleManagementPage(){
             region:city.region??null
           }))}
           clubs={manageableClubs}
+          controllerUrl={controllerUrl}
         />
         <p className="grant-help"><b>Delegation:</b> City Admins can appoint Team Admins and Players inside their City. Team Admins can grant Player access inside their Team. Global Admins can appoint City Admins and lower levels. Owner remains the only level that can appoint another Owner or Global Admin.</p>
       </aside>
