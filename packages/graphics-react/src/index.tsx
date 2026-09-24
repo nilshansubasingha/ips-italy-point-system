@@ -1,0 +1,90 @@
+'use client';
+
+import React,{CSSProperties,useEffect,useMemo,useRef,useState} from 'react';
+import {BROADCAST_HEIGHT,BROADCAST_WIDTH,type BroadcastElement,type SceneDocument} from '@ips/broadcast';
+import {createRenderModel,type ResolvedElement} from '@ips/graphics-engine';
+
+const CSS=[
+'.ips-scene{position:relative;width:1920px;height:1080px;overflow:hidden;transform-origin:top left;background:transparent}',
+'.ips-el{position:absolute;transform-origin:var(--ax,50%) var(--ay,50%);will-change:transform,opacity,filter;min-width:0;min-height:0}',
+'.ips-text{display:flex;overflow:hidden}.ips-text>span{display:block;width:100%;overflow:hidden}',
+'.ips-img{display:block;width:100%;height:100%}.ips-effect{position:absolute;inset:0;overflow:hidden;pointer-events:none}',
+'.ips-light-sweep:after{content:"";position:absolute;top:-35%;bottom:-35%;left:-30%;width:var(--sweep-width,220px);background:linear-gradient(90deg,transparent,rgba(255,255,255,var(--sweep-opacity,.5)),transparent);transform:skewX(var(--sweep-angle,-18deg));animation:ipsLightSweep 1.05s ease-in-out both}',
+'.ips-streak{position:absolute;height:2px;border-radius:999px;transform-origin:left center;filter:blur(.35px)}',
+'.ips-ring{position:absolute;left:50%;top:50%;border:2px solid;border-radius:50%;transform:translate(-50%,-50%) scale(.25);opacity:0;animation:ipsRing 1.1s cubic-bezier(.12,.75,.2,1) forwards}',
+'.ips-particle{position:absolute;width:8px;height:8px;opacity:0;animation:ipsParticle 1s cubic-bezier(.1,.7,.2,1) forwards}',
+'.ips-shard{position:absolute;width:22px;height:8px;clip-path:polygon(0 20%,100% 0,72% 100%,10% 80%);opacity:0;animation:ipsShard .95s cubic-bezier(.1,.7,.2,1) forwards}',
+'.ips-ball{position:absolute;width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff 0 5%,#f04b59 8% 48%,#7d0c17 100%);box-shadow:-260px 0 80px rgba(236,50,68,.35),-120px 0 35px rgba(255,255,255,.22);animation:ipsBall .64s cubic-bezier(.1,.8,.1,1) forwards}',
+'.ips-stumps{position:absolute;inset:0;display:flex;justify-content:center;align-items:flex-end;gap:38px;padding-bottom:8%}.ips-stump{height:72%;width:28px;border-radius:12px;background:linear-gradient(90deg,#dce4e6,#fff,#b5c4c9);transform-origin:bottom center;animation:ipsStump .75s cubic-bezier(.16,.74,.21,1) both}.ips-bail{position:absolute;left:50%;top:20%;width:160px;height:18px;border-radius:9px;transform:translateX(-50%);animation:ipsBail .75s cubic-bezier(.1,.7,.2,1) both}',
+'.ips-flash{position:absolute;inset:0;background:var(--flash,#fff);opacity:0;animation:ipsFlash .32s ease-out both}',
+'.ips-noise{position:absolute;inset:0;pointer-events:none;opacity:var(--noise,.08);background:repeating-linear-gradient(0deg,rgba(255,255,255,.04) 0 1px,transparent 1px 3px);mix-blend-mode:overlay}',
+'.ips-anim-fade{animation:ipsFade var(--dur,.5s) ease both}.ips-anim-slide{animation:ipsSlide var(--dur,.5s) cubic-bezier(.16,.75,.2,1) both}.ips-anim-broadcast-wipe{animation:ipsWipe var(--dur,.5s) cubic-bezier(.16,.8,.2,1) both}.ips-anim-impact{animation:ipsImpact var(--dur,.5s) cubic-bezier(.08,.9,.18,1) both}.ips-anim-scale-pop{animation:ipsScalePop var(--dur,.5s) cubic-bezier(.12,.8,.18,1) both}.ips-anim-mask-reveal{animation:ipsMaskReveal var(--dur,.5s) cubic-bezier(.16,.8,.2,1) both}.ips-anim-light-sweep{animation:ipsFade var(--dur,.5s) ease both}.ips-anim-flash{animation:ipsFlash .32s ease both}.ips-anim-ball-impact{animation:ipsFade .1s linear both}',
+'@keyframes ipsFade{from{opacity:0}to{opacity:1}}@keyframes ipsSlide{from{opacity:0;transform:translate3d(70px,0,0) scale(var(--sx,1),var(--sy,1)) rotate(var(--rot,0deg))}to{opacity:var(--op,1);transform:translate3d(0,0,0) scale(var(--sx,1),var(--sy,1)) rotate(var(--rot,0deg))}}',
+'@keyframes ipsWipe{from{opacity:0;clip-path:inset(0 100% 0 0)}to{opacity:var(--op,1);clip-path:inset(0 0 0 0)}}@keyframes ipsImpact{0%{opacity:0;transform:scale(.7) rotate(var(--rot,0deg));filter:blur(12px)}65%{opacity:1;transform:scale(1.045) rotate(var(--rot,0deg));filter:blur(0)}100%{opacity:var(--op,1);transform:scale(1) rotate(var(--rot,0deg))}}',
+'@keyframes ipsScalePop{0%{opacity:0;transform:scale(.5) rotate(var(--rot,0deg))}70%{opacity:1;transform:scale(1.07) rotate(var(--rot,0deg))}100%{opacity:var(--op,1);transform:scale(1) rotate(var(--rot,0deg))}}@keyframes ipsMaskReveal{from{opacity:0;clip-path:polygon(0 0,0 0,0 100%,0 100%)}to{opacity:var(--op,1);clip-path:polygon(0 0,100% 0,100% 100%,0 100%)}}',
+'@keyframes ipsLightSweep{from{left:-35%}to{left:125%}}@keyframes ipsRing{0%{opacity:0;transform:translate(-50%,-50%) scale(.2)}45%{opacity:.8}100%{opacity:0;transform:translate(-50%,-50%) scale(1.15)}}',
+'@keyframes ipsParticle{0%{opacity:0;transform:translate(0,0) scale(.3)}20%{opacity:.95}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(1.2)}}@keyframes ipsShard{0%{opacity:0;transform:translate(0,0) rotate(0) scale(.4)}22%{opacity:.9}100%{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--dr)) scale(1)}}',
+'@keyframes ipsBall{from{left:-8%;top:55%;transform:translateY(-50%) scale(.72)}to{left:45%;top:48%;transform:translateY(-50%) scale(1.05)}}@keyframes ipsStump{0%{transform:rotate(0)}55%{transform:rotate(var(--stump-rot,0))}100%{transform:rotate(var(--stump-rot,0)) translateY(12px)}}',
+'@keyframes ipsBail{0%{transform:translateX(-50%) translateY(0) rotate(0)}45%{transform:translateX(-50%) translateY(-80px) rotate(12deg)}100%{transform:translateX(-50%) translate(90px,-180px) rotate(55deg);opacity:0}}@keyframes ipsFlash{0%{opacity:0}25%{opacity:.85}100%{opacity:0}}'
+].join('\n');
+
+function paint(p:any):string|undefined{
+  if(!p)return undefined;
+  if(p.type==='SOLID')return p.color;
+  const stops=(p.stops||[]).map((s:any)=>s.color+' '+Math.round(s.offset*100)+'%').join(',');
+  if(p.type==='LINEAR_GRADIENT')return 'linear-gradient('+(p.angle||0)+'deg,'+stops+')';
+  if(p.type==='RADIAL_GRADIENT')return 'radial-gradient(circle,'+stops+')';
+}
+function shadow(s:any){return s?s.x+'px '+s.y+'px '+s.blur+'px '+(s.spread||0)+'px '+s.color:'';}
+function preset(v:string|null|undefined){return v?' ips-anim-'+v.toLowerCase().replaceAll('_','-'):'';}
+function rand(i:number,s=0){const x=Math.sin((i+1)*12.9898+s*78.233)*43758.5453;return x-Math.floor(x);}
+
+function AutoText({element,value}:{element:ResolvedElement;value:string}){
+  const ref=useRef<HTMLSpanElement|null>(null);
+  const base=element.text?.typography.fontSize||24;
+  const [size,setSize]=useState(base);
+  useEffect(()=>{
+    const n=ref.current;if(!n)return;
+    const fit=()=>{let v=base;n.style.fontSize=v+'px';if(element.text?.typography.wrap==='SHRINK'){const min=Math.max(8,base*.42);while(v>min&&(n.scrollWidth>n.clientWidth||n.scrollHeight>n.clientHeight)){v-=1;n.style.fontSize=v+'px';}}setSize(v);};
+    fit();const ro=new ResizeObserver(fit);ro.observe(n);return()=>ro.disconnect();
+  },[value,base,element.transform.width,element.transform.height,element.text?.typography.wrap]);
+  const t=element.text!.typography;
+  return <span ref={ref} style={{fontFamily:t.fontFamily,fontWeight:t.fontWeight,fontSize:size,lineHeight:t.lineHeight,letterSpacing:t.letterSpacing,textAlign:t.align.toLowerCase() as any,padding:t.padding,whiteSpace:t.wrap==='TRUNCATE'?'nowrap':'normal',textOverflow:t.wrap==='TRUNCATE'?'ellipsis':'clip',display:'-webkit-box',WebkitBoxOrient:'vertical',WebkitLineClamp:t.maxLines}}>{value}</span>;
+}
+
+function Effect({element}:{element:ResolvedElement}){
+  const k=element.effect?.kind||'',p=(element.effect?.params||{}) as Record<string,any>;
+  if(k==='LIGHT_SWEEP')return <div className='ips-effect ips-light-sweep' style={{'--sweep-width':(p.width||220)+'px','--sweep-opacity':String(p.intensity||.5),'--sweep-angle':(p.angle||-18)+'deg'} as CSSProperties}/>;
+  if(k==='SPEED_STREAKS'){const count=Math.min(Number(p.count||28),90);return <div className='ips-effect'>{Array.from({length:count},(_,i)=><i className='ips-streak' key={i} style={{top:(rand(i,1)*100)+'%',left:(rand(i,2)*75)+'%',width:90+rand(i,3)*390,background:p.color||'#19d18f',opacity:(p.opacity||.4)*(.45+rand(i,5)*.55),transform:'rotate('+(p.angle||-12)+'deg)',animation:'ipsSlide .7s '+(rand(i,4)*.35)+'s ease both'}}/>)}</div>;}
+  if(k==='ENERGY_RINGS'){const count=Math.min(Number(p.count||5),12);return <div className='ips-effect'>{Array.from({length:count},(_,i)=><i className='ips-ring' key={i} style={{width:(32+i*15)+'%',height:(32+i*15)+'%',borderColor:i%2?(p.secondary||'#7768ff'):(p.color||'#19d18f'),animationDelay:(i*.08)+'s'}}/>)}</div>;}
+  if(k==='PARTICLE_DEPTH'){const count=Math.min(Number(p.count||50),120);return <div className='ips-effect'>{Array.from({length:count},(_,i)=>{const dx=(rand(i,3)-.5)*700,dy=(rand(i,4)-.5)*650,size=3+rand(i,5)*12;return <i className='ips-particle' key={i} style={{left:(20+rand(i,1)*60)+'%',top:(18+rand(i,2)*64)+'%',width:size,height:size,borderRadius:rand(i,6)>.5?'50%':'2px',background:p.color||'#9dfff0','--dx':dx+'px','--dy':dy+'px',animationDelay:(rand(i,7)*.32)+'s'} as CSSProperties}/>;})}</div>;}
+  if(k==='SHARDS'){const count=Math.min(Number(p.count||38),90);return <div className='ips-effect'>{Array.from({length:count},(_,i)=>{const dx=(rand(i,3)-.5)*900,dy=(rand(i,4)-.5)*780,dr=((rand(i,5)-.5)*520)+'deg';return <i className='ips-shard' key={i} style={{left:(38+rand(i,1)*24)+'%',top:(35+rand(i,2)*30)+'%',background:i%3===0?(p.secondary||p.color||'#2f6fff'):(p.color||'#2f6fff'),'--dx':dx+'px','--dy':dy+'px','--dr':dr,animationDelay:(rand(i,6)*.2)+'s'} as CSSProperties}/>;})}</div>;}
+  if(k==='BALL_STREAK')return <div className='ips-effect'><i className='ips-ball'/></div>;
+  if(k==='STUMPS')return <div className='ips-effect'><div className='ips-stumps'><i className='ips-stump' style={{'--stump-rot':'-18deg'} as CSSProperties}/><i className='ips-stump' style={{'--stump-rot':'8deg'} as CSSProperties}/><i className='ips-stump' style={{'--stump-rot':'22deg'} as CSSProperties}/><i className='ips-bail' style={{background:p.bailColor||'#19d18f'}}/></div></div>;
+  if(k==='IMPACT_FLASH')return <div className='ips-effect'><i className='ips-flash' style={{'--flash':p.color||'#fff'} as CSSProperties}/></div>;
+  return null;
+}
+
+function ElementView({element}:{element:ResolvedElement}){
+  const t=element.transform,s:any=element.style||{},c=s.corners;
+  const base:CSSProperties={left:t.x,top:t.y,width:t.width,height:t.height,opacity:t.opacity,transform:'rotate('+t.rotation+'deg) scale('+(t.scaleX*(t.flipX?-1:1))+','+(t.scaleY*(t.flipY?-1:1))+')','--rot':t.rotation+'deg','--sx':String(t.scaleX),'--sy':String(t.scaleY),'--op':String(t.opacity),'--ax':(t.anchorX*100)+'%','--ay':(t.anchorY*100)+'%',background:paint((element.resolvedFill as any)||s.fill),borderRadius:c?(c.tl+'px '+c.tr+'px '+c.br+'px '+c.bl+'px'):undefined,border:s.strokeWidth?(s.strokeWidth+'px solid '+(paint(s.stroke)||'transparent')):undefined,boxShadow:(s.shadows||[]).map(shadow).join(','),filter:[s.blur?'blur('+s.blur+'px)':null,s.glow?'drop-shadow(0 0 '+s.glow+'px rgba(255,255,255,.45))':null].filter(Boolean).join(' ')||undefined,mixBlendMode:s.blendMode as any,overflow:s.overflow==='HIDDEN'?'hidden':'visible',animationDelay:(element.animation?.delayMs||0)+'ms','--dur':((element.animation?.durationMs||500)/1000)+'s'} as CSSProperties;
+  const cls='ips-el'+preset(element.animation?.enterPreset);
+  if(element.type==='TEXT')return <div className={cls+' ips-text'} style={{...base,alignItems:element.text?.typography.verticalAlign==='TOP'?'flex-start':element.text?.typography.verticalAlign==='BOTTOM'?'flex-end':'center',color:paint(s.fill)}}><AutoText element={element} value={element.resolvedText||element.text?.value||''}/></div>;
+  if(['RECT','ROUNDED_RECT','FRAME','CONTAINER','MASK','DATA'].includes(element.type))return <div className={cls} style={base}>{s.noise?<i className='ips-noise' style={{'--noise':String(s.noise)} as CSSProperties}/>:null}</div>;
+  if(element.type==='ELLIPSE')return <div className={cls} style={{...base,borderRadius:'50%'}}/>;
+  if(['IMAGE','SVG','ICON','VIDEO'].includes(element.type)){const src=element.resolvedAssetUrl||element.asset?.url||'';if(!src)return null;if(element.type==='VIDEO')return <video className={cls+' ips-img'} style={base} src={src} autoPlay muted loop={!!element.animation?.loop} playsInline/>;return <img className={cls+' ips-img'} style={{...base,objectFit:(element.asset?.fit||'CONTAIN').toLowerCase() as any,objectPosition:element.asset?.objectPosition}} src={src} alt=''/>;}
+  if(['LINE','POLYGON','PATH'].includes(element.type)){const pts=element.points||[],stroke=paint(s.stroke)||paint(s.fill)||'#fff';return <svg className={cls} style={base} viewBox={'0 0 '+Math.max(t.width,1)+' '+Math.max(t.height,1)} preserveAspectRatio='none'>{element.type==='LINE'?<line x1={pts[0]?.x||0} y1={pts[0]?.y||0} x2={pts[1]?.x||t.width} y2={pts[1]?.y||t.height} stroke={stroke} strokeWidth={s.strokeWidth||2}/>:element.type==='PATH'?<path d={element.pathData||''} fill={paint(s.fill)||'none'} stroke={stroke} strokeWidth={s.strokeWidth||0}/>:<polygon points={pts.map(p=>p.x+','+p.y).join(' ')} fill={paint(s.fill)||'none'} stroke={stroke} strokeWidth={s.strokeWidth||0}/>}</svg>;}
+  if(element.type==='EFFECT'||element.type==='PARTICLES')return <div className={cls} style={base}><Effect element={element}/></div>;
+  return null;
+}
+
+export function SceneCanvas({document,data,scale=1,className='',showSafeArea=false}:{document:SceneDocument|unknown;data:unknown;scale?:number;className?:string;showSafeArea?:boolean}){
+  const model=useMemo(()=>createRenderModel(document,data),[document,data]);
+  return <div className={'ips-scene '+className} style={{transform:'scale('+scale+')'}}><style>{CSS}</style>{showSafeArea&&<div style={{position:'absolute',left:model.document.safeArea.left,top:model.document.safeArea.top,right:model.document.safeArea.right,bottom:model.document.safeArea.bottom,border:'1px dashed rgba(25,209,143,.35)',zIndex:9999,pointerEvents:'none'}}/>}{model.elements.map(el=><ElementView key={el.id} element={el}/>)}</div>;
+}
+
+export function FitSceneCanvas({document,data,className='',showSafeArea=false}:{document:SceneDocument|unknown;data:unknown;className?:string;showSafeArea?:boolean}){
+  const host=useRef<HTMLDivElement|null>(null);const [scale,setScale]=useState(1);
+  useEffect(()=>{const n=host.current;if(!n)return;const fit=()=>{const r=n.getBoundingClientRect();setScale(Math.min(r.width/BROADCAST_WIDTH,r.height/BROADCAST_HEIGHT));};fit();const ro=new ResizeObserver(fit);ro.observe(n);return()=>ro.disconnect();},[]);
+  return <div ref={host} className={className} style={{position:'relative',width:'100%',height:'100%',overflow:'hidden'}}><div style={{position:'absolute',left:'50%',top:'50%',width:BROADCAST_WIDTH*scale,height:BROADCAST_HEIGHT*scale,transform:'translate(-50%,-50%)'}}><SceneCanvas document={document} data={data} scale={scale} showSafeArea={showSafeArea}/></div></div>;
+}
