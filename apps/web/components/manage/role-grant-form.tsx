@@ -13,7 +13,6 @@ type AccountResult={
   display_name:string;
   full_name:string|null;
   email:string|null;
-  phone:string|null;
   status:string;
   linked_player:{id:string;display_name:string;ips_code:string;primary_role:string|null}|null;
   city:{id:string;name:string;province_abbr:string|null;region:string|null}|null;
