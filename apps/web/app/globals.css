@@ -1172,3 +1172,232 @@
   .ranking-stat-cell strong{font-size:11px}
   .ranking-stat-cell span{display:block}
 }
+
+
+/* Project 5.10.1 — configurable ranking catalogue */
+.ranking-admin-intro{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:14px;
+  margin:0 0 20px;
+}
+.ranking-admin-intro article{
+  padding:15px 17px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:#fff;
+  box-shadow:0 10px 30px rgba(5,24,42,.035);
+}
+.ranking-admin-intro span,
+.ranking-admin-intro strong,
+.ranking-admin-intro small{display:block}
+.ranking-admin-intro span{
+  color:var(--green);
+  font-size:7px;
+  font-weight:950;
+  letter-spacing:.11em;
+}
+.ranking-admin-intro strong{
+  margin:5px 0 4px;
+  font-size:15px;
+}
+.ranking-admin-intro small{
+  color:#758a95;
+  font-size:8px;
+  line-height:1.5;
+}
+.ranking-admin-layout{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(360px,430px);
+  gap:24px;
+  align-items:start;
+}
+.ranking-admin-list{min-width:0}
+.ranking-definition-card{
+  margin-bottom:11px;
+  border:1px solid var(--line);
+  border-radius:17px;
+  background:#fff;
+  overflow:hidden;
+  box-shadow:0 10px 30px rgba(5,24,42,.035);
+}
+.ranking-definition-card>summary{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  padding:15px 17px;
+  cursor:pointer;
+  list-style:none;
+}
+.ranking-definition-card>summary::-webkit-details-marker{display:none}
+.ranking-definition-card>summary>div>span,
+.ranking-definition-card>summary>div>strong,
+.ranking-definition-card>summary>div>small{display:block}
+.ranking-definition-card>summary>div>span{
+  color:var(--green);
+  font-size:7px;
+  font-weight:950;
+  letter-spacing:.1em;
+}
+.ranking-definition-card>summary>div>strong{
+  margin:4px 0 3px;
+  font-size:15px;
+}
+.ranking-definition-card>summary>div>small{
+  color:#7c919c;
+  font-size:7px;
+}
+.ranking-definition-card>summary>b{
+  padding:6px 8px;
+  border-radius:999px;
+  font-size:7px;
+  letter-spacing:.08em;
+}
+.ranking-definition-card>summary>b.enabled{
+  background:#e7f7ef;
+  color:#08734d;
+}
+.ranking-definition-card>summary>b.disabled{
+  background:#eef2f4;
+  color:#6c818c;
+}
+.ranking-definition-form{
+  display:grid;
+  gap:11px;
+  padding:15px 17px 17px;
+  border-top:1px solid #edf2f4;
+  background:#fbfcfd;
+}
+.ranking-definition-form label,
+.ranking-create-form label{
+  display:grid;
+  gap:5px;
+}
+.ranking-definition-form label>span,
+.ranking-create-form label>span{
+  color:#718793;
+  font-size:7px;
+  font-weight:950;
+  letter-spacing:.09em;
+  text-transform:uppercase;
+}
+.ranking-definition-form input,
+.ranking-definition-form select,
+.ranking-definition-form textarea{
+  width:100%;
+  min-height:41px;
+  border:1px solid #d2dfe5;
+  border-radius:10px;
+  background:#fff;
+  color:var(--ink);
+  padding:9px 10px;
+  font:inherit;
+  font-size:9px;
+  outline:none;
+}
+.ranking-definition-form textarea{
+  min-height:78px;
+  resize:vertical;
+}
+.ranking-definition-form input:focus,
+.ranking-definition-form select:focus,
+.ranking-definition-form textarea:focus{
+  border-color:#76bea3;
+  box-shadow:0 0 0 3px rgba(8,132,82,.07);
+}
+.ranking-definition-form label>small,
+.ranking-create-form label>small{
+  color:#8ca0aa;
+  font-size:7px;
+  line-height:1.4;
+}
+.ranking-admin-three{
+  grid-template-columns:1fr 1fr 120px;
+}
+.ranking-enabled-toggle{
+  display:flex!important;
+  grid-template-columns:none!important;
+  align-items:center;
+  gap:9px!important;
+  padding:10px 11px;
+  border:1px solid #dbe6ea;
+  border-radius:11px;
+  background:#fff;
+}
+.ranking-enabled-toggle>input{
+  width:16px!important;
+  height:16px!important;
+  min-height:16px!important;
+  padding:0!important;
+  accent-color:#0b9b68;
+}
+.ranking-enabled-toggle>span{
+  text-transform:none!important;
+  letter-spacing:0!important;
+}
+.ranking-enabled-toggle b,
+.ranking-enabled-toggle small{display:block}
+.ranking-enabled-toggle b{
+  color:var(--ink);
+  font-size:9px;
+}
+.ranking-enabled-toggle small{
+  margin-top:2px;
+  color:#879ba5;
+  font-size:7px;
+}
+.ranking-definition-actions{
+  display:flex;
+  justify-content:flex-end;
+}
+.ranking-definition-delete{
+  display:flex;
+  justify-content:flex-end;
+  padding:0 17px 15px;
+  background:#fbfcfd;
+}
+.ranking-create-card{
+  position:sticky;
+  top:18px;
+}
+.ranking-create-form{
+  display:grid;
+  gap:12px;
+}
+.ranking-create-form input,
+.ranking-create-form select,
+.ranking-create-form textarea{
+  width:100%;
+  min-height:43px;
+  border:1px solid rgba(255,255,255,.15);
+  border-radius:10px;
+  background:rgba(255,255,255,.075);
+  color:#fff;
+  padding:9px 10px;
+  font:inherit;
+  font-size:9px;
+  outline:none;
+}
+.ranking-create-form textarea{
+  min-height:84px;
+  resize:vertical;
+}
+.ranking-create-form input::placeholder,
+.ranking-create-form textarea::placeholder{color:#86a2af}
+.ranking-create-form select option{color:var(--ink);background:#fff}
+.ranking-create-form input:focus,
+.ranking-create-form select:focus,
+.ranking-create-form textarea:focus{
+  border-color:#64d2a5;
+  box-shadow:0 0 0 3px rgba(69,210,154,.08);
+}
+
+@media(max-width:1100px){
+  .ranking-admin-layout{grid-template-columns:1fr}
+  .ranking-create-card{position:relative;top:auto}
+}
+@media(max-width:760px){
+  .ranking-admin-intro{grid-template-columns:1fr}
+  .ranking-admin-three{grid-template-columns:1fr}
+}
