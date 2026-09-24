@@ -3014,9 +3014,6 @@
   .p6-engine-state span{
     display:none;
   }
-  .p6-compact-history:not(.expanded) .p6-compact-over-row:nth-child(n+3){
-    display:none;
-  }
   .p6-compact-history>header b{
     display:none;
   }
