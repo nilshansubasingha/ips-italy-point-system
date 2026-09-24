@@ -64,7 +64,7 @@ export function MatchCentre({ fixtures, cities, compact = false }: { fixtures: F
               </div>
               <div className="fixture-versus premium-versus">
                 <div className="fixture-team"><Crest name={fixture.home_team_name} large/><strong>{fixture.home_team_name}</strong><span>HOME</span></div>
-                <div className="fixture-middle"><span>{formatDate(fixture.scheduled_at, true)}</span><strong>VS</strong><small>{fixture.match_code}</small></div>
+                <div className="fixture-middle"><span>{formatDate(fixture.scheduled_at, true, fixture.scheduled_time_tbc)}</span><strong>VS</strong><small>{fixture.match_code}</small></div>
                 <div className="fixture-team right"><Crest name={fixture.away_team_name} large/><strong>{fixture.away_team_name}</strong><span>AWAY</span></div>
               </div>
               <div className="fixture-card-bottom premium-fixture-meta">
