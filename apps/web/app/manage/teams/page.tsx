@@ -79,7 +79,7 @@ export default async function ManageTeamsPage({searchParams}:{searchParams:Promi
            </Link>
            <div className="team-identity-admin-foot">
              <span>{canManage?'Manage enabled':'View only'}</span>
-             {canGlobalDelete&&<form action={deleteTeamIdentity}><input type="hidden" name="team_identity_id" value={identity.id}/><ConfirmSubmitButton className="team-delete-x" title={`Delete ${displayName}`} message={`Delete ${displayName}? This permanently removes the Team and all unused A/B/C sides and roster memberships. Players themselves are not deleted. Teams already used in tournaments or matches are protected.`}>×</ConfirmSubmitButton></form>}
+             {canGlobalDelete&&<form action={deleteTeamIdentity}><input type="hidden" name="team_identity_id" value={identity.id}/><ConfirmSubmitButton className="team-delete-x" title={`Delete ${displayName}`} message={`Delete ${displayName}? This permanently removes the Team and all unused A/B/C sides and roster memberships. Players themselves are not deleted. Scheduled/ready fixture setup and tournament registration will be cleaned automatically. Started, completed or official match history remains protected.`}>×</ConfirmSubmitButton></form>}
            </div>
          </article>;
        })}
