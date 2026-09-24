@@ -9,7 +9,10 @@ function s(form: FormData, key: string) { return String(form.get(key) ?? '').tri
 function nullable(form: FormData, key: string) { const v=s(form,key); return v || null; }
 function num(form: FormData,key:string,fallback:number|null=null){ const raw=s(form,key); if(!raw)return fallback; const n=Number(raw); return Number.isFinite(n)?n:fallback; }
 function go(path: string, kind: 'ok'|'error', message: string): never {
-  redirect(`${path}${path.includes('?') ? '&' : '?'}${kind}=${encodeURIComponent(message)}`);
+  const hashIndex=path.indexOf('#');
+  const base=hashIndex>=0?path.slice(0,hashIndex):path;
+  const hash=hashIndex>=0?path.slice(hashIndex):'';
+  redirect(`${base}${base.includes('?') ? '&' : '?'}${kind}=${encodeURIComponent(message)}${hash}`);
 }
 function returnPath(form: FormData, fallback='/manage/tournaments') { return s(form,'return_to') || fallback; }
 function slugify(value:string){ return value.toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').replace(/-+/g,'-'); }
@@ -95,7 +98,7 @@ export async function updateTournament(form: FormData) {
     };
     const {error}=await supabase.from('tournaments').update(payload).eq('id',id); if(error) throw error;
     revalidatePath(back); revalidatePath('/tournaments');
-    go(back,'ok','Tournament defaults updated. Existing fixtures keep their own match-format snapshot.');
+    go(back,'ok','Tournament defaults updated. Unstarted tournament-snapshot fixtures were synchronized automatically; overrides and started matches stayed frozen.');
   } catch(e:any){go(back,'error',friendlyError(e,'Could not update tournament.'));}
 }
 
@@ -180,9 +183,13 @@ export async function reviewReplacement(form: FormData) {
 export async function createFixture(form: FormData) {
   const supabase=await createClient(); const tid=s(form,'tournament_id'); const back=returnPath(form,`/manage/tournaments/${tid}`);
   try {
-    const scheduled=italyLocalToIso(s(form,'scheduled_at')); if(!scheduled) throw new Error('Match date/time is required.');
+    const scheduledDate=s(form,'scheduled_date');
+    const scheduledTime=s(form,'scheduled_time');
+    if(!scheduledDate) throw new Error('Match date is required.');
+    const scheduled=italyLocalToIso(`${scheduledDate}T${scheduledTime||'12:00'}`);
+    if(!scheduled) throw new Error('Match date is invalid.');
     const home=s(form,'home_team_id'), away=s(form,'away_team_id'); if(home===away) throw new Error('Home and away teams must be different.');
-    const payload:any={tournament_id:tid,match_code:normalizeCode(s(form,'match_code')),match_number:Number(s(form,'match_number')),home_team_id:home,away_team_id:away,venue_id:nullable(form,'venue_id'),scheduled_at:scheduled,stage:s(form,'stage')||'LEAGUE',round_label:nullable(form,'round_label'),status:'SCHEDULED'};
+    const payload:any={tournament_id:tid,match_code:normalizeCode(s(form,'match_code')),match_number:Number(s(form,'match_number')),home_team_id:home,away_team_id:away,venue_id:nullable(form,'venue_id'),scheduled_at:scheduled,scheduled_time_tbc:!scheduledTime,stage:s(form,'stage')||'LEAGUE',round_label:nullable(form,'round_label'),status:'SCHEDULED'};
     const {error}=await supabase.from('matches').insert(payload); if(error) throw error; revalidatePath(back); go(back,'ok','Fixture created. Tournament match settings were snapshotted automatically.');
   } catch(e:any){go(back,'error',friendlyError(e,'Could not create fixture.'));}
 }
@@ -258,4 +265,32 @@ export async function setMatchTeamRoles(form: FormData) {
     const {error}=await supabase.rpc('ips_set_match_team_roles',{p_match_id:s(form,'match_id'),p_team_id:s(form,'team_id'),p_captain_id:s(form,'captain_id'),p_wicketkeeper_id:s(form,'wicketkeeper_id')}); if(error) throw error;
     revalidatePath(back); go(back,'ok','Captain and wicketkeeper saved.');
   } catch(e:any){go(back,'error',friendlyError(e,'Could not save team roles.'));}
+}
+
+
+export async function saveMatchPlayingSides(input:{
+  tournamentId:string;
+  matchId:string;
+  homePlayerIds:string[]|null;
+  awayPlayerIds:string[]|null;
+}){
+  const supabase=await createClient();
+  try{
+    const home=Array.isArray(input.homePlayerIds)?input.homePlayerIds.map(String):null;
+    const away=Array.isArray(input.awayPlayerIds)?input.awayPlayerIds.map(String):null;
+    if(!input.matchId||!input.tournamentId)throw new Error('Match context is missing.');
+    if(home===null&&away===null)throw new Error('No editable playing side was supplied.');
+
+    const {error}=await supabase.rpc('ips_set_match_playing_sides',{
+      p_match_id:input.matchId,
+      p_home_player_ids:home,
+      p_away_player_ids:away
+    });
+    if(error)throw error;
+
+    revalidatePath(`/manage/tournaments/${input.tournamentId}`);
+    return {ok:true,message:home!==null&&away!==null?'Both playing sides saved.':'Playing side saved.'};
+  }catch(error:any){
+    return {ok:false,error:friendlyError(error,'Could not save playing sides.')};
+  }
 }

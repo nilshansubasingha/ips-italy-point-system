@@ -23,7 +23,7 @@ export default async function ControllerHome() {
       {matches.map((m:any)=><Link className="controller-match-card" href={`/matches/${m.match_id}`} key={m.match_id}>
         <div className="match-card-top"><span className={`match-state ${String(m.match_status).toLowerCase()}`}>{String(m.match_status).replaceAll('_',' ')}</span><b>{m.match_code}</b></div>
         <h2>{m.home_team_name} <i>vs</i> {m.away_team_name}</h2>
-        <p>{m.tournament_name}</p><footer><span>{new Date(m.scheduled_at).toLocaleString('en-IT',{timeZone:'Europe/Rome',dateStyle:'medium',timeStyle:'short'})}</span><strong>Open →</strong></footer>
+        <p>{m.tournament_name}</p><footer><span>{new Date(m.scheduled_at).toLocaleString('en-IT',m.scheduled_time_tbc?{timeZone:'Europe/Rome',dateStyle:'medium'}:{timeZone:'Europe/Rome',dateStyle:'medium',timeStyle:'short'})}</span><strong>Open →</strong></footer>
       </Link>)}
       {!matches.length && <div className="portal-empty"><strong>No controller matches available.</strong><p>If you are an Owner or tournament administrator, this means IPS currently has no fixture you can open. Create a fixture first. Scorers appear here only after they are assigned to that fixture under Tournament → Officials.</p><Link href={(process.env.NEXT_PUBLIC_IPS_WEB_URL ?? 'http://localhost:3000')+'/manage/tournaments'}>Create / manage fixtures →</Link></div>}
     </section>

@@ -1,4 +1,4 @@
-export function formatDate(value: string | null | undefined, includeTime = false): string {
+export function formatDate(value: string | null | undefined, includeTime = false, timeTbc = false): string {
   if (!value) return 'TBC';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
@@ -7,7 +7,7 @@ export function formatDate(value: string | null | undefined, includeTime = false
     day: '2-digit',
     month: 'short',
     year: 'numeric',
-    ...(includeTime ? { hour: '2-digit', minute: '2-digit' } : {}),
+    ...(includeTime && !timeTbc ? { hour: '2-digit', minute: '2-digit' } : {}),
   }).format(date);
 }
 
