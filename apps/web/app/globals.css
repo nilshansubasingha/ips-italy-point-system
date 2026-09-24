@@ -396,3 +396,86 @@
   .selected-access-account{grid-template-columns:42px minmax(0,1fr)}
   .selected-access-account>button{grid-column:1/-1}
 }
+
+
+/* Project 5.8.1 — hierarchical access management */
+.hierarchical-access-layout{grid-template-columns:minmax(0,1fr) minmax(460px,540px);gap:28px}
+.grant-intro{margin:-4px 0 18px;color:#a9c0cc;font-size:9px;line-height:1.55}
+.access-directory-stack{display:grid;gap:14px}
+.access-directory-group{background:#fff;border:1px solid var(--line);border-radius:20px;overflow:hidden;box-shadow:0 10px 30px rgba(5,24,42,.04)}
+.access-directory-group>header{display:flex;justify-content:space-between;gap:18px;align-items:center;padding:16px 18px;background:linear-gradient(180deg,#fbfdfe,#f7fafb);border-bottom:1px solid #e7eef1}
+.access-directory-group>header>div>span,.access-directory-group>header>div>strong,.access-directory-group>header>div>small{display:block}
+.access-directory-group>header>div>span{font-size:7px;letter-spacing:.12em;color:var(--green);font-weight:950}
+.access-directory-group>header>div>strong{font-size:17px;letter-spacing:-.025em;margin-top:3px}
+.access-directory-group>header>div>small{font-size:8px;color:var(--muted);margin-top:3px}
+.access-directory-group>header>b{display:grid;place-items:center;min-width:34px;height:34px;border-radius:11px;background:#e9f6f0;color:var(--green);font-size:13px}
+.access-directory-list{display:grid;padding:0 12px}
+.access-directory-list>article{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(150px,.8fr) auto;gap:14px;align-items:center;padding:13px 4px;border-top:1px solid #edf2f4}
+.access-directory-list>article:first-child{border-top:0}
+.access-directory-person{display:grid;grid-template-columns:38px minmax(0,1fr);gap:10px;align-items:center;min-width:0}
+.access-directory-avatar{display:grid;place-items:center;width:38px;height:38px;border-radius:11px;background:linear-gradient(145deg,#087a4f,#0b3452);color:#fff;font-size:9px;font-weight:950}
+.access-directory-person strong,.access-directory-person small,.access-directory-scope span,.access-directory-scope b,.access-directory-scope small{display:block}
+.access-directory-person strong{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.access-directory-person small{margin-top:3px;font-size:7px;color:#7d919b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.access-directory-scope{text-align:right}
+.access-directory-scope span{font-size:7px;color:var(--green);font-weight:950;letter-spacing:.08em}
+.access-directory-scope b{margin-top:3px;font-size:9px}
+.access-directory-scope small{margin-top:3px;font-size:7px;color:#7b909b}
+.access-directory-list form button{border:1px solid #efbdc1;background:#fff5f6;color:#a62c35;border-radius:9px;padding:8px 9px;font-size:8px;font-weight:900;cursor:pointer}
+.access-directory-list article>em{font-style:normal;color:#8799a2;font-size:7px;font-weight:900}
+.access-directory-empty{padding:17px 5px;color:#80939d;font-size:8px}
+.role-count-card strong{font-size:27px;line-height:1.05}
+
+.grant-create-card-wide .access-account-search{overflow:visible}
+.grant-create-card-wide .access-search-query{display:grid;gap:7px;position:relative}
+.grant-create-card-wide .access-search-query>span{font-size:9px;letter-spacing:.11em;text-transform:uppercase;color:#a7c2ce;font-weight:900}
+.grant-create-card-wide .access-search-query .access-search-results{
+  position:absolute;
+  left:0;
+  right:0;
+  top:calc(100% + 8px);
+  z-index:180;
+  max-height:460px;
+  overflow:auto;
+  padding:7px;
+  border:1px solid #cbd9df;
+  border-radius:15px;
+  background:#fff;
+  box-shadow:0 26px 70px rgba(3,20,34,.32)
+}
+.access-dropdown-label{padding:8px 10px 6px;color:#7c909a;font-size:7px;font-weight:950;letter-spacing:.12em}
+.access-city-results{display:grid;gap:4px;padding-bottom:5px;border-bottom:1px solid #edf2f4;margin-bottom:3px}
+.access-city-result{width:100%;display:grid;grid-template-columns:31px minmax(0,1fr) auto;gap:10px;align-items:center;border:0;background:#f7fafb;color:var(--ink);padding:9px 10px;border-radius:10px;text-align:left;cursor:pointer}
+.access-city-result:hover{background:#edf8f3}
+.access-city-pin{display:grid;place-items:center;width:31px;height:31px;border-radius:9px;background:#e4f5ed;color:var(--green);font-size:14px}
+.access-city-result strong,.access-city-result small{display:block}.access-city-result strong{font-size:9px}.access-city-result small{font-size:7px;color:#728792;margin-top:2px}
+.access-city-result>i{font-style:normal;color:var(--green);font-size:7px;font-weight:950;letter-spacing:.08em}
+.selected-city-chip{display:flex;align-items:center;gap:7px;width:max-content;max-width:100%;padding:6px 8px;border-radius:999px;background:#e7f7ef;color:#086f4a}
+.selected-city-chip span{font-size:6px!important;letter-spacing:.08em!important;color:#5c8c77!important}.selected-city-chip b{font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.selected-city-chip button{display:grid;place-items:center;width:18px;height:18px;border:0;border-radius:50%;background:#caeadb;color:#086f4a;cursor:pointer;line-height:1}
+
+.access-level-section{display:grid;gap:9px}
+.access-section-label{display:flex;align-items:flex-end;justify-content:space-between;gap:10px}
+.access-section-label span{font-size:8px;letter-spacing:.11em;color:#9fbac7;font-weight:950}
+.access-section-label small{font-size:7px;color:#8aa5b2}
+.access-level-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.access-level-grid button{position:relative;min-height:84px;text-align:left;border:1px solid rgba(255,255,255,.13);border-radius:13px;background:rgba(255,255,255,.055);color:#fff;padding:12px 12px 12px 40px;cursor:pointer}
+.access-level-grid button:hover{border-color:rgba(121,220,180,.45);background:rgba(255,255,255,.08)}
+.access-level-grid button.active{border-color:#5fc69b;background:rgba(20,157,103,.16);box-shadow:0 0 0 2px rgba(26,174,115,.08)}
+.access-level-grid .choice-check{position:absolute;left:11px;top:12px;display:grid;place-items:center;width:19px;height:19px;border-radius:50%;border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.08);color:#7ee1b8;font-size:10px}
+.access-level-grid button.active .choice-check{background:#0aa06a;border-color:#0aa06a;color:#fff}
+.access-level-grid strong,.access-level-grid small{display:block}.access-level-grid strong{font-size:10px}.access-level-grid small{margin-top:5px;color:#a8c0cb;font-size:7px;line-height:1.4}
+.access-auto-scope{display:grid;gap:3px;padding:12px 13px;border-radius:12px;border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.05)}
+.access-auto-scope>span{font-size:7px;letter-spacing:.1em;color:#7eddb7;font-weight:950}.access-auto-scope strong{font-size:10px}.access-auto-scope small{font-size:7px;color:#9db6c2}
+.access-auto-scope.warning{border-color:rgba(226,176,94,.35);background:rgba(170,111,23,.12)}.access-auto-scope.warning>span{color:#efc372}
+.grant-create-card-wide .role-grant-form>label>span{font-size:8px;letter-spacing:.1em;color:#9fbac7;font-weight:950;text-transform:uppercase}
+
+@media(max-width:1180px){
+  .hierarchical-access-layout{grid-template-columns:1fr}
+}
+@media(max-width:720px){
+  .access-directory-list>article{grid-template-columns:minmax(0,1fr) auto}
+  .access-directory-scope{grid-column:1/-1;text-align:left;padding-left:48px;margin-top:-6px}
+  .access-level-grid{grid-template-columns:1fr}
+  .grant-create-card-wide .access-search-query .access-search-results{position:fixed;left:12px;right:12px;top:auto;bottom:14px;max-height:65vh}
+}
