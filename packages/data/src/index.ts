@@ -165,6 +165,7 @@ export type FixtureContextRow = {
   match_number: number;
   match_status: string;
   scheduled_at: string;
+  scheduled_time_tbc: boolean;
   stage: string;
   round_label: string | null;
   tournament_id: string;
@@ -382,6 +383,7 @@ async function getFixtureContextsFromBaseTables(client: SupabaseClient): Promise
       match_number: match.match_number,
       match_status: match.status,
       scheduled_at: match.scheduled_at,
+      scheduled_time_tbc: !!match.scheduled_time_tbc,
       stage: match.stage,
       round_label: match.round_label ?? null,
       tournament_id: tournament?.id ?? match.tournament_id,
