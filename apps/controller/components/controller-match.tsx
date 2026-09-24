@@ -727,6 +727,10 @@ export function ControllerMatch({
 
     {sheet?.kind==='bowler'&&<ChoiceSheet title="Choose the next bowler" kicker="OVER COMPLETE" onClose={()=>{}} locked>
       <p className="p6-sheet-copy">The previous bowler and anyone who has reached the over limit are disabled automatically.</p>
+      <div className="p6-sheet-recovery">
+        <button type="button" disabled={pending||!canUndo} onClick={()=>setSheet({kind:'undo-confirm'})}>↶ Undo last ball</button>
+        <button type="button" disabled={pending} onClick={()=>setSheet({kind:'reset-confirm'})}>↺ Reset innings</button>
+      </div>
       <div className="p6-player-choice-list">
         {scoring.bowlers.map(player=>{
           const stats=scoring.bowler_stats.find(item=>item.player_id===player.player_id);
