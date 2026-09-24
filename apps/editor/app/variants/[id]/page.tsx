@@ -1,0 +1,3 @@
+import {notFound,redirect} from 'next/navigation';import {createClient} from '@/lib/supabase/server';import {EditorWorkspace} from '@/components/editor-workspace';
+export const dynamic='force-dynamic';export const revalidate=0;
+export default async function VariantEditor({params}:{params:Promise<{id:string}>}){const {id}=await params;if(!/^[0-9a-f-]{36}$/i.test(id))notFound();const supabase=await createClient();const {data:{user}}=await supabase.auth.getUser();if(!user)redirect('/auth/login');const {data,error}=await supabase.rpc('ips_broadcast_variant_document',{p_variant_id:id});if(error)throw new Error(error.message);if(!data?.version?.document)notFound();return <EditorWorkspace initial={data}/>;}
