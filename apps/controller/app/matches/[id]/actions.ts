@@ -33,12 +33,18 @@ function actionError(error:any,fallback:string){
   return {ok:false as const,error:String(error?.message||fallback)};
 }
 
+async function attachOverHistory(supabase:any,matchId:string,context:any){
+  const {data,error}=await supabase.rpc('ips_scoring_over_history',{p_match_id:matchId});
+  if(error)return {...(context??{}),over_history:context?.over_history??[]};
+  return {...(context??{}),over_history:Array.isArray(data)?data:[]};
+}
+
 export async function refreshScoringContext(matchId:string){
   try{
     const supabase=await createClient();
     const {data,error}=await supabase.rpc('ips_scoring_context',{p_match_id:matchId});
     if(error)throw error;
-    return {ok:true as const,context:data};
+    return {ok:true as const,context:await attachOverHistory(supabase,matchId,data)};
   }catch(error:any){
     return actionError(error,'Could not refresh the scoring state.');
   }
@@ -62,7 +68,7 @@ export async function startInningsAction(input:{
     });
     if(error)throw error;
     revalidatePath('/matches/'+input.matchId);
-    return {ok:true as const,context:data};
+    return {ok:true as const,context:await attachOverHistory(supabase,input.matchId,data)};
   }catch(error:any){
     return actionError(error,'Could not start the innings.');
   }
@@ -90,7 +96,7 @@ export async function scoreDeliveryAction(input:{
     });
     if(error)throw error;
     revalidatePath('/matches/'+input.matchId);
-    return {ok:true as const,context:data};
+    return {ok:true as const,context:await attachOverHistory(supabase,input.matchId,data)};
   }catch(error:any){
     return actionError(error,'Could not record the delivery.');
   }
@@ -105,7 +111,7 @@ export async function selectNextBowlerAction(input:{matchId:string;bowlerId:stri
     });
     if(error)throw error;
     revalidatePath('/matches/'+input.matchId);
-    return {ok:true as const,context:data};
+    return {ok:true as const,context:await attachOverHistory(supabase,input.matchId,data)};
   }catch(error:any){
     return actionError(error,'Could not select the bowler.');
   }
