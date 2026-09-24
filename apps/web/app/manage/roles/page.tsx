@@ -40,6 +40,7 @@ export default async function RoleManagementPage(){
   if(!actorTier)redirect('/manage');
 
   const supabase=await createClient();
+  const controllerUrl=process.env.NEXT_PUBLIC_CONTROLLER_URL??'http://localhost:3001';
   const [
     {data:grantRows,error:grantError},
     {data:registeredCities,error:cityError},
@@ -141,6 +142,18 @@ export default async function RoleManagementPage(){
         <p>Access now follows the IPS management chain. Each administrator can delegate only below their own level and only inside the City or Team they control.</p>
       </div>
       <div className="role-count-card"><span>YOUR ACCESS LEVEL</span><strong>{tierLabel(actorTier)}</strong><small>{grants.length} visible active grants</small></div>
+    </section>
+
+    <section className="controller-access-explainer">
+      <div>
+        <span className="eyebrow">MATCH CONTROLLER ACCESS</span>
+        <h2>Scoring access is assigned per fixture.</h2>
+        <p><b>Owner</b> already has Controller access automatically. Tournament administrators inherit access for tournaments they manage. A normal scorer is assigned to a specific fixture from <b>Tournament → Officials</b>, which creates match-scoped Controller access.</p>
+      </div>
+      <div className="controller-access-actions">
+        <a className="button-primary" href={controllerUrl} target="_blank" rel="noreferrer">Open Match Controller ↗</a>
+        <a className="button-secondary" href="/manage/tournaments">Manage fixtures & scorers →</a>
+      </div>
     </section>
 
     <section className="role-admin-layout hierarchical-access-layout">
