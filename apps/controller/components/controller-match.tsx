@@ -7,7 +7,9 @@ import {
   overrideMatchFormat,
   scoreDeliveryAction,
   selectNextBowlerAction,
-  startInningsAction
+  startInningsAction,
+  undoLastDeliveryAction,
+  resetCurrentInningsAction
 } from '@/app/matches/[id]/actions';
 
 type Player={player_id:string;ips_code:string;name:string;primary_role?:string|null;order?:number};
@@ -75,6 +77,8 @@ type Sheet=
   |{kind:'runout'}
   |{kind:'next-batter';wicketKind:WicketKind;dismissedPlayerId:string|null}
   |{kind:'bowler'}
+  |{kind:'undo-confirm'}
+  |{kind:'reset-confirm'}
   |null;
 
 function sideReady(side:Side,n:number){
@@ -407,6 +411,25 @@ export function ControllerMatch({
     });
   }
 
+  function undoLastBall(){
+    setNotice(null);
+    startTransition(async()=>{
+      const result=await undoLastDeliveryAction({matchId:context.match.id});
+      applyResult(result,'Last delivery undone.');
+    });
+  }
+
+  function resetInnings(){
+    setNotice(null);
+    startTransition(async()=>{
+      const result=await resetCurrentInningsAction({
+        matchId:context.match.id,
+        reason:'Reset from Match Controller'
+      });
+      applyResult(result,'Current innings reset to its starting state.');
+    });
+  }
+
   function wicketWillEndInnings(){
     return scoring.wickets+1>=scoring.effective_wicket_limit||scoring.legal_balls+1>=scoring.max_balls;
   }
@@ -436,6 +459,12 @@ export function ControllerMatch({
   }
 
   const scoringLocked=!ready||pending||!scoring.started||scoring.innings_complete||scoring.match_complete||scoring.awaiting_bowler;
+  const canUndo=!!scoring.started&&(
+    scoring.legal_balls>0||
+    scoring.runs>0||
+    scoring.wickets>0||
+    (scoring.current_over?.length??0)>0
+  );
   const live=!!scoring.started&&!scoring.match_complete;
 
   return <main className="controller-shell project6-shell">
@@ -491,7 +520,8 @@ export function ControllerMatch({
       </div>}
 
       {ready&&scoring.started&&scoring.innings_complete&&!scoring.match_complete&&<div className="p6-start p6-between-innings">
-        <div className="p6-start-title"><span>INNINGS 1 COMPLETE</span><strong>{firstInnings?.runs??0}/{firstInnings?.wickets??0} · Target {(firstInnings?.runs??0)+1}</strong></div>
+        <div className="p6-start-title"><span>INNINGS BREAK · SAVED</span><strong>{firstInnings?.runs??0}/{firstInnings?.wickets??0} · Target {(firstInnings?.runs??0)+1}</strong></div>
+        <p className="p6-break-note">This match is saved. You can leave it, score another match, and return here later to start the chase.</p>
         {startBattingSide&&startBowlingSide&&<>
           <div className="p6-team-fixed"><span>BATTING</span><strong>{startBattingSide.team.name}</strong><i>Target {(firstInnings?.runs??0)+1}</i></div>
           <div className="p6-opening-grid">
@@ -504,7 +534,7 @@ export function ControllerMatch({
             <label><span>OPENING BOWLER · {startBowlingSide.team.name}</span><select value={openingBowler} onChange={event=>setOpeningBowler(event.target.value)}>
               {startBowlingSide.playing_side.map(player=><option key={player.player_id} value={player.player_id}>{player.name}</option>)}
             </select></label>
-            <button type="button" className="p6-start-button" disabled={pending} onClick={startInnings}>{pending?'Starting…':'Start chase →'}</button>
+            <button type="button" className="p6-start-button" disabled={pending} onClick={startInnings}>{pending?'Starting…':'Start 2nd innings →'}</button>
           </div>
         </>}
       </div>}
@@ -531,6 +561,21 @@ export function ControllerMatch({
 
         <section className="p6-bowler-current">
           <BowlerCurrentOverCard scoring={scoring} bowler={currentBowler}/>
+        </section>
+
+        <section className="p6-score-tools">
+          <button
+            type="button"
+            className="undo"
+            disabled={pending||!canUndo}
+            onClick={()=>setSheet({kind:'undo-confirm'})}
+          ><b>↶</b><span>UNDO BALL</span></button>
+          <button
+            type="button"
+            className="reset"
+            disabled={pending||!scoring.started}
+            onClick={()=>setSheet({kind:'reset-confirm'})}
+          ><b>↺</b><span>RESET INNINGS</span></button>
         </section>
 
         {!scoring.innings_complete&&!scoring.match_complete&&<section className="controller-action-zone p6-actions">
@@ -610,6 +655,23 @@ export function ControllerMatch({
         </div>
       </details>
     </section>
+
+    {sheet?.kind==='undo-confirm'&&<ChoiceSheet title="Undo the last ball?" kicker="SCORING RECOVERY" onClose={()=>setSheet(null)}>
+      <p className="p6-sheet-copy">This reverses the most recent recorded delivery in the scoring ledger and restores the score, strike, bowler state, wickets and free-hit state from immediately before that ball.</p>
+      <div className="p6-recovery-confirm">
+        <button type="button" className="secondary" disabled={pending} onClick={()=>setSheet(null)}>Cancel</button>
+        <button type="button" className="primary" disabled={pending||!canUndo} onClick={undoLastBall}>{pending?'Undoing…':'Undo last ball'}</button>
+      </div>
+    </ChoiceSheet>}
+
+    {sheet?.kind==='reset-confirm'&&<ChoiceSheet title={'Reset innings '+(scoring.innings_no??'')+'?'} kicker="SCORING RECOVERY" onClose={()=>setSheet(null)}>
+      <p className="p6-sheet-copy">This resets only the current innings back to 0/0 and its original opening batters/bowler. The action is audited. If this is innings 2, the saved target from innings 1 is kept.</p>
+      <div className="p6-reset-warning">This is more destructive than Undo Ball. Use it only when you want to restart the whole current innings.</div>
+      <div className="p6-recovery-confirm">
+        <button type="button" className="secondary" disabled={pending} onClick={()=>setSheet(null)}>Cancel</button>
+        <button type="button" className="danger" disabled={pending} onClick={resetInnings}>{pending?'Resetting…':'Reset current innings'}</button>
+      </div>
+    </ChoiceSheet>}
 
     {sheet?.kind==='extra'&&<ChoiceSheet title={sheet.extra==='WIDE'?'Wide':sheet.extra==='NO_BALL'?'No-ball':sheet.extra==='BYE'?'Byes':'Leg byes'} kicker="EXTRAS" onClose={()=>setSheet(null)}>
       <p className="p6-sheet-copy">{sheet.extra==='WIDE'||sheet.extra==='NO_BALL'?'Choose the additional runs. The mandatory one-run extra is handled automatically.':'Choose the completed extra runs.'}</p>
