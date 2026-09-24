@@ -2,7 +2,7 @@ name: IPS Web Build
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/registry-cleanup-controls]
   workflow_dispatch:
 
 jobs:
