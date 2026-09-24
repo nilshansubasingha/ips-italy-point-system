@@ -2,6 +2,8 @@
 -- Adds guarded read/update RPCs so clickable Access Management profiles follow
 -- the existing Owner > Global Admin > City Admin > Team Admin hierarchy.
 
+begin;
+
 
 create or replace function public.ips_can_manage_account_profile(p_user_id uuid)
 returns boolean
@@ -276,3 +278,4 @@ grant execute on function public.ips_update_managed_profile(uuid,text,text,text,
 
 notify pgrst,'reload schema';
 
+commit;
