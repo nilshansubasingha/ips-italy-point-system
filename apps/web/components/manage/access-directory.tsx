@@ -118,12 +118,15 @@ export function AccessDirectory({
 
   const selectedCity=cities.find(city=>city.id===cityId)??null;
 
-  return <>
+  return <div className="access-directory-stack">
+    <AccessGroup title="Owner" note="National ownership and final authority." grants={grouped.owner} protectLastOwner/>
+    <AccessGroup title="Global Admins" note="National administration below Owner level." grants={grouped.admins}/>
+
     <div className="access-directory-toolbar">
       <div>
-        <span>FILTER DIRECTORY</span>
+        <span>FILTER CITY-SCOPED ACCESS</span>
         <strong>{selectedCity?selectedCity.name:'All registered cities'}</strong>
-        <small>Owner and Global Admins stay visible because they are national roles.</small>
+        <small>Filters City Admins, Team Admins, Players and other city-scoped roles below.</small>
       </div>
       <label>
         <span>City</span>
@@ -136,13 +139,9 @@ export function AccessDirectory({
       </label>
     </div>
 
-    <div className="access-directory-stack">
-      <AccessGroup title="Owner" note="National ownership and final authority." grants={grouped.owner} protectLastOwner/>
-      <AccessGroup title="Global Admins" note="National administration below Owner level." grants={grouped.admins}/>
-      <AccessGroup title="City Admins" note="Administration restricted to one City." grants={grouped.city}/>
-      <AccessGroup title="Team Admins" note="Administration restricted to one Team or competitive side." grants={grouped.team}/>
-      <AccessGroup title="Players" note="Account access tied to a permanent IPS player identity." grants={grouped.players}/>
-      {!!grouped.operations.length&&<AccessGroup title="Operations" note="Existing scorer, leader and tournament-level operational access." grants={grouped.operations}/>}
-    </div>
-  </>;
+    <AccessGroup title="City Admins" note="Administration restricted to one City." grants={grouped.city}/>
+    <AccessGroup title="Team Admins" note="Administration restricted to one Team or competitive side." grants={grouped.team}/>
+    <AccessGroup title="Players" note="Account access tied to a permanent IPS player identity." grants={grouped.players}/>
+    {!!grouped.operations.length&&<AccessGroup title="Operations" note="Existing scorer, leader and tournament-level operational access." grants={grouped.operations}/>}
+  </div>;
 }
