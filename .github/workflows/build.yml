@@ -2,7 +2,7 @@ name: IPS Web Build
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/venue-edit-delete]
   workflow_dispatch:
 
 jobs:
