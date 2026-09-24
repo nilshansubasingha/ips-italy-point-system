@@ -1,13 +1,7 @@
-import {LiveOverlay} from '../../live-overlay';
+import {ProgramRenderer} from '../../program-renderer';
 
-export default async function ProgramOutput({
-  params,searchParams
-}:{
-  params:Promise<{matchId:string}>;
-  searchParams:Promise<Record<string,string|string[]|undefined>>
-}){
+export default async function ProgramOutput({params}:{params:Promise<{matchId:string}>}){
   const {matchId}=await params;
-  const sp=await searchParams;
   const valid=/^[0-9a-f-]{36}$/i.test(matchId)?matchId:null;
-  return <LiveOverlay matchId={valid} debug={sp.debug==='1'}/>;
+  return <ProgramRenderer matchId={valid}/>;
 }
