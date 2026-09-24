@@ -2391,8 +2391,8 @@
     align-items:flex-start;
   }
   .p6-player-main>strong{
-    max-width:56%;
-    font-size:13px;
+    max-width:58%;
+    font-size:15px;
     white-space:normal;
   }
   .p6-player-main>div b{
@@ -2427,9 +2427,14 @@
 }
 @media(max-width:350px){
   .p6-active-players{
-    grid-template-columns:1fr;
+    gap:5px;
+    padding:5px;
   }
+  .p6-player-live,
   .p6-player-live.bowler{
-    grid-column:auto;
+    padding:8px;
+  }
+  .p6-player-main>strong{
+    font-size:14px;
   }
 }
