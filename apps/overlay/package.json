@@ -1,6 +1,6 @@
 {
-  "name": "@ips/overlay",
-  "version": "0.1.0",
+  "name": "@ips/renderer",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3002",
@@ -14,7 +14,10 @@
     "@ips/domain": "*",
     "next": "15.5.18",
     "react": "19.0.0",
-    "react-dom": "19.0.0"
+    "react-dom": "19.0.0",
+    "@ips/broadcast": "*",
+    "@ips/graphics-engine": "*",
+    "@supabase/supabase-js": "^2.49.4"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
