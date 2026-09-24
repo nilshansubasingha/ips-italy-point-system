@@ -1,9 +1,9 @@
 import Link from 'next/link';
-import type { AccountContext } from '@/lib/auth';
+import {canManageRoles,type AccountContext} from '@/lib/auth';
 import {createClient} from '@/lib/supabase/server';
 
 export async function ManagementNav({account, active}:{account:AccountContext;active?:string}) {
-  const owner = account.grants.some(g=>g.role==='OWNER'&&g.scope_type==='GLOBAL');
+  const canManageAccess=canManageRoles(account);
   const canReviewRegistrations=account.grants.some(g=>['OWNER','ADMIN','LEADER'].includes(g.role));
   let registrationCount=0;
   if(canReviewRegistrations){
@@ -22,7 +22,7 @@ export async function ManagementNav({account, active}:{account:AccountContext;ac
     <div className="management-subnav-scroll">
       {items.map(([key,label,href])=><Link key={key} href={href} className={active===key?'active':''}>{label}</Link>)}
       {canReviewRegistrations&&<Link href="/manage/registrations" className={active==='registrations'?'active':''}>Registration Requests{registrationCount>0&&<b className="nav-count-badge">{registrationCount}</b>}</Link>}
-      {owner&&<Link href="/manage/roles" className={active==='roles'?'active':''}>Accounts & Roles</Link>}
+      {canManageAccess&&<Link href="/manage/roles" className={active==='roles'?'active':''}>Accounts & Roles</Link>}
     </div>
   </nav>;
 }
