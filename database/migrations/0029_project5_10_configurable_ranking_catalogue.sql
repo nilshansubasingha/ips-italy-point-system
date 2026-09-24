@@ -83,7 +83,7 @@ using (
   or public.ips_has_role('ADMIN','GLOBAL',null)
 );
 
-revoke all on table public.ranking_definitions from public;
+revoke all on table public.ranking_definitions from public,anon,authenticated;
 grant select on table public.ranking_definitions to anon;
 grant select,insert,update,delete on table public.ranking_definitions to authenticated;
 
