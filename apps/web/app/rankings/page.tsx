@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import {getActiveCities,getPlayerDirectory,getTournamentDirectory} from '@ips/data';
+import {getActiveCities,getPlayerDirectory,getRankingDefinitions,getTournamentDirectory} from '@ips/data';
 import {SiteFooter,SiteHeader} from '@/components/site-header';
 import {RankingsPreview} from '@/components/rankings-preview';
 import {ActiveCityFilter} from '@/components/location/active-city-filter';
@@ -16,10 +16,11 @@ function formatHref(city:string|undefined,overs:number|null){
 
 export default async function RankingsPage({searchParams}:{searchParams:Promise<{city?:string;overs?:string}>}){
   const {city,overs}=await searchParams;
-  const [players,cities,tournaments]=await Promise.all([
+  const [players,cities,tournaments,rankingDefinitions]=await Promise.all([
     getPlayerDirectory(),
     getActiveCities(50),
-    getTournamentDirectory()
+    getTournamentDirectory(),
+    getRankingDefinitions()
   ]);
 
   const selectedCity=city?cities.find(c=>c.code.toLowerCase()===city.toLowerCase())??null:null;
@@ -81,7 +82,7 @@ export default async function RankingsPage({searchParams}:{searchParams:Promise<
           <div><span className="eyebrow">{scopeLabel.toUpperCase()} · {formatLabel.toUpperCase()}</span><h2>Batting, bowling and all-rounder.</h2></div>
           <span className="section-note">Points, awards, SR and figures activate from certified match statistics.</span>
         </div>
-        <RankingsPreview players={visible} scopeLabel={scopeLabel} formatLabel={formatLabel} stacked/>
+        <RankingsPreview players={visible} definitions={rankingDefinitions} scopeLabel={scopeLabel} formatLabel={formatLabel} stacked/>
       </section>
 
       <SiteFooter/>
