@@ -1,159 +1,128 @@
 'use client';
 
-import {useEffect,useMemo,useState} from 'react';
+import {useCallback,useEffect,useMemo,useState} from 'react';
+import {createClient,type RealtimeChannel} from '@supabase/supabase-js';
+import {SceneRenderer} from './scene-renderer';
 
-type Ball={id:string;label:string;legal:boolean;is_wicket:boolean};
-type Person={id:string|null;name:string|null;runs:number;balls?:number;wickets?:number;legal_balls?:number};
-type Team={id:string|null;name:string|null;short_name:string|null};
-type OverlayContext={
+type Snapshot={
   match_id:string;
-  match_code:string;
-  tournament_name:string;
-  status:string;
-  started:boolean;
-  innings_no:number|null;
-  batting_team:Team;
-  bowling_team:Team;
-  runs:number;
-  wickets:number;
-  legal_balls:number;
-  balls_per_over:number;
-  overs:string;
-  target_runs:number|null;
-  runs_required:number|null;
-  balls_remaining:number|null;
-  free_hit:boolean;
-  striker:Person;
-  non_striker:Person;
-  bowler:Person;
-  current_over:Ball[];
-  updated_at:string|null;
+  session:any;
+  program:any;
+  release:any;
+  data:any;
+  signal:any;
 };
 
-const API_URL=process.env.NEXT_PUBLIC_SUPABASE_URL;
-const API_KEY=process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+const URL=process.env.NEXT_PUBLIC_SUPABASE_URL;
+const KEY=process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY??process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-function bowlerOvers(legalBalls:number|undefined,ballsPerOver:number){
-  const balls=Math.max(Number(legalBalls||0),0);
-  const bpo=Math.max(Number(ballsPerOver||6),1);
-  return Math.floor(balls/bpo)+'.'+(balls%bpo);
+function activeNow(layer:any,now:number){
+  if(!layer?.expiresAt)return true;
+  const t=Date.parse(layer.expiresAt);
+  return !Number.isFinite(t)||now<t;
 }
 
-function ballClass(ball:Ball){
-  if(ball.is_wicket)return 'wicket';
-  if(ball.label.includes('6'))return 'six';
-  if(ball.label.includes('4'))return 'four';
-  if(/WD|NB|B|LB/.test(ball.label))return 'extra';
-  return '';
+function shouldExit(layer:any,now:number){
+  if(!layer?.expiresAt)return false;
+  const t=Date.parse(layer.expiresAt);
+  return Number.isFinite(t)&&t-now<=380&&t-now>0;
 }
 
-async function readOverlay(matchId:string,signal:AbortSignal){
-  if(!API_URL||!API_KEY)throw new Error('Overlay Supabase configuration is missing.');
-  const response=await fetch(API_URL+'/rest/v1/rpc/ips_public_overlay_context',{
-    method:'POST',
-    headers:{
-      apikey:API_KEY,
-      'Content-Type':'application/json'
-    },
-    body:JSON.stringify({p_match_id:matchId}),
-    cache:'no-store',
-    signal
-  });
-  if(!response.ok){
-    const body=await response.text();
-    throw new Error('Live score request failed ('+response.status+'): '+body.slice(0,180));
-  }
-  return await response.json() as OverlayContext|null;
-}
-
-export function LiveOverlay({matchId}:{matchId:string|null}){
-  const [data,setData]=useState<OverlayContext|null>(null);
+export function LiveOverlay({matchId,debug=false}:{matchId:string|null;debug?:boolean}){
+  const supabase=useMemo(()=>URL&&KEY?createClient(URL,KEY,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}}):null,[]);
+  const [snapshot,setSnapshot]=useState<Snapshot|null>(null);
   const [error,setError]=useState<string|null>(null);
+  const [connection,setConnection]=useState<'CONNECTING'|'LIVE'|'RECONNECTING'|'OFFLINE'>('CONNECTING');
+  const [now,setNow]=useState(()=>Date.now());
+  const [scale,setScale]=useState(1);
+
+  const refresh=useCallback(async()=>{
+    if(!supabase||!matchId)return;
+    const {data,error}=await supabase.rpc('ips_broadcast_program_snapshot',{p_match_id:matchId});
+    if(error){
+      setError(error.message);
+      setConnection(current=>current==='LIVE'?'RECONNECTING':'OFFLINE');
+      return;
+    }
+    if(data){
+      setSnapshot(data as Snapshot);
+      setError(null);
+    }
+  },[supabase,matchId]);
 
   useEffect(()=>{
-    if(!matchId)return;
-    let stopped=false;
-    let timer:ReturnType<typeof setTimeout>|null=null;
-    let controller:AbortController|null=null;
-
-    const tick=async()=>{
-      controller?.abort();
-      controller=new AbortController();
-      try{
-        const next=await readOverlay(matchId,controller.signal);
-        if(!stopped){
-          setData(next);
-          setError(next?null:'No broadcast state is available for this match.');
-        }
-      }catch(reason:any){
-        if(!stopped&&reason?.name!=='AbortError'){
-          setError(reason?.message??'Could not load live score.');
-        }
-      }finally{
-        if(!stopped)timer=setTimeout(tick,650);
-      }
+    const resize=()=>{
+      const sx=window.innerWidth/1920;
+      const sy=window.innerHeight/1080;
+      setScale(Math.min(sx,sy));
     };
+    resize();
+    window.addEventListener('resize',resize);
+    return()=>window.removeEventListener('resize',resize);
+  },[]);
 
-    void tick();
-    return ()=>{
-      stopped=true;
-      if(timer)clearTimeout(timer);
-      controller?.abort();
+  useEffect(()=>{
+    const timer=setInterval(()=>setNow(Date.now()),100);
+    return()=>clearInterval(timer);
+  },[]);
+
+  useEffect(()=>{
+    if(!supabase||!matchId)return;
+    void refresh();
+    let channel:RealtimeChannel|null=supabase.channel('ips-program:'+matchId,{config:{broadcast:{self:false}}});
+    channel
+      .on('postgres_changes',{event:'*',schema:'public',table:'broadcast_realtime_signals',filter:'match_id=eq.'+matchId},()=>void refresh())
+      .subscribe(status=>{
+        if(status==='SUBSCRIBED')setConnection('LIVE');
+        else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')setConnection('RECONNECTING');
+        else if(status==='CLOSED')setConnection('OFFLINE');
+      });
+    const heartbeat=setInterval(()=>void refresh(),5000);
+    return()=>{
+      clearInterval(heartbeat);
+      if(channel)void supabase.removeChannel(channel);
+      channel=null;
     };
-  },[matchId]);
+  },[supabase,matchId,refresh]);
 
-  const crr=useMemo(()=>{
-    if(!data||!data.legal_balls)return '0.00';
-    return ((data.runs*Math.max(data.balls_per_over,1))/data.legal_balls).toFixed(2);
-  },[data]);
+  const layers=useMemo(()=>{
+    const all=Array.isArray(snapshot?.program?.active_layers)?snapshot!.program.active_layers:[];
+    const alive=all.filter((item:any)=>activeNow(item,now));
+    const manifest=snapshot?.release?.manifest?.variants??{};
+    const hasExclusive=alive.some((item:any)=>manifest[item.variantKey]?.conflictBehavior==='EXCLUSIVE');
+    const hidesScorebar=alive.some((item:any)=>manifest[item.variantKey]?.conflictBehavior==='HIDE_SCOREBAR');
+    return alive.filter((item:any)=>{
+      const meta=manifest[item.variantKey];
+      if(!meta)return false;
+      if(hasExclusive&&meta.conflictBehavior!=='EXCLUSIVE')return false;
+      if(hidesScorebar&&meta.replacementGroup==='scorebar')return false;
+      return true;
+    }).sort((a:any,b:any)=>(a.priority??0)-(b.priority??0));
+  },[snapshot,now]);
 
-  if(!matchId){
-    return <main className="stage live-stage">
-      <div className="overlay-status"><b>IPS LIVE OVERLAY</b><span>Add <code>?match=&lt;match-id&gt;</code> to this browser-source URL.</span></div>
-    </main>;
+  if(!matchId||!supabase){
+    return <main className="program-shell">{debug&&<div className="renderer-diagnostic">Renderer configuration missing or invalid match ID.</div>}</main>;
   }
 
-  if(!data){
-    return <main className="stage live-stage">
-      <div className={'overlay-status '+(error?'error':'')}>
-        <b>{error?'OVERLAY WAITING':'CONNECTING LIVE SCORE…'}</b>
-        <span>{error??'Reading the server-authoritative IPS score.'}</span>
-      </div>
-    </main>;
-  }
+  const cleanFeed=!!snapshot?.session?.clean_feed;
+  const manifest=snapshot?.release?.manifest?.variants??{};
 
-  const batting=data.batting_team?.short_name||data.batting_team?.name||'—';
-  const currentBalls=data.current_over??[];
-  const bowlerLegal=Number(data.bowler?.legal_balls||0);
-
-  return <main className="stage live-stage">
-    <section className="broadcast-scorebar live">
-      <div className="broadcast-brand"><b>IPS</b><span>{data.match_code}</span><i/></div>
-      <div className="broadcast-team"><small>BATTING</small><span>{batting}</span><strong>{data.runs}/{data.wickets}</strong></div>
-      <div className="broadcast-over"><strong>{data.overs}</strong><span>OVERS</span></div>
-      <div className="broadcast-batters">
-        <div><b>{data.striker?.name||'—'} *</b><span>{data.striker?.runs??0} <small>{data.striker?.balls??0}</small></span></div>
-        <div><b>{data.non_striker?.name||'—'}</b><span>{data.non_striker?.runs??0} <small>{data.non_striker?.balls??0}</small></span></div>
-      </div>
-      <div className="broadcast-bowler">
-        <small>BOWLER</small>
-        <b>{data.bowler?.name||'—'}</b>
-        <span>{data.bowler?.wickets??0}/{data.bowler?.runs??0} <i>({bowlerOvers(bowlerLegal,data.balls_per_over)})</i></span>
-      </div>
-      <div className="broadcast-balls">
-        <span>{data.free_hit?'FREE HIT':'THIS OVER'}</span>
-        <div>
-          {currentBalls.length
-            ?currentBalls.map(ball=><i key={ball.id} className={ballClass(ball)}>{ball.label}</i>)
-            :<em>—</em>}
-        </div>
-      </div>
-      <div className="broadcast-ticker">
-        <span>CRR <b>{crr}</b></span>
-        {data.target_runs!=null&&<span>TARGET <b>{data.target_runs}</b></span>}
-        {data.runs_required!=null&&data.balls_remaining!=null&&<span>NEED <b>{data.runs_required} FROM {data.balls_remaining}</b></span>}
-        <em>{data.tournament_name}</em>
-      </div>
-    </section>
+  return <main className="program-shell">
+    <div className="program-canvas" style={{transform:`translate(-50%,-50%) scale(${scale})`}}>
+      {!cleanFeed&&layers.map((layer:any)=>{
+        const meta=manifest[layer.variantKey];
+        if(!meta?.document)return null;
+        return <SceneRenderer
+          key={layer.instanceId}
+          document={meta.document}
+          data={{...(snapshot?.data??{}),trigger:layer.payload??{}}}
+          exiting={shouldExit(layer,now)}
+          className={'layer-'+String(meta.presentation||'custom').toLowerCase()}
+        />;
+      })}
+    </div>
+    {debug&&<div className={'renderer-status status-'+connection.toLowerCase()}>
+      <b>{connection}</b><span>{snapshot?.data?.match?.code??'WAITING'}</span><em>rev {snapshot?.program?.revision??0}</em>{error&&<small>{error}</small>}
+    </div>}
   </main>;
 }
