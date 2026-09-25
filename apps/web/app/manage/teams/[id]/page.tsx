@@ -8,6 +8,7 @@ import {requireAccount} from '@/lib/auth';
 import {createClient} from '@/lib/supabase/server';
 import {Crest,PlayerAvatar} from '@/components/identity';
 import {ConfirmSubmitButton} from '@/components/manage/confirm-submit-button';
+import {ImageCropField} from '@/components/media/image-crop-field';
 import {addTeamSide,deleteTeam,deleteTeamIdentity,removeEntityImage,updateTeamIdentity,uploadEntityImage} from '../../registry/actions';
 
 export default async function TeamIdentityOperationsPage({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<Record<string,string|string[]|undefined>>}){
@@ -108,7 +109,7 @@ export default async function TeamIdentityOperationsPage({params,searchParams}:{
            <input type="hidden" name="kind" value="clubs"/>
            <input type="hidden" name="entity_id" value={id}/>
            <input type="hidden" name="return_to" value={`/manage/teams/${id}`}/>
-           <input type="file" name="image" accept="image/jpeg,image/png,image/webp" required/>
+           <ImageCropField name="image" label="Choose team logo" aspect="square" required initialUrl={identity.logo_url}/>
            <button>Upload / replace</button>
          </form>
          {identity.logo_url&&<form action={removeEntityImage}><input type="hidden" name="kind" value="clubs"/><input type="hidden" name="entity_id" value={id}/><input type="hidden" name="return_to" value={`/manage/teams/${id}`}/><button className="danger-link">Remove logo</button></form>}
