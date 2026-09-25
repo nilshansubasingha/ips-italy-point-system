@@ -7,7 +7,7 @@ import {ManagementNav} from '@/components/manage/manage-nav';
 import {requireAccount} from '@/lib/auth';
 import {createClient} from '@/lib/supabase/server';
 import {PlayerAvatar} from '@/components/identity';
-import {addExistingPlayer,createPlayerForTeam,updateRosterPlayer} from '../../../../registry/actions';
+import {addExistingPlayer,updateRosterPlayer} from '../../../../registry/actions';
 
 const ROLE_OPTIONS=['Player','Batter','Bowler','All-rounder','Wicketkeeper','Wicketkeeper-batter'];
 
@@ -20,16 +20,19 @@ export default async function AddPlayerPage({params,searchParams}:{params:Promis
  const ok=typeof sp.ok==='string'?sp.ok:null;
  const supabase=await createClient();
 
- const [{data:team},{data:canManage},{data:members}]=await Promise.all([
+ const [{data:team},{data:canManage},{data:members},{data:pendingRequests}]=await Promise.all([
    supabase.from('teams').select('id,name,side_label,club:clubs(id,name)').eq('id',id).maybeSingle(),
    supabase.rpc('ips_can_manage_team',{p_team_id:id}),
    supabase.from('team_memberships')
      .select('id,player_id,shirt_number,team_role,is_primary,player:players(id,ips_code,display_name,primary_role,profile_image_url)')
-     .eq('team_id',id).eq('status','ACTIVE').is('end_on',null).order('start_on')
+     .eq('team_id',id).eq('status','ACTIVE').is('end_on',null).order('start_on'),
+   supabase.rpc('ips_team_player_requests',{p_team_id:id})
  ]);
  if(!team)notFound();
  if(!canManage)redirect('/manage/teams?error='+encodeURIComponent('You can only add or edit players for teams assigned to your account.'));
 
+ const pendingByPlayer=new Map<string,any>();
+ for(const request of ((pendingRequests??[]) as any[])){if(request.to_side_id===id)pendingByPlayer.set(request.player_id,request);}
  let results:any[]=[];
  if(q.length>=2){
    const r=await supabase.rpc('ips_registry_player_search_v2',{p_team_id:id,p_query:q});
@@ -45,7 +48,7 @@ export default async function AddPlayerPage({params,searchParams}:{params:Promis
        <Link className="back-link" href={`/manage/teams/${(team.club as any)?.id}`}>← {String((team.club as any)?.name??'Team').replace(/\s+Cricket Club$/i,'')}</Link>
        <span className="eyebrow">ROSTER BUILDER</span>
        <h1>{team.side_label==='MAIN'?'Team roster':`${team.side_label} Team roster`}</h1>
-       <p>Search IPS first. Create a new permanent player only when no existing identity matches. Your current team roster stays visible on the right while you work.</p>
+       <p>Search the IPS registry and send a roster request. A Team manager cannot place an existing player on the roster directly: an unattached player must accept, while a player already on another Team can be approved by that player or their current Team.</p>
      </div>
    </section>
 
@@ -72,53 +75,29 @@ export default async function AddPlayerPage({params,searchParams}:{params:Promis
              </div>
              {p.is_on_target_team
                ?<b className="already-chip">Already on team</b>
-               :<form action={addExistingPlayer}>
-                 <input type="hidden" name="team_id" value={id}/>
-                 <input type="hidden" name="player_id" value={p.id}/>
-                 <input name="shirt_number" type="number" min="0" max="999" placeholder="Shirt #"/>
-                 <button>Add existing →</button>
-               </form>}
+               :pendingByPlayer.has(p.id)
+                 ?<b className="already-chip request-pending-chip">Request pending</b>
+                 :<form action={addExistingPlayer}>
+                   <input type="hidden" name="team_id" value={id}/>
+                   <input type="hidden" name="player_id" value={p.id}/>
+                   <input name="shirt_number" type="number" min="0" max="999" placeholder="Shirt #"/>
+                   <button>{p.current_team_identity_name?'Request transfer →':'Send join request →'}</button>
+                 </form>}
            </article>)}
            {!results.length&&<div className="search-empty"><strong>No matching IPS player.</strong><p>If you have checked the name and contact details, continue to Step 2 below.</p></div>}
          </div>}
        </section>
 
-       <section className="management-surface new-player-panel">
+       <section className="management-surface new-player-panel request-only-panel">
          <div className="surface-head">
-           <div><span className="eyebrow">STEP 2 · ONLY IF NEW</span><h2>Create player</h2></div>
-           <span>Added directly to {team.name}</span>
+           <div><span className="eyebrow">NEW PLAYER</span><h2>Registration, not direct creation</h2></div>
+           <span>Consent protected</span>
          </div>
-         <form action={createPlayerForTeam} className="professional-form embedded">
-           <input type="hidden" name="team_id" value={id}/>
-           <input type="hidden" name="return_to" value={`/manage/teams/${id}/players/add`}/>
-           <div className="form-block flat">
-             <div className="form-split">
-               <label><span>Full legal name *</span><input name="full_name" required placeholder="Dinesh Fernando"/><small className="field-note">Private identity field used for duplicate checks.</small></label>
-               <label><span>Public display name *</span><input name="display_name" required placeholder="D. Fernando"/><small className="field-note">Used on scorecards, profiles and rankings.</small></label>
-             </div>
-             <div className="form-split">
-               <label><span>Date of birth</span><input name="date_of_birth" type="date"/><small className="field-note">Optional and private. Helps distinguish players with the same name.</small></label>
-               <label><span>Shirt number</span><input name="shirt_number" type="number" min="0" max="999" placeholder="18"/></label>
-             </div>
-             <div className="form-split">
-               <label><span>Primary role</span><select name="primary_role" defaultValue=""><option value="">Player</option><option>Batter</option><option>Bowler</option><option>All-rounder</option><option>Wicketkeeper</option><option>Wicketkeeper-batter</option></select></label>
-               <label><span>Batting style</span><select name="batting_style" defaultValue=""><option value="">Not set</option><option>Right-hand bat</option><option>Left-hand bat</option></select></label>
-             </div>
-             <label><span>Bowling style</span><input name="bowling_style" placeholder="Right-arm medium / Left-arm spin / etc."/></label>
-           </div>
-
-           <div className="form-block contact-block">
-             <div className="form-block-head"><span>↳</span><div><strong>Optional account/contact identifiers</strong><small>Private. These do not replace the permanent IPS player ID.</small></div></div>
-             <div className="form-split">
-               <label><span>Email</span><input name="email" type="email" placeholder="player@example.com"/></label>
-               <label><span>Phone / WhatsApp</span><input name="phone" type="tel" placeholder="+393451234567"/><small className="field-note">Use international format. Stored as a secondary login/search identifier.</small></label>
-             </div>
-             <label className="consent-check"><input type="checkbox" name="whatsapp_consent"/><span><b>WhatsApp updates allowed</b><small>Record consent now; actual WhatsApp messaging is not enabled yet.</small></span></label>
-           </div>
-
-           <div className="registry-identity-note"><b>Search first. Create only when the person is genuinely new.</b><span>IPS blocks strong email/phone or full-name + date-of-birth matches. Same display names are allowed because two different people may both be “H. Silva”.</span></div>
-           <button className="button-primary">Create player & add to team →</button>
-         </form>
+         <div className="request-policy-card">
+           <strong>Team managers cannot create a permanent player identity or add someone without approval.</strong>
+           <p>If the person is already in IPS, search above and send a request. If they are new to IPS, ask them to register/claim their player profile first. City, Global or Owner administrators retain an audited exception workflow for verified identity administration.</p>
+           <div><Link href="/players">Open player directory →</Link><Link href="/registration">Player registration →</Link></div>
+         </div>
        </section>
      </div>
 
@@ -151,7 +130,7 @@ export default async function AddPlayerPage({params,searchParams}:{params:Promis
          })}
        </div>
 
-       {!members?.length&&<div className="sports-empty compact-empty"><strong>No players added yet.</strong><p>Use Step 1 to find an existing IPS player or Step 2 to create a new identity.</p></div>}
+       {!members?.length&&<div className="sports-empty compact-empty"><strong>No players added yet.</strong><p>Search IPS above and send a roster request. Membership changes only after the required approval.</p></div>}
      </aside>
    </section>
 
