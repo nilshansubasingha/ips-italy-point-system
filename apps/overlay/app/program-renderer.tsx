@@ -173,17 +173,24 @@ export function ProgramRenderer({matchId}:{matchId:string|null}){
           if(fallback){clearInterval(fallback);fallback=null;}
         }else if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){
           setConnection('RECONNECTING');
-          if(!fallback)fallback=setInterval(()=>void load(),1800);
+          if(!fallback)fallback=setInterval(()=>void load(),1000);
         }else if(status==='CLOSED'){
           setConnection('OFFLINE');
-          if(!fallback)fallback=setInterval(()=>void load(),1800);
+          if(!fallback)fallback=setInterval(()=>void load(),1000);
         }
       });
     channelRef.current=channel;
-    const safety=setInterval(()=>void load(),10000);
+    // Realtime is primary. A fast authoritative snapshot poll guarantees score recovery
+    // if a browser source, tab or network misses a Realtime notification.
+    const safety=setInterval(()=>void load(),750);
+    const recover=()=>{if(document.visibilityState==='visible')void load();};
+    document.addEventListener('visibilitychange',recover);
+    window.addEventListener('focus',recover);
     return()=>{
       clearInterval(safety);
       if(fallback)clearInterval(fallback);
+      document.removeEventListener('visibilitychange',recover);
+      window.removeEventListener('focus',recover);
       void supabase.removeChannel(channel);
       channelRef.current=null;
     };
