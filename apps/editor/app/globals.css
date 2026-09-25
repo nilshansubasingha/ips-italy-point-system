@@ -25,3 +25,21 @@
 .fill-bindings>span{grid-column:1/-1;font-size:5px;color:#617d88}
 .fill-bindings button{height:27px;border:1px solid #263e49;border-radius:5px;background:#091821;color:#8ba3ac;font-size:5px;font-weight:900}
 .fill-bindings button:hover:not(:disabled),.variable-groups button:hover:not(:disabled){border-color:#2b8064;color:#a4ebcf;background:rgba(25,209,143,.08)}
+
+/* Project 7.6 — drag/drop variables and editable scorecard row templates */
+.tool-grid button{position:relative}
+.tool-grid button em{position:absolute;right:6px;top:5px;font-size:4px;font-style:normal;letter-spacing:.08em;color:#4f6d78}
+.tool-grid button[draggable="true"]:active,.variable-groups button[draggable="true"]:active{cursor:grabbing}
+.tool-grid button[draggable="true"],.variable-groups button[draggable="true"]{cursor:grab}
+.variable-groups button.bind-ready{border-color:#2b8064;background:rgba(25,209,143,.07)}
+.variable-groups button.bind-ready em{color:#8ce5c1}
+.logical-canvas{outline:1px solid transparent}
+.logical-canvas:has(.row-template-hit.selected){outline-color:rgba(25,209,143,.16)}
+.row-template-hit{border-color:rgba(121,214,183,.34)!important;background:rgba(25,209,143,.035)}
+.row-template-hit.selected{border-color:#55e1ad!important;box-shadow:0 0 0 2px rgba(25,209,143,.18)}
+.row-template-tag{position:absolute;left:2px;top:-16px;padding:2px 4px;border-radius:3px;background:#0a241b;color:#72d8b2;font-size:4px;font-weight:950;letter-spacing:.08em;pointer-events:none}
+.row-template-list{display:grid;gap:4px;padding:0 9px 9px}
+.row-template-list>b{font-size:5px;letter-spacing:.1em;color:#617d88}
+.row-template-list button{height:28px;border:1px solid #263e49;border-radius:5px;background:#091821;color:#a7bac2;display:flex;align-items:center;justify-content:space-between;padding:0 7px;font-size:6px}
+.row-template-list button em{font-size:5px;font-style:normal;color:#5f7e89}
+.canvas-scroll.drag-over .canvas-scale{box-shadow:0 0 0 2px #19d18f,0 24px 70px rgba(0,0,0,.42)}
