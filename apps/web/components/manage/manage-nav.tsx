@@ -1,9 +1,10 @@
 import Link from 'next/link';
-import {canManageRoles,type AccountContext} from '@/lib/auth';
+import {canManageRoles,isOwner,type AccountContext} from '@/lib/auth';
 import {createClient} from '@/lib/supabase/server';
 
 export async function ManagementNav({account, active}:{account:AccountContext;active?:string}) {
   const canManageAccess=canManageRoles(account);
+  const owner=isOwner(account);
   const canManageRankingCatalogue=account.grants.some(g=>(g.role==='OWNER'&&g.scope_type==='GLOBAL')||(g.role==='ADMIN'&&g.scope_type==='GLOBAL'));
   const controllerUrl=process.env.NEXT_PUBLIC_CONTROLLER_URL??'http://localhost:3001';
   const canReviewRegistrations=account.grants.some(g=>['OWNER','ADMIN','LEADER'].includes(g.role));
@@ -24,6 +25,7 @@ export async function ManagementNav({account, active}:{account:AccountContext;ac
     <div className="management-subnav-scroll">
       {items.map(([key,label,href])=><Link key={key} href={href} className={active===key?'active':''}>{label}</Link>)}
       {canManageRankingCatalogue&&<Link href="/manage/rankings" className={active==='rankings'?'active':''}>Rankings</Link>}
+      {owner&&<Link href="/manage/heroes" className={active==='heroes'?'active':''}>Hero Backgrounds</Link>}
       {canReviewRegistrations&&<Link href="/manage/registrations" className={active==='registrations'?'active':''}>Registration Requests{registrationCount>0&&<b className="nav-count-badge">{registrationCount}</b>}</Link>}
       {canManageAccess&&<Link href="/manage/roles" className={active==='roles'?'active':''}>Accounts & Roles</Link>}
       <a href={controllerUrl} target="_blank" rel="noreferrer">Match Controller ↗</a>
