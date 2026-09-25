@@ -139,17 +139,19 @@
 
 
 /* Project 5.5 — Team identity / competitive-side model */
-.team-directory-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
-.team-directory-card{display:grid;min-height:190px;padding:15px;border:1px solid var(--line);border-radius:17px;background:#fff;text-decoration:none;transition:.18s ease}
-.team-directory-card:hover{transform:translateY(-2px);box-shadow:0 14px 34px rgba(5,24,42,.07)}
-.team-card-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.team-card-top>span{font-size:8px;color:var(--green);font-weight:900;text-transform:uppercase;letter-spacing:.07em}
-.team-directory-card h3{font-size:15px;margin:12px 0 4px}
-.team-directory-card>p{font-size:8px;color:#7b909b;margin:0}
-.team-rank-pair{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:13px}
-.team-rank-pair>span{padding:8px;border-radius:10px;background:#f6f9fa}
-.team-rank-pair b,.team-rank-pair small{display:block}.team-rank-pair b{font-size:14px}.team-rank-pair small{font-size:7px;color:#8496a0;margin-top:2px}
-.team-directory-card footer{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto;padding-top:10px;border-top:1px solid #edf2f4;font-size:7px;color:#80929c}
+.team-directory-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+.team-directory-card{display:grid;grid-template-rows:auto 1fr;min-width:0;min-height:286px;padding:12px;border:1px solid var(--line);border-radius:18px;background:#fff;text-decoration:none;transition:.18s ease;overflow:hidden}
+.team-directory-card:hover{transform:translateY(-3px);border-color:#a8cfc1;box-shadow:0 18px 44px rgba(5,24,42,.09)}
+.team-card-logo-stage{position:relative;min-height:148px;display:grid;place-items:center;border-radius:14px;background:linear-gradient(155deg,#f8fbfc 0%,#f0f6f7 100%);overflow:hidden}
+.team-card-logo-stage:after{content:"";position:absolute;width:150px;height:150px;border-radius:50%;right:-74px;bottom:-90px;background:radial-gradient(circle,rgba(8,123,79,.11),rgba(8,123,79,0) 68%)}
+.team-card-logo-stage .identity-crest{position:relative;z-index:2;width:118px;height:118px;border-radius:27px;font-size:34px;object-fit:contain;background:linear-gradient(145deg,#087a4f,#072b48);box-shadow:0 14px 34px rgba(5,24,42,.12),inset 0 0 0 1px rgba(255,255,255,.18)}
+.team-city-chip{position:absolute;z-index:3;right:9px;top:9px;max-width:calc(100% - 18px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:5px 7px;border-radius:999px;background:rgba(255,255,255,.92);border:1px solid #d9e5e8;color:var(--green);font-size:7px;font-weight:950;text-transform:uppercase;letter-spacing:.08em}
+.team-card-copy{display:flex;min-width:0;flex-direction:column;padding:12px 2px 1px}
+.team-directory-card h3{font-size:16px;line-height:1.08;letter-spacing:-.035em;margin:0 0 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.team-card-copy>p{font-size:7.5px;color:#7b909b;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.team-rank-pair{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:auto;padding-top:12px}
+.team-rank-pair>span{padding:9px 8px;border-radius:10px;background:#f5f8f9;border:1px solid #eef3f5}
+.team-rank-pair b,.team-rank-pair small{display:block}.team-rank-pair b{font-size:16px;line-height:1}.team-rank-pair small{font-size:6.5px;color:#8496a0;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 .public-side-card-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .public-side-card{display:grid;min-height:150px;border:1px solid var(--line);border-radius:18px;background:#fff;padding:18px;text-decoration:none}
@@ -1615,3 +1617,10 @@
     width:100%;
   }
 }
+
+/* Team directory density */
+@media(max-width:1380px){.team-directory-grid{grid-template-columns:repeat(5,minmax(0,1fr))}}
+@media(max-width:1120px){.team-directory-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:860px){.team-directory-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.team-card-logo-stage .identity-crest{width:104px;height:104px}}
+@media(max-width:620px){.team-directory-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.team-directory-card{min-height:250px;padding:9px}.team-card-logo-stage{min-height:126px}.team-card-logo-stage .identity-crest{width:96px;height:96px;border-radius:23px}.team-directory-card h3{font-size:14px}}
+@media(max-width:380px){.team-directory-grid{grid-template-columns:1fr}}
