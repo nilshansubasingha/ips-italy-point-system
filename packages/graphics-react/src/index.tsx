@@ -75,8 +75,8 @@ export function SceneCanvas({document,data,scale=1,className='',showSafeArea=fal
  return <div className={'ips-scene '+className} style={{transform:'scale('+scale+')'}}><style>{CSS}</style>{showSafeArea&&<div style={{position:'absolute',left:model.document.safeArea.left,top:model.document.safeArea.top,right:model.document.safeArea.right,bottom:model.document.safeArea.bottom,border:'1px dashed rgba(25,209,143,.35)',zIndex:9999,pointerEvents:'none'}}/>}{model.elements.map(el=><ElementView key={el.id} element={el} data={data} exiting={exiting}/>)}</div>;
 }
 
-export function FitSceneCanvas({document,data,className='',showSafeArea=false}:{document:SceneDocument|unknown;data:unknown;className?:string;showSafeArea?:boolean}){
+export function FitSceneCanvas({document,data,className='',showSafeArea=false,exiting=false}:{document:SceneDocument|unknown;data:unknown;className?:string;showSafeArea?:boolean;exiting?:boolean}){
  const host=useRef<HTMLDivElement|null>(null);const [scale,setScale]=useState(1);
  useEffect(()=>{const n=host.current;if(!n)return;const fit=()=>{const r=n.getBoundingClientRect();setScale(Math.min(r.width/BROADCAST_WIDTH,r.height/BROADCAST_HEIGHT));};fit();const ro=new ResizeObserver(fit);ro.observe(n);return()=>ro.disconnect();},[]);
- return <div ref={host} className={className} style={{position:'relative',width:'100%',height:'100%',overflow:'hidden'}}><div style={{position:'absolute',left:'50%',top:'50%',width:BROADCAST_WIDTH*scale,height:BROADCAST_HEIGHT*scale,transform:'translate(-50%,-50%)'}}><SceneCanvas document={document} data={data} scale={scale} showSafeArea={showSafeArea}/></div></div>;
+ return <div ref={host} className={className} style={{position:'relative',width:'100%',height:'100%',overflow:'hidden'}}><div style={{position:'absolute',left:'50%',top:'50%',width:BROADCAST_WIDTH*scale,height:BROADCAST_HEIGHT*scale,transform:'translate(-50%,-50%)'}}><SceneCanvas document={document} data={data} scale={scale} showSafeArea={showSafeArea} exiting={exiting}/></div></div>;
 }
