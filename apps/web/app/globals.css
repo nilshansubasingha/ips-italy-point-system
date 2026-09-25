@@ -1648,8 +1648,12 @@
 
 
 /* Team directory polish — preserve existing sizing/layout */
-.team-directory-card.logo-led{position:relative;overflow:hidden;isolation:isolate;background:#f8fbfd}
-.team-directory-card.logo-led>.team-card-logo-bg{position:absolute;inset:-8%;z-index:0;background-position:center 42%;background-repeat:no-repeat;background-size:82% auto;filter:blur(42px) saturate(1.45) contrast(1.05);opacity:.50;transform:scale(1.55);pointer-events:none}
-.team-directory-card.logo-led::after{content:"";position:absolute;inset:0;z-index:1;background:rgba(255,255,255,.38);pointer-events:none}
+.team-directory-card.logo-led{position:relative;overflow:hidden;isolation:isolate;background:#fff}
+.team-directory-card.logo-led.has-team-bg>.team-card-logo-bg{position:absolute;inset:-10%;z-index:0;background-position:center;background-repeat:no-repeat;background-size:cover;filter:blur(34px) saturate(1.85) contrast(1.12);opacity:.78;transform:scale(1.22);pointer-events:none}
+.team-directory-card.logo-led.has-team-bg::after{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,rgba(3,18,30,.20) 0%,rgba(3,18,30,.30) 52%,rgba(3,18,30,.48) 100%);pointer-events:none}
 .team-directory-card.logo-led>*:not(.team-card-logo-bg){position:relative;z-index:2}
+.team-directory-card.logo-led .team-city-chip{position:absolute!important;top:10px;right:10px;left:auto;width:auto;z-index:3}
+.team-directory-card.logo-led.has-team-bg h3{color:#fff;text-shadow:0 1px 8px rgba(0,0,0,.38)}
+.team-directory-card.logo-led.has-team-bg>p{color:rgba(255,255,255,.86);text-shadow:0 1px 6px rgba(0,0,0,.28)}
+.team-directory-card.logo-led.has-team-bg .team-rank-pair>span{background:rgba(255,255,255,.90);backdrop-filter:blur(8px)}
 .team-logo-stage .identity-crest-large{border-radius:16px}
