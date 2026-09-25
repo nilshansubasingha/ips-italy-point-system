@@ -10,10 +10,12 @@ export default async function TeamsPage({searchParams}:{searchParams:Promise<{ci
  const {city}=await searchParams;
  const [teams,cities]=await Promise.all([getTeamDirectory(),getActiveCities(50)]);
  const visible=city?teams.filter(t=>t.city?.code.toLowerCase()===city.toLowerCase()):teams;
+ const selectedCity=city?cities.find(c=>c.code.toLowerCase()===city.toLowerCase()):null;
+ const heroCityClass=selectedCity?.name.toLowerCase()==='napoli'?' city-hero-napoli':'';
 
  return <main className="shell sports-shell">
    <SiteHeader/>
-   <section className="directory-hero-wide">
+   <section className={`directory-hero-wide teams-directory-hero${heroCityClass}`}>
      <div><span className="eyebrow">TEAMS</span><h1>Italy's softball teams.</h1><p>One public Team identity can operate a single roster or multiple A/B/C competitive sides. Rankings activate only from certified IPS match results.</p></div>
      <div className="directory-hero-stat"><strong>{visible.length}</strong><span>{city?'teams in selected city':'teams across Italy'}</span></div>
    </section>
