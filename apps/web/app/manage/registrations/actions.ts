@@ -88,3 +88,18 @@ export async function finalizeTransfer(form:FormData){
     go('/manage/registrations','ok',s(form,'approve')==='true'?'Transfer approved and roster membership moved.':'Transfer rejected.');
   }catch(e:any){go(ret,'error',String(e?.message??'Could not finalise transfer.'));}
 }
+
+
+export async function decideRosterRequest(form:FormData){
+  const supabase=await createClient(); const id=s(form,'request_id'); const ret='/manage/registrations';
+  try{
+    const {data,error}=await supabase.rpc('ips_decide_player_team_request',{
+      p_request_id:id,
+      p_approve:s(form,'approve')==='true',
+      p_note:s(form,'note')||null
+    });
+    if(error)throw error;
+    revalidatePath('/manage/registrations');revalidatePath('/manage/players');revalidatePath('/manage/teams');revalidatePath('/players');revalidatePath('/teams');
+    go(ret,'ok',data?.status==='APPROVED'?'Roster request approved. The player identity has been moved to the destination Team.':'Roster request rejected.');
+  }catch(e:any){go(ret,'error',String(e?.message??'Could not decide roster request.'));}
+}
