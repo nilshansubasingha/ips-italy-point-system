@@ -1648,8 +1648,8 @@
 
 
 /* Team directory polish — preserve existing sizing/layout */
-.team-directory-card.logo-led{overflow:hidden;isolation:isolate;background:#fff}
-.team-directory-card.logo-led>.team-card-logo-bg{position:absolute;inset:-18%;z-index:0;background-position:center;background-repeat:no-repeat;background-size:cover;filter:blur(30px);opacity:.22;transform:scale(1.18);pointer-events:none}
-.team-directory-card.logo-led::after{content:"";position:absolute;inset:0;z-index:1;background:rgba(255,255,255,.72);pointer-events:none}
+.team-directory-card.logo-led{position:relative;overflow:hidden;isolation:isolate;background:#f8fbfd}
+.team-directory-card.logo-led>.team-card-logo-bg{position:absolute;inset:-8%;z-index:0;background-position:center 42%;background-repeat:no-repeat;background-size:82% auto;filter:blur(42px) saturate(1.45) contrast(1.05);opacity:.50;transform:scale(1.55);pointer-events:none}
+.team-directory-card.logo-led::after{content:"";position:absolute;inset:0;z-index:1;background:rgba(255,255,255,.38);pointer-events:none}
 .team-directory-card.logo-led>*:not(.team-card-logo-bg){position:relative;z-index:2}
 .team-logo-stage .identity-crest-large{border-radius:16px}
