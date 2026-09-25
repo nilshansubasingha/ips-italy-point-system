@@ -29,6 +29,7 @@ export default async function TeamsPage({searchParams}:{searchParams:Promise<{ci
          const name=getTeamIdentityDisplayName(team);
          const sideCount=team.teams.filter(s=>s.status==='ACTIVE').length;
          return <Link href={`/teams/${team.slug}`} className="team-directory-card logo-led" key={team.id}>
+           {team.logo_url?<span className="team-card-logo-bg" aria-hidden="true" style={{backgroundImage:`url("${team.logo_url}")`}}/>:null}
            <span className="team-city-chip">{team.city?.name??'Italy'}</span>
            <div className="team-logo-stage"><Crest name={name} imageUrl={team.logo_url} large/></div>
            <h3>{name}</h3>
