@@ -87,6 +87,8 @@ export function SceneCanvas({document,data,scale=1,className='',showSafeArea=fal
 
 export function FitSceneCanvas({document,data,className='',showSafeArea=false,exiting=false}:{document:SceneDocument|unknown;data:unknown;className?:string;showSafeArea?:boolean;exiting?:boolean}){
  const host=useRef<HTMLDivElement|null>(null);const [scale,setScale]=useState(1);
- useEffect(()=>{const n=host.current;if(!n)return;const fit=()=>{const r=n.getBoundingClientRect();setScale(Math.min(r.width/BROADCAST_WIDTH,r.height/BROADCAST_HEIGHT));};fit();const ro=new ResizeObserver(fit);ro.observe(n);return()=>ro.disconnect();},[]);
- return <div ref={host} className={className} style={{position:'relative',width:'100%',height:'100%',overflow:'hidden'}}><div style={{position:'absolute',left:'50%',top:'50%',width:BROADCAST_WIDTH*scale,height:BROADCAST_HEIGHT*scale,transform:'translate(-50%,-50%)'}}><SceneCanvas document={document} data={data} scale={scale} showSafeArea={showSafeArea} exiting={exiting}/></div></div>;
+ useEffect(()=>{const n=host.current;if(!n)return;const fit=()=>{const r=n.getBoundingClientRect();const raw=Math.min(r.width/BROADCAST_WIDTH,r.height/BROADCAST_HEIGHT);const dpr=window.devicePixelRatio||1;const snapped=Math.max(.05,Math.round(raw*dpr*1000)/(dpr*1000));setScale(snapped);};fit();const ro=new ResizeObserver(fit);ro.observe(n);window.addEventListener('resize',fit);return()=>{ro.disconnect();window.removeEventListener('resize',fit);};},[]);
+ const frameStyle={width:BROADCAST_WIDTH*scale,height:BROADCAST_HEIGHT*scale,position:'relative',overflow:'hidden',flex:'0 0 auto'} as CSSProperties;
+ const zoomStyle={width:BROADCAST_WIDTH,height:BROADCAST_HEIGHT,zoom:scale} as CSSProperties;
+ return <div ref={host} className={className} style={{position:'relative',width:'100%',height:'100%',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center'}}><div style={frameStyle}><div style={zoomStyle}><SceneCanvas document={document} data={data} scale={1} showSafeArea={showSafeArea} exiting={exiting}/></div></div></div>;
 }
