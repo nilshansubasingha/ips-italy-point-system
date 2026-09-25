@@ -47,7 +47,7 @@ export default async function TeamsPage({searchParams}:{searchParams:Promise<{ci
            <span className="team-city-chip">{team.city?.name??'Italy'}</span>
            <div className="team-logo-stage"><Crest name={name} imageUrl={team.logo_url} large/></div>
            <h3>{name}</h3>
-           <p>{sideCount>1?`${sideCount} competitive sides`:'Single competitive side'} · {team.activePlayerCount} players</p>
+           <p><span className="team-card-meta-desktop">{sideCount>1?`${sideCount} competitive sides`:'Single competitive side'} · {team.activePlayerCount} players</span><span className="team-card-meta-mobile">{team.activePlayerCount} players</span></p>
            <div className="team-rank-pair">
              <span><b>—</b><small>Italy rank</small></span>
              <span><b>—</b><small>{team.city?.name??'City'} rank</small></span>
