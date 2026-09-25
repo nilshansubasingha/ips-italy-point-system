@@ -7,7 +7,7 @@ import {createRenderModel,resolveElement,type ResolvedElement} from '@ips/graphi
 const CSS=[
 '.ips-scene{position:relative;width:1920px;height:1080px;overflow:hidden;transform-origin:top left;background:transparent}',
 '.ips-el{position:absolute;transform-origin:var(--ax,50%) var(--ay,50%);will-change:transform,opacity,filter;min-width:0;min-height:0}',
-'.ips-text{display:flex;overflow:hidden}.ips-text>span{display:block;width:100%;overflow:hidden}',
+'.ips-text{display:flex;overflow:hidden}.ips-text>span{display:flex;width:100%;height:100%;overflow:hidden;align-items:inherit}.ips-text>span>span{display:block;width:100%;overflow:hidden}',
 '.ips-img{display:block;width:100%;height:100%}.ips-effect{position:absolute;inset:0;overflow:hidden;pointer-events:none}',
 '.ips-repeater-item{position:absolute;left:0;top:0}',
 '.ips-light-sweep:after{content:"";position:absolute;top:-35%;bottom:-35%;left:-30%;width:var(--sweep-width,220px);background:linear-gradient(90deg,transparent,rgba(255,255,255,var(--sweep-opacity,.5)),transparent);transform:skewX(var(--sweep-angle,-18deg));animation:ipsLightSweep 1.05s ease-in-out both}',
@@ -61,7 +61,17 @@ function ElementView({element,data,exiting=false}:{element:ResolvedElement;data:
  const base:CSSProperties={left:t.x,top:t.y,width:t.width,height:t.height,opacity:t.opacity,transform:'rotate('+t.rotation+'deg) scale('+(t.scaleX*(t.flipX?-1:1))+','+(t.scaleY*(t.flipY?-1:1))+')','--rot':t.rotation+'deg','--sx':String(t.scaleX),'--sy':String(t.scaleY),'--op':String(t.opacity),'--ax':(t.anchorX*100)+'%','--ay':(t.anchorY*100)+'%',background:paint((element.resolvedFill as any)||s.fill),borderRadius:c?(c.tl+'px '+c.tr+'px '+c.br+'px '+c.bl+'px'):undefined,border:s.strokeWidth?(s.strokeWidth+'px solid '+(paint(s.stroke)||'transparent')):undefined,boxShadow:(s.shadows||[]).map(shadow).join(','),filter:[s.blur?'blur('+s.blur+'px)':null,s.glow?'drop-shadow(0 0 '+s.glow+'px rgba(255,255,255,.45))':null].filter(Boolean).join(' ')||undefined,mixBlendMode:s.blendMode as any,overflow:s.overflow==='HIDDEN'?'hidden':'visible',animationDelay:(element.animation?.delayMs||0)+'ms','--dur':((element.animation?.durationMs||500)/1000)+'s','--exit':((element.animation?.exitDurationMs||320)/1000)+'s'} as CSSProperties;
  const cls='ips-el'+preset(element.animation?.enterPreset)+(exiting?exitPreset(element.animation?.exitPreset):'');
  if(element.type==='REPEATER'&&element.repeat){const raw=getPath(data,element.repeat.path);const items=Array.isArray(raw)?raw.slice(0,element.repeat.limit):[];return <div className={cls} style={base}>{items.map((item:any,index:number)=>{const offset=(element.repeat!.direction==='VERTICAL'?(element.repeat!.itemHeight+element.repeat!.gap):(element.repeat!.itemWidth+element.repeat!.gap))*index;const scope={...(typeof data==='object'&&data?data as Record<string,unknown>:{}),item,index};return <div className='ips-repeater-item' key={index} style={{left:element.repeat!.direction==='HORIZONTAL'?offset:0,top:element.repeat!.direction==='VERTICAL'?offset:0,width:element.repeat!.itemWidth,height:element.repeat!.itemHeight}}>{element.repeat!.template.map((rawChild:any,childIndex:number)=>{const parsed=elementSchema.safeParse(rawChild);if(!parsed.success)return null;const child=resolveElement(parsed.data,scope);return child.resolvedVisible?<ElementView key={child.id+'-'+index+'-'+childIndex} element={child} data={scope} exiting={exiting}/>:null;})}</div>;})}</div>;}
- if(element.type==='TEXT')return <div className={cls+' ips-text'} style={{...base,alignItems:element.text?.typography.verticalAlign==='TOP'?'flex-start':element.text?.typography.verticalAlign==='BOTTOM'?'flex-end':'center',color:paint(s.fill)}}><AutoText element={element} value={element.resolvedText||element.text?.value||''}/></div>;
+ if(element.type==='TEXT'){
+   const textPaint:any=(element.resolvedFill as any)||s.fill;
+   const solid=textPaint?.type==='SOLID'||!textPaint;
+   const gradient=solid?undefined:paint(textPaint);
+   return <div className={cls+' ips-text'} style={{
+     ...base,
+     background:'transparent',
+     alignItems:element.text?.typography.verticalAlign==='TOP'?'flex-start':element.text?.typography.verticalAlign==='BOTTOM'?'flex-end':'center',
+     color:solid?(textPaint?.color||'#ffffff'):undefined
+   }}><span style={gradient?{background:gradient,WebkitBackgroundClip:'text',backgroundClip:'text',color:'transparent',WebkitTextFillColor:'transparent'}:undefined}><AutoText element={element} value={element.resolvedText||element.text?.value||''}/></span></div>;
+ }
  if(['RECT','ROUNDED_RECT','FRAME','CONTAINER','MASK','DATA'].includes(element.type))return <div className={cls} style={base}>{s.noise?<i className='ips-noise' style={{'--noise':String(s.noise)} as CSSProperties}/>:null}</div>;
  if(element.type==='ELLIPSE')return <div className={cls} style={{...base,borderRadius:'50%'}}/>;
  if(['IMAGE','SVG','ICON','VIDEO'].includes(element.type)){const src=element.resolvedAssetUrl||element.asset?.url||'';if(!src)return null;if(element.type==='VIDEO')return <video className={cls+' ips-img'} style={base} src={src} autoPlay muted loop={!!element.animation?.loop} playsInline/>;return <img className={cls+' ips-img'} style={{...base,objectFit:(element.asset?.fit||'CONTAIN').toLowerCase() as any,objectPosition:element.asset?.objectPosition}} src={src} alt=''/>;}
