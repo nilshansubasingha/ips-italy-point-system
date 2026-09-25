@@ -15,6 +15,12 @@ async function requireOwner(){
   return account;
 }
 
+function parseVariant(form:FormData){
+  const variant=s(form,'variant');
+  if(variant!=='desktop'&&variant!=='mobile')throw new Error('Unsupported hero variant.');
+  return variant as 'desktop'|'mobile';
+}
+
 export async function uploadDirectoryHero(form:FormData){
   const account=await requireOwner();
   const supabase=await createClient();
@@ -22,6 +28,7 @@ export async function uploadDirectoryHero(form:FormData){
   try{
     const scope=s(form,'scope');
     const cityId=s(form,'city_id')||null;
+    const variant=parseVariant(form);
     const file=form.get('image');
 
     if(!(file instanceof File)||file.size===0)throw new Error('Choose and crop an image first.');
@@ -47,39 +54,47 @@ export async function uploadDirectoryHero(form:FormData){
 
     const {data:existing,error:existingError}=await supabase
       .from('directory_hero_backgrounds')
-      .select('image_path')
+      .select('image_path,image_url,mobile_image_path,mobile_image_url')
       .eq('scope_key',scopeKey)
       .maybeSingle();
     if(existingError)throw existingError;
 
     const folder=verifiedCityId??'italy';
-    const path=`city-heroes/${folder}/hero-${Date.now()}.${extension}`;
+    const path=`city-heroes/${folder}/hero-${variant}-${Date.now()}.${extension}`;
     const bytes=new Uint8Array(await file.arrayBuffer());
     const {error:uploadError}=await supabase.storage.from('ips-media').upload(path,bytes,{contentType:file.type,upsert:false});
     if(uploadError)throw uploadError;
 
     const {data:publicData}=supabase.storage.from('ips-media').getPublicUrl(path);
-    const {error:saveError}=await supabase.from('directory_hero_backgrounds').upsert({
+
+    const payload:any={
       scope_key:scopeKey,
       city_id:verifiedCityId,
-      image_path:path,
-      image_url:publicData.publicUrl,
       updated_by:account.user.id,
       updated_at:new Date().toISOString()
-    },{onConflict:'scope_key'});
+    };
+
+    if(variant==='mobile'){
+      payload.mobile_image_path=path;
+      payload.mobile_image_url=publicData.publicUrl;
+    }else{
+      payload.image_path=path;
+      payload.image_url=publicData.publicUrl;
+    }
+
+    const {error:saveError}=await supabase.from('directory_hero_backgrounds').upsert(payload,{onConflict:'scope_key'});
 
     if(saveError){
       await supabase.storage.from('ips-media').remove([path]);
       throw saveError;
     }
 
-    if(existing?.image_path&&existing.image_path!==path){
-      await supabase.storage.from('ips-media').remove([existing.image_path]);
-    }
+    const oldPath=variant==='mobile'?existing?.mobile_image_path:existing?.image_path;
+    if(oldPath&&oldPath!==path)await supabase.storage.from('ips-media').remove([oldPath]);
 
     revalidatePath('/teams');
     revalidatePath('/manage/heroes');
-    go('ok',label+' hero background updated.');
+    go('ok',label+' '+variant+' hero background updated.');
   }catch(error:any){
     if(String(error?.digest??'').startsWith('NEXT_REDIRECT'))throw error;
     go('error',error?.message||'Could not upload hero background.');
@@ -92,24 +107,37 @@ export async function removeDirectoryHero(form:FormData){
 
   try{
     const scopeKey=s(form,'scope_key');
+    const variant=parseVariant(form);
     if(!scopeKey)throw new Error('Hero scope is required.');
 
     const {data:existing,error:readError}=await supabase
       .from('directory_hero_backgrounds')
-      .select('image_path,city_id')
+      .select('image_path,image_url,mobile_image_path,mobile_image_url,city_id')
       .eq('scope_key',scopeKey)
       .maybeSingle();
     if(readError)throw readError;
     if(!existing)throw new Error('No custom background is set.');
 
-    const {error:deleteError}=await supabase.from('directory_hero_backgrounds').delete().eq('scope_key',scopeKey);
-    if(deleteError)throw deleteError;
+    const selectedPath=variant==='mobile'?existing.mobile_image_path:existing.image_path;
+    const otherPath=variant==='mobile'?existing.image_path:existing.mobile_image_path;
+    if(!selectedPath)throw new Error('No custom '+variant+' background is set.');
 
-    if(existing.image_path)await supabase.storage.from('ips-media').remove([existing.image_path]);
+    if(otherPath){
+      const updates=variant==='mobile'
+        ?{mobile_image_path:null,mobile_image_url:null,updated_at:new Date().toISOString()}
+        :{image_path:null,image_url:null,updated_at:new Date().toISOString()};
+      const {error:updateError}=await supabase.from('directory_hero_backgrounds').update(updates).eq('scope_key',scopeKey);
+      if(updateError)throw updateError;
+    }else{
+      const {error:deleteError}=await supabase.from('directory_hero_backgrounds').delete().eq('scope_key',scopeKey);
+      if(deleteError)throw deleteError;
+    }
+
+    await supabase.storage.from('ips-media').remove([selectedPath]);
 
     revalidatePath('/teams');
     revalidatePath('/manage/heroes');
-    go('ok','Custom hero background removed.');
+    go('ok','Custom '+variant+' hero background removed.');
   }catch(error:any){
     if(String(error?.digest??'').startsWith('NEXT_REDIRECT'))throw error;
     go('error',error?.message||'Could not remove hero background.');
