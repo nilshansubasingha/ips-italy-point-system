@@ -5,7 +5,7 @@ import {useEffect,useRef,useState} from 'react';
 type Props={
   name?:string;
   label?:string;
-  aspect?:'square'|'portrait'|'landscape';
+  aspect?:'square'|'portrait'|'landscape'|'hero';
   required?:boolean;
   initialUrl?:string|null;
 };
@@ -13,12 +13,17 @@ type Props={
 const SIZE={
   square:{w:1000,h:1000},
   portrait:{w:1000,h:1250},
-  landscape:{w:1600,h:900}
+  landscape:{w:1600,h:900},
+  hero:{w:1800,h:600}
 } as const;
+
+const clamp=(value:number,min:number,max:number)=>Math.min(max,Math.max(min,value));
 
 export function ImageCropField({name='image',label='Choose image',aspect='square',required=false,initialUrl=null}:Props){
   const canvasRef=useRef<HTMLCanvasElement|null>(null);
+  const previewRef=useRef<HTMLDivElement|null>(null);
   const outputRef=useRef<HTMLInputElement|null>(null);
+  const dragRef=useRef<{pointerId:number;startX:number;startY:number;originX:number;originY:number}|null>(null);
   const [source,setSource]=useState<HTMLImageElement|null>(null);
   const [fileName,setFileName]=useState('image');
   const [mode,setMode]=useState<'cover'|'contain'>(aspect==='square'?'contain':'cover');
@@ -57,11 +62,32 @@ export function ImageCropField({name='image',label='Choose image',aspect='square
     if(!file){setSource(null);setReady(false);return;}
     setFileName(file.name);
     const img=new Image();
-    img.onload=()=>{setSource(img);URL.revokeObjectURL(img.src);setZoom(1);setX(0);setY(0);};
+    img.onload=()=>{setSource(img);URL.revokeObjectURL(img.src);setZoom(1);setX(0);setY(0);setMode(aspect==='square'?'contain':'cover');};
     img.src=URL.createObjectURL(file);
   }
 
   function reset(){setZoom(1);setX(0);setY(0);setMode(aspect==='square'?'contain':'cover');}
+
+  function startDrag(event:React.PointerEvent<HTMLDivElement>){
+    if(!source)return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragRef.current={pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,originX:x,originY:y};
+  }
+
+  function drag(event:React.PointerEvent<HTMLDivElement>){
+    const state=dragRef.current;
+    const preview=previewRef.current;
+    if(!state||state.pointerId!==event.pointerId||!preview)return;
+    const rect=preview.getBoundingClientRect();
+    const dx=event.clientX-state.startX;
+    const dy=event.clientY-state.startY;
+    setX(clamp(state.originX+(dx/Math.max(rect.width,1))*285,-100,100));
+    setY(clamp(state.originY+(dy/Math.max(rect.height,1))*285,-100,100));
+  }
+
+  function stopDrag(event:React.PointerEvent<HTMLDivElement>){
+    if(dragRef.current?.pointerId===event.pointerId)dragRef.current=null;
+  }
 
   return <div className="image-crop-field">
     <input ref={outputRef} type="file" name={name} accept="image/webp" hidden/>
@@ -70,8 +96,16 @@ export function ImageCropField({name='image',label='Choose image',aspect='square
       <input type="file" accept="image/jpeg,image/png,image/webp" required={required} onChange={e=>choose(e.target.files?.[0]??null)}/>
     </label>
     {(source||initialUrl)&&<div className="image-crop-workspace">
-      <div className={'image-crop-preview '+aspect}>
+      <div
+        ref={previewRef}
+        className={'image-crop-preview '+aspect+(source?' draggable':'')}
+        onPointerDown={startDrag}
+        onPointerMove={drag}
+        onPointerUp={stopDrag}
+        onPointerCancel={stopDrag}
+      >
         {source?<canvas ref={canvasRef}/>:initialUrl?<img src={initialUrl} alt="Current image"/>:null}
+        {source&&<span className="crop-drag-hint">Drag image to reposition</span>}
       </div>
       {source&&<div className="image-crop-controls">
         <div className="crop-mode">
