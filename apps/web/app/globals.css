@@ -1672,3 +1672,31 @@
 @media(max-width:1180px){.player-grid-wide{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(max-width:900px){.player-grid-wide{grid-template-columns:repeat(3,minmax(0,1fr))}.team-filter-bar{grid-template-columns:1fr}.image-crop-workspace{grid-template-columns:1fr}.image-crop-preview{max-width:260px}}
 @media(max-width:620px){.player-grid-wide{grid-template-columns:repeat(2,minmax(0,1fr))}.player-tile>.player-avatar-large{width:96px;height:96px}}
+
+/* Roster consent workflow */
+.request-pending-chip{background:#fff4d9;color:#8a6512}
+.request-only-panel{min-height:190px}
+.request-policy-card{display:grid;gap:9px;padding:16px;border:1px solid #d8e5e9;border-radius:14px;background:linear-gradient(145deg,#f8fbfc,#eef7f3)}
+.request-policy-card strong{font-size:12px;line-height:1.35;color:#0a2638}
+.request-policy-card p{margin:0;font-size:9px;line-height:1.55;color:#607985}
+.request-policy-card>div{display:flex;flex-wrap:wrap;gap:8px}
+.request-policy-card a{padding:8px 10px;border:1px solid #bed8cf;border-radius:8px;background:#fff;color:#08734d;text-decoration:none;font-size:8px;font-weight:900}
+
+.player-team-requests{margin-top:0}
+.player-request-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.player-request-card{display:grid;min-height:210px;padding:15px;border:1px solid #dce7ea;border-radius:16px;background:#fff}
+.player-request-route{display:flex;align-items:center;gap:8px;font-size:8px;color:#7a8f99}
+.player-request-route i{font-style:normal;color:#0a8b5d}.player-request-route strong{color:#0b2738}
+.player-request-card h3{margin:12px 0 5px;font-size:15px}.player-request-card p{margin:0;color:#6e838e;font-size:9px;line-height:1.55}
+.player-request-card>small{margin-top:9px;color:#0a7e54;font-size:8px;font-weight:850}
+.player-request-actions{display:flex;gap:7px;margin-top:auto;padding-top:12px}
+.player-request-actions form{flex:1}.player-request-actions button{width:100%;min-height:34px}
+
+.registration-queue-kpis{grid-template-columns:repeat(4,1fr)}
+.roster-consent-row{grid-template-columns:100px minmax(170px,1.2fr) minmax(110px,.7fr) minmax(150px,1fr) auto}
+.inline-request-actions{display:flex!important;gap:6px;align-items:center}
+.inline-request-actions form{display:block}
+.inline-request-actions button{min-width:66px;padding:7px 8px;font-size:7px}
+
+@media(max-width:1000px){.player-request-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.registration-queue-kpis{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:680px){.player-request-grid{grid-template-columns:1fr}.roster-consent-row{grid-template-columns:1fr;gap:7px}.inline-request-actions{justify-content:flex-start}}
