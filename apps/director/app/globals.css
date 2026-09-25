@@ -15,3 +15,14 @@
 .safety-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:9px}.safety-grid button{min-height:36px;border:1px solid #2a414c;border-radius:7px;background:#091820;color:#94a9b2;font-size:6px;font-weight:950}.safety-grid button.active{border-color:#258765;color:#83ddba}.safety-grid button.danger{border-color:#613239;color:#e89199;background:#1b1013}.safety-grid button.panic{grid-column:1/-1;min-height:44px;border-color:#7b3037;color:#ff9ba4;background:#220d11}.safety-grid button.panic.active{background:#9b2631;color:#fff}
 @media(max-width:1050px){.studio-top{grid-template-columns:170px 1fr auto}.studio-top>a{display:none}.workspace{grid-template-columns:1fr}.operation-column{grid-template-columns:repeat(2,1fr)}.monitor-grid{grid-template-columns:1fr}.library-grid{grid-template-columns:repeat(auto-fill,minmax(190px,1fr))}}
 @media(max-width:720px){.studio-top{grid-template-columns:1fr auto}.match-ident{display:none}.monitor-grid,.workspace{padding-left:6px;padding-right:6px}.quick-grid{grid-template-columns:1fr}.operation-column{grid-template-columns:1fr}.library-panel>header{align-items:flex-start;gap:6px;flex-direction:column}.library-panel>header input{width:100%}}
+
+/* Project 7.6 — published package/release selector */
+.package-panel>header h2 i{font-style:normal;color:#6b8793;font-size:8px;font-weight:850;margin-left:5px}
+.package-controls{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end;padding:10px}
+.package-controls>div{display:grid;gap:5px}
+.package-controls label{font-size:6px;letter-spacing:.1em;color:#67828e;font-weight:900}
+.package-controls select{height:34px;border:1px solid #29414d;border-radius:7px;background:#06131b;color:#dce6e9;padding:0 9px;font-size:7px}
+.package-controls button{height:34px;border:1px solid #2c8768;border-radius:7px;background:#0d7655;color:#fff;padding:0 12px;font-size:7px;font-weight:950;white-space:nowrap}
+.package-controls button:disabled{opacity:.42;cursor:not-allowed;background:#0b1921;border-color:#263b46;color:#718995}
+.package-note{margin:0;padding:0 10px 10px;color:#6f8893;font-size:7px;line-height:1.5}
+@media(max-width:720px){.package-controls{grid-template-columns:1fr}.package-controls button{width:100%}}
