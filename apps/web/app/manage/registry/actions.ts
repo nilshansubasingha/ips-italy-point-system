@@ -161,7 +161,13 @@ export async function addExistingPlayer(form:FormData){
     const {data,error}=await supabase.rpc('ips_request_existing_player_for_team',{p_team_id:teamId,p_player_id:s(form,'player_id'),p_shirt_number:shirt?Number(shirt):null}); if(error)throw error;
     revalidatePath(`/manage/teams/${teamId}`); revalidatePath(`/manage/teams/${teamId}/players/add`); revalidatePath('/manage/players'); revalidatePath('/manage/registrations');
     const status=data?.status;
-    go(`/manage/teams/${teamId}/players/add`,'ok',status==='TRANSFER_REQUIRED'?'Player is active on another Team. A transfer request was created instead of duplicating the membership.':status==='SIDE_MOVED'?'Player moved to this competitive side.':'Existing IPS player added to the Team.');
+    go(`/manage/teams/${teamId}/players/add`,'ok',
+      status==='REQUESTED_FREE'
+        ?'Join request sent. The player must approve it before joining this Team.'
+        :status==='REQUESTED_TRANSFER'
+          ?'Transfer request sent. The player or their current Team must approve before the roster changes.'
+          :'Player request sent for approval.'
+    );
   }catch(e:any){go(ret,'error',friendly(e,'Could not add existing player.'));}
 }
 
