@@ -28,15 +28,15 @@ export default async function TeamsPage({searchParams}:{searchParams:Promise<{ci
        {visible.map(team=>{
          const name=getTeamIdentityDisplayName(team);
          const sideCount=team.teams.filter(s=>s.status==='ACTIVE').length;
-         return <Link href={`/teams/${team.slug}`} className="team-directory-card" key={team.id}>
-           <div className="team-card-top"><Crest name={name} imageUrl={team.logo_url}/><span>{team.city?.name??'Italy'}</span></div>
+         return <Link href={`/teams/${team.slug}`} className="team-directory-card logo-led" key={team.id}>
+           <span className="team-city-chip">{team.city?.name??'Italy'}</span>
+           <div className="team-logo-stage"><Crest name={name} imageUrl={team.logo_url} large/></div>
            <h3>{name}</h3>
            <p>{sideCount>1?`${sideCount} competitive sides`:'Single competitive side'} · {team.activePlayerCount} players</p>
            <div className="team-rank-pair">
              <span><b>—</b><small>Italy rank</small></span>
              <span><b>—</b><small>{team.city?.name??'City'} rank</small></span>
            </div>
-           <footer><span>Official ranking pending certified results</span><b>→</b></footer>
          </Link>;
        })}
      </div>
