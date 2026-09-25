@@ -71,8 +71,14 @@ $json$::jsonb;
 when 'playing-xi.home' then return public.ips_prism_factory_document_v2('playing-xi-base') || jsonb_build_object('name','PRISM Playing XI — Home','metadata',jsonb_build_object('factory','IPS PRISM','scene','playing-xi','variant','home'));
 when 'playing-xi.away' then return (
   select jsonb_set(
-    jsonb_set(public.ips_prism_factory_document_v2('playing-xi-base'),'{name}','"PRISM Playing XI — Away"'::jsonb),
-    '{elements,3,bindings,0,path}','"match.away_team.name"'::jsonb
+    jsonb_set(
+      jsonb_set(
+        jsonb_set(public.ips_prism_factory_document_v2('playing-xi-base'),'{name}','"PRISM Playing XI — Away"'::jsonb),
+        '{elements,3,bindings,0,path}','"match.away_team.name"'::jsonb
+      ),
+      '{elements,4,repeat,path}','"playing_xi.away"'::jsonb
+    ),
+    '{metadata}','{"factory":"IPS PRISM","scene":"playing-xi","variant":"away"}'::jsonb
   )
 );
 
