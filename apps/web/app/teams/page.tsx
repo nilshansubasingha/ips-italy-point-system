@@ -19,15 +19,17 @@ export default async function TeamsPage({searchParams}:{searchParams:Promise<{ci
  const isNapoli=selectedCity?.name.toLowerCase()==='napoli';
  const scopeKey=selectedCity?`city:${selectedCity.id}`:'italy';
  const supabase=await createClient();
- const {data:customHero}=await supabase.from('directory_hero_backgrounds').select('image_url').eq('scope_key',scopeKey).maybeSingle();
+ const {data:customHero}=await supabase.from('directory_hero_backgrounds').select('image_url,mobile_image_url').eq('scope_key',scopeKey).maybeSingle();
  const fallbackHero=isNapoli?`data:image/webp;base64,${napoliHero0}${napoliHero1}${napoliHero2}${napoliHero3}`:null;
- const heroUrl=customHero?.image_url??fallbackHero;
- const heroClass=heroUrl?' has-city-hero':'';
+ const desktopHeroUrl=customHero?.image_url??fallbackHero;
+ const mobileHeroUrl=customHero?.mobile_image_url??desktopHeroUrl;
+ const heroClass=(desktopHeroUrl||mobileHeroUrl)?' has-city-hero':'';
 
  return <main className="shell sports-shell">
    <SiteHeader/>
    <section className={`directory-hero-wide teams-directory-hero${heroClass}`}>
-     {heroUrl?<span className="teams-hero-photo" aria-hidden="true" style={{backgroundImage:`url("${heroUrl}")`}}/>:null}
+     {desktopHeroUrl?<span className="teams-hero-photo teams-hero-photo-desktop" aria-hidden="true" style={{backgroundImage:`url("${desktopHeroUrl}")`}}/>:null}
+     {mobileHeroUrl?<span className="teams-hero-photo teams-hero-photo-mobile" aria-hidden="true" style={{backgroundImage:`url("${mobileHeroUrl}")`}}/>:null}
      <div><span className="eyebrow">TEAMS</span><h1>Italy's softball teams.</h1><p>One public Team identity can operate a single roster or multiple A/B/C competitive sides. Rankings activate only from certified IPS match results.</p></div>
      <div className="directory-hero-stat"><strong>{visible.length}</strong><span>{city?'teams in selected city':'teams across Italy'}</span></div>
    </section>
