@@ -48,7 +48,7 @@ export default async function TournamentOpsDetail({params,searchParams}:{params:
   const matchMap=new Map((matches??[]).map((x:any)=>[x.id,x]));
   const xiByMatchTeam=new Map<string,any[]>(); for(const x of playingXI??[]){const k=`${x.match_id}:${x.team_id}`;const a=xiByMatchTeam.get(k)||[];a.push(x);xiByMatchTeam.set(k,a)}
   const rolesByMatchTeam=new Map<string,any[]>(); for(const x of teamRoles??[]){const k=`${x.match_id}:${x.team_id}`;const a=rolesByMatchTeam.get(k)||[];a.push(x);rolesByMatchTeam.set(k,a)}
-  const controllerUrl=process.env.NEXT_PUBLIC_CONTROLLER_URL??'http://localhost:3001';
+  const controllerUrl=process.env.NEXT_PUBLIC_CONTROLLER_URL??'https://ips-controller-p6-4-preview-production.up.railway.app/controller';
   const returnTo=`/manage/tournaments/${id}`;
 
   return <main className="shell sports-shell"><SiteHeader/><ManagementNav account={account} active="tournaments"/>
