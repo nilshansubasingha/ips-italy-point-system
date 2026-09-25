@@ -45,7 +45,7 @@ export default async function AddPlayerPage({params,searchParams}:{params:Promis
        <Link className="back-link" href={`/manage/teams/${(team.club as any)?.id}`}>← {String((team.club as any)?.name??'Team').replace(/\s+Cricket Club$/i,'')}</Link>
        <span className="eyebrow">ROSTER BUILDER</span>
        <h1>{team.side_label==='MAIN'?'Team roster':`${team.side_label} Team roster`}</h1>
-       <p>Search IPS first. Create a new permanent player only when no existing identity matches. Your current team roster stays visible on the right while you work.</p>
+       <p>Search any IPS player and send a roster request. Existing players are never moved or attached immediately: a free player must accept the join request, while a player already on another Team can be approved by the player or released by the current Team.</p>
      </div>
    </section>
 
@@ -56,7 +56,7 @@ export default async function AddPlayerPage({params,searchParams}:{params:Promis
        <section className="management-surface player-search-panel">
          <div className="surface-head">
            <div><span className="eyebrow">STEP 1</span><h2>Find an existing player</h2></div>
-           <span>Search before creating</span>
+           <span>Requests require approval</span>
          </div>
          <form method="get" className="registry-search">
            <input name="q" defaultValue={q} placeholder="Name, ITA-0001847, email or +39 phone"/>
@@ -76,7 +76,7 @@ export default async function AddPlayerPage({params,searchParams}:{params:Promis
                  <input type="hidden" name="team_id" value={id}/>
                  <input type="hidden" name="player_id" value={p.id}/>
                  <input name="shirt_number" type="number" min="0" max="999" placeholder="Shirt #"/>
-                 <button>Add existing →</button>
+                 <button>Request player →</button>
                </form>}
            </article>)}
            {!results.length&&<div className="search-empty"><strong>No matching IPS player.</strong><p>If you have checked the name and contact details, continue to Step 2 below.</p></div>}
