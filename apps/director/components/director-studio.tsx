@@ -9,7 +9,8 @@ type Meta={variantVersionId:string;sceneKey:string;variantKey:string;name:string
 type Layer={instanceId:string;variantKey:string;priority:number;replacementGroup:string|null;startedAt:string;expiresAt?:string|null;persistent:boolean;payload?:Record<string,unknown>};
 type Suggestion={id:string;suggestion_key:string;variant_key:string;title:string;subtitle:string|null;payload:Record<string,unknown>;created_at:string};
 type EventConfig={event_key:string;mode:'MANUAL'|'ASSISTED'|'AUTOMATIC';default_variant_key:string;enabled:boolean};
-type Snapshot={match_id:string;session:any;program:{revision:number;preview:any;active_layers:Layer[];queue:any[];persistent_snapshot:Layer[]};release:{id:string;version:number;manifest:{variants:Record<string,Meta>};theme:any};data:any;signal:any;event_config:EventConfig[];suggestions:Suggestion[]};
+type ReleaseOption={release_id:string;package_id:string;package_name:string;package_slug:string;is_factory:boolean;version:number;published_at:string;variant_count:number;is_current:boolean};
+type Snapshot={match_id:string;session:any;program:{revision:number;preview:any;active_layers:Layer[];queue:any[];persistent_snapshot:Layer[]};release:{id:string;version:number;manifest:{variants:Record<string,Meta>};theme:any};data:any;signal:any;event_config:EventConfig[];suggestions:Suggestion[];available_releases?:ReleaseOption[]};
 
 const OVERLAY_URL=process.env.NEXT_PUBLIC_IPS_OVERLAY_URL??'http://localhost:3002';
 
@@ -23,6 +24,7 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
   const [notice,setNotice]=useState<string|null>(null);
   const [error,setError]=useState<string|null>(null);
   const [search,setSearch]=useState('');
+  const [releaseChoice,setReleaseChoice]=useState(initial.release?.id??'');
   const [pending,startTransition]=useTransition();
   const supabase=useMemo(()=>createClient(),[]);
 
@@ -35,10 +37,15 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
     const channel=supabase.channel('director-'+matchId)
       .on('postgres_changes',{event:'*',schema:'public',table:'broadcast_realtime_signals',filter:'match_id=eq.'+matchId},()=>void refresh())
       .subscribe();
-    return()=>{void supabase.removeChannel(channel);};
+    const releasesTimer=setInterval(()=>void refresh(),3500);
+    return()=>{clearInterval(releasesTimer);void supabase.removeChannel(channel);};
   },[supabase,matchId,refresh]);
+  useEffect(()=>{if(snap.release?.id)setReleaseChoice(current=>current||snap.release.id);},[snap.release?.id]);
 
   const variants=snap.release?.manifest?.variants??{};
+  const releases=snap.available_releases??[];
+  const currentRelease=releases.find(r=>r.release_id===snap.release?.id)||releases.find(r=>r.is_current)||null;
+  const selectedRelease=releases.find(r=>r.release_id===releaseChoice)||currentRelease;
   const variantList=useMemo(()=>Object.entries(variants).map(([key,meta])=>({key,meta})),[variants]);
   const selectedMeta=variants[selected]??null;
   const active=snap.program?.active_layers??[];
@@ -59,6 +66,23 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
   const preview=(key:string)=>{setSelected(key);command({type:'PREVIEW',variantKey:key,payload:{}});};
   const queueAdd=(key:string)=>command({type:'QUEUE_ADD',variantKey:key,payload:{}});
   const queueRemove=(id:string)=>command({type:'QUEUE_REMOVE',queueId:id});
+  const loadRelease=()=>{
+    if(!releaseChoice||releaseChoice===snap.release?.id)return;
+    const target=releases.find(r=>r.release_id===releaseChoice);
+    if(!target)return;
+    const ok=window.confirm('Load '+target.package_name+' release '+target.version+' for this match? Preview, queue and temporary graphics will be cleared so the Program renderer cannot mix package versions.');
+    if(!ok)return;
+    setError(null);setNotice(null);
+    startTransition(async()=>{
+      const {data,error}=await supabase.rpc('ips_broadcast_set_match_release',{p_match_id:matchId,p_release_id:releaseChoice});
+      if(error){setError(error.message);return;}
+      if(data){
+        setSnap(data as Snapshot);
+        setSelected('six.fullscreen');
+        setNotice(target.package_name+' release '+target.version+' loaded. Published graphics are now available in Director.');
+      }
+    });
+  };
 
   const suggestion=(id:string,action:'take'|'dismiss')=>{
     setError(null);
@@ -103,6 +127,14 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
 
     <section className="workspace">
       <div className="trigger-column">
+        <section className="panel package-panel">
+          <header><div><span>BROADCAST PACKAGE</span><h2>{currentRelease?.package_name??'Pinned Package'} <i>R{snap.release?.version??'—'}</i></h2></div><b>{currentRelease?.variant_count??Object.keys(variants).length} GRAPHICS</b></header>
+          <div className="package-controls">
+            <div><label>PUBLISHED PACKAGE / RELEASE</label><select value={releaseChoice} onChange={e=>setReleaseChoice(e.target.value)}>{releases.map(r=><option key={r.release_id} value={r.release_id}>{r.package_name} · Release {r.version}{r.is_current?' · ON AIR PACKAGE':''}</option>)}</select></div>
+            <button disabled={pending||!selectedRelease||releaseChoice===snap.release?.id} onClick={loadRelease}>{releaseChoice===snap.release?.id?'CURRENTLY LOADED':'LOAD PUBLISHED RELEASE'}</button>
+          </div>
+          {selectedRelease&&selectedRelease.release_id!==snap.release?.id&&<p className="package-note">This release contains {selectedRelease.variant_count} published graphics. Loading it makes its Editor-published versions available in this Director and keeps the Program renderer pinned to one stable release.</p>}
+        </section>
         <section className="panel quick-panel">
           <header><div><span>QUICK EVENTS</span><h2>One-tap live events</h2></div><button className="clear-temp" onClick={()=>command({type:'CLEAR_TEMPORARY'})}>CLEAR TEMP</button></header>
           <div className="quick-grid">
@@ -120,7 +152,7 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
         </section>
 
         <section className="panel library-panel">
-          <header><div><span>GRAPHICS LIBRARY</span><h2>Published in this match release</h2></div><input placeholder="Search graphics…" value={search} onChange={e=>setSearch(e.target.value)}/></header>
+          <header><div><span>GRAPHICS LIBRARY</span><h2>Published in loaded release · {currentRelease?.package_name??'Package'} R{snap.release?.version??'—'}</h2></div><input placeholder="Search graphics…" value={search} onChange={e=>setSearch(e.target.value)}/></header>
           <div className="library-grid">{searchable.map(v=><article className={selected===v.key?'selected':''} key={v.key} onClick={()=>setSelected(v.key)}><div><span>{sceneLabel(v.meta.sceneKey)}</span><b>{v.meta.name}</b><small>{v.meta.presentation.replace('_',' ')} · P{v.meta.priority}</small></div><div className="card-actions"><button onClick={e=>{e.stopPropagation();preview(v.key)}}>PREVIEW</button><button onClick={e=>{e.stopPropagation();take(v.key)}}>TAKE</button><button onClick={e=>{e.stopPropagation();queueAdd(v.key)}}>+ QUEUE</button></div></article>)}</div>
         </section>
       </div>
