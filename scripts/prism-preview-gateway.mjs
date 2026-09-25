@@ -4,6 +4,7 @@ import {spawn} from 'node:child_process';
 const publicPort=Number(process.env.PORT||8080);
 const directorPort=3103;
 const editorPort=3104;
+const controllerPort=3105;
 const children=[];
 
 function start(name,workspace,port){
@@ -21,6 +22,7 @@ function start(name,workspace,port){
 }
 start('director','@ips/director',directorPort);
 start('editor','@ips/editor',editorPort);
+start('controller','@ips/controller',controllerPort);
 
 function proxy(req,res,targetPort){
   const headers={...req.headers,host:'127.0.0.1:'+targetPort};
@@ -53,7 +55,7 @@ const server=http.createServer((req,res)=>{
   if(url==='/health'){
     res.statusCode=200;
     res.setHeader('content-type','application/json');
-    res.end(JSON.stringify({ok:true,apps:['director','editor']}));
+    res.end(JSON.stringify({ok:true,apps:['director','editor','controller']}));
     return;
   }
   if(url==='/director'||url.startsWith('/director/')){
@@ -64,9 +66,13 @@ const server=http.createServer((req,res)=>{
     proxy(req,res,editorPort);
     return;
   }
+  if(url==='/controller'||url.startsWith('/controller/')){
+    proxy(req,res,controllerPort);
+    return;
+  }
   res.statusCode=404;
   res.setHeader('content-type','text/plain; charset=utf-8');
-  res.end('IPS PRISM preview gateway: use /director or /editor');
+  res.end('IPS PRISM preview gateway: use /director, /editor or /controller');
 });
 
 server.listen(publicPort,'0.0.0.0',()=>{
