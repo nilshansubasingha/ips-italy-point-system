@@ -1624,3 +1624,51 @@
 @media(max-width:860px){.team-directory-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.team-card-logo-stage .identity-crest{width:104px;height:104px}}
 @media(max-width:620px){.team-directory-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.team-directory-card{min-height:250px;padding:9px}.team-card-logo-stage{min-height:126px}.team-card-logo-stage .identity-crest{width:96px;height:96px;border-radius:23px}.team-directory-card h3{font-size:14px}}
 @media(max-width:380px){.team-directory-grid{grid-template-columns:1fr}}
+
+/* 2026-09-25 directory + media refinements */
+.identity-crest.has-image,.player-avatar.has-image{background:transparent;border:0;box-shadow:none;padding:0}
+.identity-crest.has-image{object-fit:contain}
+.player-avatar.has-image{object-fit:cover}
+
+.team-card-logo-stage{min-height:156px;background:transparent;border-radius:0;overflow:visible}
+.team-card-logo-stage:after{display:none}
+.team-card-logo-stage .identity-crest{width:146px;height:146px;border-radius:30px}
+.team-card-logo-stage .identity-crest.has-image{width:146px;height:146px;border-radius:0;object-fit:contain;box-shadow:none}
+.team-city-chip{top:4px;right:4px}
+
+.player-grid-wide{grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.player-tile{min-height:226px;padding:12px;border-radius:16px}
+.player-tile>.player-avatar-large{width:108px;height:108px;margin:11px auto 8px;font-size:28px}
+.player-tile h3{font-size:13px}
+.player-tile footer{padding-top:8px;font-size:7px}
+.team-filter-bar{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center;margin:10px 0 4px;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:#fff}
+.team-filter-bar>div{display:grid;gap:2px;min-width:120px}
+.team-filter-bar>div span{font-size:7px;letter-spacing:.12em;font-weight:950;color:var(--green)}
+.team-filter-bar>div strong{font-size:10px;color:#0b2234}
+.team-filter-bar nav{display:flex;gap:7px;overflow:auto;padding-bottom:1px}
+.team-filter-bar nav a{flex:0 0 auto;padding:8px 12px;border:1px solid #d4e0e4;border-radius:999px;background:#f8fbfc;color:#314a59;text-decoration:none;font-size:8px;font-weight:900}
+.team-filter-bar nav a.active{background:#062b45;border-color:#062b45;color:#fff}
+
+.image-crop-field{display:grid;gap:10px}
+.image-crop-picker{display:grid;gap:6px}
+.image-crop-picker>span{font-size:8px;font-weight:900;color:#395462}
+.image-crop-picker input{width:100%}
+.image-crop-workspace{display:grid;grid-template-columns:minmax(150px,240px) 1fr;gap:13px;align-items:start;padding:12px;border:1px solid #d9e5e8;border-radius:14px;background:#f8fbfc}
+.image-crop-preview{position:relative;width:100%;overflow:hidden;border:1px solid #cddce1;border-radius:12px;background-color:#eaf1f3;background-image:linear-gradient(45deg,#dfe8eb 25%,transparent 25%),linear-gradient(-45deg,#dfe8eb 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#dfe8eb 75%),linear-gradient(-45deg,transparent 75%,#dfe8eb 75%);background-size:18px 18px;background-position:0 0,0 9px,9px -9px,-9px 0}
+.image-crop-preview.square{aspect-ratio:1}
+.image-crop-preview.portrait{aspect-ratio:4/5}
+.image-crop-preview.landscape{aspect-ratio:16/9}
+.image-crop-preview canvas,.image-crop-preview img{display:block;width:100%;height:100%;object-fit:contain}
+.image-crop-controls{display:grid;gap:10px}
+.crop-mode{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.crop-mode button,.crop-actions button{min-height:34px;border:1px solid #cad9de;border-radius:8px;background:#fff;color:#38505d;font-size:8px;font-weight:900}
+.crop-mode button.active{border-color:#12865d;background:#e9f8f2;color:#087a4f}
+.image-crop-controls label{display:grid;gap:5px}
+.image-crop-controls label span{display:flex;justify-content:space-between;font-size:7px;color:#627b86;font-weight:850}
+.image-crop-controls input[type="range"]{width:100%;accent-color:#0a8c5d}
+.crop-actions{display:flex;justify-content:space-between;align-items:center}
+.crop-actions span{font-size:7px;color:#8a9ca4}.crop-actions span.ready{color:#078252;font-weight:900}
+
+@media(max-width:1180px){.player-grid-wide{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:900px){.player-grid-wide{grid-template-columns:repeat(3,minmax(0,1fr))}.team-filter-bar{grid-template-columns:1fr}.image-crop-workspace{grid-template-columns:1fr}.image-crop-preview{max-width:260px}}
+@media(max-width:620px){.player-grid-wide{grid-template-columns:repeat(2,minmax(0,1fr))}.player-tile>.player-avatar-large{width:96px;height:96px}}
