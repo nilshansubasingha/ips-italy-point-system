@@ -5,7 +5,7 @@ import {useEffect,useRef,useState} from 'react';
 type Props={
   name?:string;
   label?:string;
-  aspect?:'square'|'portrait'|'landscape'|'hero';
+  aspect?:'square'|'portrait'|'landscape'|'hero'|'mobileHero';
   required?:boolean;
   initialUrl?:string|null;
 };
@@ -14,7 +14,8 @@ const SIZE={
   square:{w:1000,h:1000},
   portrait:{w:1000,h:1250},
   landscape:{w:1600,h:900},
-  hero:{w:1800,h:600}
+  hero:{w:1800,h:600},
+  mobileHero:{w:1200,h:900}
 } as const;
 
 const clamp=(value:number,min:number,max:number)=>Math.min(max,Math.max(min,value));
