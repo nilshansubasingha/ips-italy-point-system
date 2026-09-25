@@ -1662,7 +1662,7 @@
 /* Teams city hero artwork */
 .teams-directory-hero{position:relative;isolation:isolate;overflow:hidden}
 .teams-directory-hero>*{position:relative;z-index:2}
-.teams-directory-hero.city-hero-napoli::before{content:"";position:absolute;inset:0;z-index:0;background-image:url('/city-heroes/napoli-vesuvius.webp');background-size:cover;background-position:center 48%;background-repeat:no-repeat;pointer-events:none}
+.teams-directory-hero>.teams-hero-photo{position:absolute;inset:0;z-index:0;background-size:cover;background-position:center 48%;background-repeat:no-repeat;pointer-events:none}
 .teams-directory-hero.city-hero-napoli::after{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(90deg,rgba(247,250,251,.96) 0%,rgba(247,250,251,.84) 22%,rgba(247,250,251,.50) 40%,rgba(247,250,251,.18) 58%,rgba(247,250,251,.03) 76%,rgba(247,250,251,0) 100%),linear-gradient(180deg,rgba(255,255,255,.03) 0%,rgba(255,255,255,0) 62%,rgba(255,255,255,.12) 100%);pointer-events:none}
 .teams-directory-hero.city-hero-napoli .directory-hero-stat{z-index:3}
-@media(max-width:820px){.teams-directory-hero.city-hero-napoli::before{background-position:62% center}.teams-directory-hero.city-hero-napoli::after{background:linear-gradient(90deg,rgba(247,250,251,.96) 0%,rgba(247,250,251,.90) 58%,rgba(247,250,251,.42) 100%)}}
+@media(max-width:820px){.teams-directory-hero>.teams-hero-photo{background-position:62% center}.teams-directory-hero.city-hero-napoli::after{background:linear-gradient(90deg,rgba(247,250,251,.96) 0%,rgba(247,250,251,.90) 58%,rgba(247,250,251,.42) 100%)}}
