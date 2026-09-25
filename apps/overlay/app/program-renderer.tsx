@@ -117,7 +117,7 @@ function ProgramLayer({snapshot,item,now}:{snapshot:Snapshot;item:{layer:ActiveL
   const exiting=remaining!=null&&remaining<=360;
   const data=useMemo(()=>({...snapshot.data,director:layer.payload??{},runtime:{variantKey:layer.variantKey,instanceId:layer.instanceId}}),[snapshot.data,layer.payload,layer.variantKey,layer.instanceId]);
   return <div className={'program-layer'+(exiting?' exiting':'')} style={{zIndex:layer.priority}}>
-    <FitSceneCanvas document={meta.document} data={data} exiting={exiting}/>
+    <FitSceneCanvas document={meta.document} data={data} exiting={exiting} fit="cover"/>
   </div>;
 }
 
