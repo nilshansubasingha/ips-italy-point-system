@@ -41,6 +41,17 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
     return()=>{clearInterval(releasesTimer);void supabase.removeChannel(channel);};
   },[supabase,matchId,refresh]);
   useEffect(()=>{if(snap.release?.id)setReleaseChoice(current=>current||snap.release.id);},[snap.release?.id]);
+  useEffect(()=>{
+    const next={...defaults};
+    for(const cfg of snap.event_config??[]){
+      const key=cfg.event_key.toLowerCase();
+      if(key==='four'||key==='six'||key==='wicket')next[key]=cfg.default_variant_key;
+    }
+    setDefaults(prev=>{
+      const same=Object.keys(next).every(k=>prev[k]===next[k]);
+      return same?prev:next;
+    });
+  },[snap.event_config]);
 
   const variants=snap.release?.manifest?.variants??{};
   const releases=snap.available_releases??[];
@@ -94,9 +105,23 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
   };
   const setEventConfig=(cfg:EventConfig,mode:string,variantKey=cfg.default_variant_key)=>{
     startTransition(async()=>{
+      setError(null);setNotice(null);
       const {error}=await supabase.rpc('ips_broadcast_set_event_config',{p_match_id:matchId,p_event_key:cfg.event_key,p_mode:mode,p_variant_key:variantKey,p_enabled:cfg.enabled});
-      if(error){setError(error.message);return;}await refresh();
+      if(error){setError(error.message);return;}
+      setDefaults(d=>({...d,[cfg.event_key.toLowerCase()]:variantKey}));
+      setNotice(cfg.event_key+' scorer trigger → '+(variants[variantKey]?.presentation?.replace('_',' ')||variantKey));
+      await refresh();
     });
+  };
+  const eventConfigFor=(scene:string)=>(snap.event_config??[]).find(cfg=>cfg.event_key===scene.toUpperCase())??null;
+  const presentationVariant=(scene:string,presentation:'FULLSCREEN'|'LOWER_THIRD')=>
+    variantList.find(v=>v.meta.sceneKey===scene&&v.meta.presentation===presentation)?.key??null;
+  const setScorerPresentation=(scene:string,presentation:'FULLSCREEN'|'LOWER_THIRD')=>{
+    const cfg=eventConfigFor(scene);
+    const key=presentationVariant(scene,presentation);
+    if(!cfg||!key){setError(scene.toUpperCase()+' '+presentation.replace('_',' ')+' variant is not available in the loaded package.');return;}
+    setSelected(key);
+    setEventConfig(cfg,cfg.mode,key);
   };
 
   const quick=['four','six','wicket'] as const;
@@ -139,12 +164,21 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
           <header><div><span>QUICK EVENTS</span><h2>One-tap live events</h2></div><button className="clear-temp" onClick={()=>command({type:'CLEAR_TEMPORARY'})}>CLEAR TEMP</button></header>
           <div className="quick-grid">
             {quick.map(scene=>{
-              const key=defaults[scene]??scene+'.fullscreen';
-              const options=variantList.filter(v=>v.meta.sceneKey===scene);
+              const cfg=eventConfigFor(scene);
+              const key=cfg?.default_variant_key??defaults[scene]??scene+'.fullscreen';
+              const fs=presentationVariant(scene,'FULLSCREEN');
+              const lt=presentationVariant(scene,'LOWER_THIRD');
+              const activePresentation=variants[key]?.presentation??'FULLSCREEN';
               return <div className={'quick-cell '+scene} key={scene}>
-                <button className="quick-take" disabled={pending||!variants[key]} onClick={()=>take(key)}><strong>{scene.toUpperCase()}</strong><small>{variants[key]?.presentation?.replace('_',' ')||'UNAVAILABLE'}</small></button>
-                <select value={key} onChange={e=>{setDefaults(d=>({...d,[scene]:e.target.value}));setSelected(e.target.value);}}>{options.map(o=><option value={o.key} key={o.key}>{o.meta.presentation.replace('_',' ')}</option>)}</select>
-                <button className="preview-mini" disabled={!variants[key]} onClick={()=>preview(key)}>PREVIEW</button>
+                <button className="quick-take" disabled={pending||!variants[key]} onClick={()=>take(key)}><strong>{scene.toUpperCase()}</strong><small>TAKE NOW · {activePresentation.replace('_',' ')}</small></button>
+                <div className="scorer-route">
+                  <span>WHEN SCORER HITS {scene==='four'?'4':scene==='six'?'6':'W'}</span>
+                  <div>
+                    <button className={activePresentation==='FULLSCREEN'?'active':''} disabled={pending||!fs} onClick={()=>setScorerPresentation(scene,'FULLSCREEN')}>FULL SCREEN</button>
+                    <button className={activePresentation==='LOWER_THIRD'?'active':''} disabled={pending||!lt} onClick={()=>setScorerPresentation(scene,'LOWER_THIRD')}>LOWER THIRD</button>
+                  </div>
+                </div>
+                <button className="preview-mini" disabled={!variants[key]} onClick={()=>preview(key)}>PREVIEW {activePresentation.replace('_',' ')}</button>
               </div>;
             })}
           </div>
@@ -180,7 +214,10 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
 
         <section className="panel automation-panel">
           <header><span>EVENT AUTOMATION</span><b>{snap.session?.automation_enabled?'ENABLED':'DISABLED'}</b></header>
-          {(snap.event_config??[]).map(cfg=><div className="automation-row" key={cfg.event_key}><strong>{cfg.event_key}</strong><select value={cfg.mode} disabled={pending} onChange={e=>setEventConfig(cfg,e.target.value)}><option>MANUAL</option><option>ASSISTED</option><option>AUTOMATIC</option></select></div>)}
+          {(snap.event_config??[]).map(cfg=>{
+            const meta=variants[cfg.default_variant_key];
+            return <div className="automation-row" key={cfg.event_key}><div><strong>{cfg.event_key}</strong><small>{meta?.presentation?.replace('_',' ')??cfg.default_variant_key}</small></div><select value={cfg.mode} disabled={pending} onChange={e=>setEventConfig(cfg,e.target.value)}><option>MANUAL</option><option>ASSISTED</option><option>AUTOMATIC</option></select></div>;
+          })}
           <button className="automation-master" onClick={()=>command({type:'SET_AUTOMATION',enabled:!snap.session?.automation_enabled})}>{snap.session?.automation_enabled?'DISABLE ALL AUTOMATION':'ENABLE AUTOMATION'}</button>
         </section>
 
