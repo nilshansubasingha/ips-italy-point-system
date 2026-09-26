@@ -21,7 +21,6 @@ export type CityRow = {
   istat_code?: string | null;
   country_code: string;
   status: string;
-  competition_kind?: 'TOURNAMENT'|'QUICK_MATCH';
 };
 
 export type ActiveCityRow = CityRow & {
@@ -109,6 +108,7 @@ export type TournamentRow = {
   default_venue_id: string | null;
   short_description: string | null;
   status: string;
+  competition_kind?: 'TOURNAMENT'|'QUICK_MATCH';
 };
 
 
@@ -397,8 +397,7 @@ async function getFixtureContextsFromBaseTables(client: SupabaseClient): Promise
     selectAll<TeamRow>(client, 'teams', 'name'),
     selectAll<RulesetRow>(client, 'competition_rulesets', 'name'),
   ]);
-  const publicTournaments=tournaments.filter((row)=>row.competition_kind!=='QUICK_MATCH');
-  const cities = await selectByIds<CityRow>(client, 'cities', publicTournaments.map((row) => row.city_id), 'name');
+  const cities = await selectByIds<CityRow>(client, 'cities', tournaments.map((row) => row.city_id), 'name');
 
   const tournamentMap = byId(tournaments);
   const cityMap = byId(cities);
@@ -583,7 +582,8 @@ export async function getTournamentDirectory(): Promise<TournamentDirectoryItem[
     selectAll<TournamentTeamRow>(client, 'tournament_teams'),
     getFixtureContexts(),
   ]);
-  const cities = await selectByIds<CityRow>(client, 'cities', tournaments.map((row) => row.city_id), 'name');
+  const publicTournaments=tournaments.filter((row)=>row.competition_kind!=='QUICK_MATCH');
+  const cities = await selectByIds<CityRow>(client, 'cities', publicTournaments.map((row) => row.city_id), 'name');
   const cityMap = byId(cities);
 
   return publicTournaments.map((tournament) => ({
