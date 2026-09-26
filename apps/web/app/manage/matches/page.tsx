@@ -42,7 +42,7 @@ export default async function MatchHistoryPage({searchParams}:{searchParams:Prom
       <div>
         <span className="eyebrow">MATCH ARCHIVE</span>
         <h1>Completed match history</h1>
-        <p>Every finished IPS match is snapshotted here with its scoring record. Certification controls whether its player facts count toward official career statistics and rankings.</p>
+        <p>Every finished IPS match is snapshotted here with its scoring record. Certification controls whether its player facts count toward official career statistics and become eligible for the rankings engine.</p>
       </div>
       <div className="archive-title-stat"><strong>{rows.length}</strong><span>saved matches</span></div>
     </section>
@@ -87,7 +87,7 @@ export default async function MatchHistoryPage({searchParams}:{searchParams:Prom
                 <input type="hidden" name="match_id" value={row.match_id}/>
                 <input type="hidden" name="status" value="OFFICIAL"/>
                 <input type="hidden" name="return_to" value="/manage/matches"/>
-                <ConfirmSubmitButton className="archive-certify" message={'Certify '+home+' vs '+away+' as an official IPS result? Its player statistics will become eligible for official profiles and rankings.'}>Certify match</ConfirmSubmitButton>
+                <ConfirmSubmitButton className="archive-certify" message={'Certify '+home+' vs '+away+' as an official IPS result? Its player statistics will become official and available to the rankings engine.'}>Certify match</ConfirmSubmitButton>
               </form>}
             </div>
           </footer>
