@@ -159,7 +159,7 @@ export function MatchCentre({
         const nextNo=upcomingOrder.get(fixture.match_id);
         const inningsBreak=fixture.match_status==='LIVE'&&live?.innings_no===1&&live.innings_complete;
 
-        return <Link href={'/match-centre/'+fixture.match_id} className={'sketch-match-card '+kind.toLowerCase()} key={fixture.match_id}>
+        return <Link href={'/match-centre/'+encodeURIComponent(fixture.match_code)} className={'sketch-match-card '+kind.toLowerCase()} key={fixture.match_id}>
           <div className="sketch-card-top">
             <span>MATCH #{fixture.match_number}</span>
             <b className={'sketch-status '+kind.toLowerCase()}>{kind==='LIVE'&&<i/>}{statusLabel(fixture.match_status)}</b>
