@@ -17,9 +17,15 @@ function statusLabel(v:string){return v.replaceAll('_',' ')}
 
 export default async function TournamentOpsDetail({params,searchParams}:{params:Promise<{id:string}>,searchParams:Promise<Record<string,string|string[]|undefined>>}){
   const account=await requireAccount(); if(!hasManagementRole(account)) return null;
-  const {id}=await params; const sp=await searchParams; const error=typeof sp.error==='string'?sp.error:null; const ok=typeof sp.ok==='string'?sp.ok:null;
+  const {id:identifier}=await params; const sp=await searchParams; const error=typeof sp.error==='string'?sp.error:null; const ok=typeof sp.ok==='string'?sp.ok:null;
   const supabase=await createClient();
-  const {data:t}=await supabase.from('tournaments').select('*').eq('id',id).maybeSingle(); if(!t)notFound();
+  const isUuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(identifier);
+  const tournamentLookup=isUuid
+    ?supabase.from('tournaments').select('*').eq('id',identifier).maybeSingle()
+    :supabase.from('tournaments').select('*').eq('slug',decodeURIComponent(identifier).toLowerCase()).maybeSingle();
+  const {data:t}=await tournamentLookup; if(!t)notFound();
+  const id=t.id;
+  const routeKey=t.slug||id;
   const [{data:city},{data:ruleset},{data:teams},{data:tournamentTeams},{data:venues},{data:matches},{data:squads},{data:memberships},{data:players},{data:squadPlayers},{data:requests},{data:assignments},{data:playingXI},{data:teamRoles},{data:accountDirectory},{data:awards},canTournamentRes]=await Promise.all([
     supabase.from('cities').select('id,name,code').eq('id',t.city_id).maybeSingle(),
     supabase.from('competition_rulesets').select('*').eq('id',t.ruleset_id).maybeSingle(),
@@ -52,7 +58,7 @@ export default async function TournamentOpsDetail({params,searchParams}:{params:
   const xiByMatchTeam=new Map<string,any[]>(); for(const x of playingXI??[]){const k=`${x.match_id}:${x.team_id}`;const a=xiByMatchTeam.get(k)||[];a.push(x);xiByMatchTeam.set(k,a)}
   const rolesByMatchTeam=new Map<string,any[]>(); for(const x of teamRoles??[]){const k=`${x.match_id}:${x.team_id}`;const a=rolesByMatchTeam.get(k)||[];a.push(x);rolesByMatchTeam.set(k,a)}
   const controllerUrl=process.env.NEXT_PUBLIC_CONTROLLER_URL??'http://localhost:3001';
-  const returnTo=`/manage/tournaments/${id}`;
+  const returnTo=`/manage/tournaments/${routeKey}`;
 
   if(t.competition_kind==='QUICK_MATCH'){
     const quickMatch=(matches??[])[0] as any;
@@ -79,7 +85,7 @@ export default async function TournamentOpsDetail({params,searchParams}:{params:
     };
     const home=makeQuickSide(quickMatch.home_team_id);
     const away=makeQuickSide(quickMatch.away_team_id);
-    const controllerHref=`${controllerUrl}/matches/${quickMatch.id}`;
+    const controllerHref=`${controllerUrl}/matches/${encodeURIComponent(quickMatch.match_code)}`;
 
     return <main className="shell sports-shell">
       <SiteHeader/>
@@ -202,7 +208,7 @@ export default async function TournamentOpsDetail({params,searchParams}:{params:
           };
         };
         return <article className="controller-ready-match" key={m.id}>
-          <header><div><span>{m.match_code}</span><strong>{teamMap.get(m.home_team_id)?.name} <i>vs</i> {teamMap.get(m.away_team_id)?.name}</strong></div><a href={`${controllerUrl}/matches/${m.id}`} target="_blank" rel="noreferrer">Open Controller →</a></header>
+          <header><div><span>{m.match_code}</span><strong>{teamMap.get(m.home_team_id)?.name} <i>vs</i> {teamMap.get(m.away_team_id)?.name}</strong></div><a href={`${controllerUrl}/matches/${encodeURIComponent(m.match_code)}`} target="_blank" rel="noreferrer">Open Controller →</a></header>
           <MatchPlayingSidesEditor
             tournamentId={id}
             matchId={m.id}
