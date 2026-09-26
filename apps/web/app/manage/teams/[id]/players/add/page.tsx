@@ -71,8 +71,8 @@ export default async function AddPlayerPage({params,searchParams}:{params:Promis
 
        <section className="management-surface new-player-panel">
          <div className="surface-head">
-           <div><span className="eyebrow">STEP 2 · ONLY IF NEW</span><h2>Create player</h2></div>
-           <span>Added directly to {team.name}</span>
+           <div><span className="eyebrow">STEP 2 · ONLY IF NEW</span><h2>Bulk-create new players</h2></div>
+           <span>One submission · added to {team.name}</span>
          </div>
          <BulkAdminPlayerCreate teamId={id}/>
        </section>
