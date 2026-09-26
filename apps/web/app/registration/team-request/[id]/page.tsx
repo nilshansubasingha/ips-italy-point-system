@@ -5,7 +5,8 @@ import Link from 'next/link';
 import {SiteFooter,SiteHeader} from '@/components/site-header';
 import {requireAccount} from '@/lib/auth';
 import {createClient} from '@/lib/supabase/server';
-import {addRequestedTeamMember,removeRequestedTeamMember} from '../../actions';
+import {removeRequestedTeamMember} from '../../actions';
+import {BulkTeamRequestRoster} from '@/components/manage/bulk-player-entry';
 
 export default async function TeamRequestRosterPage({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<Record<string,string|string[]|undefined>>}){
   await requireAccount();
@@ -26,7 +27,7 @@ export default async function TeamRequestRosterPage({params,searchParams}:{param
   return <main className="shell sports-shell">
     <SiteHeader/>
     <section className="manage-titlebar">
-      <div><Link className="back-link" href="/registration">← My registration</Link><span className="eyebrow">PROVISIONAL TEAM ROSTER</span><h1>{request.name}</h1><p>Add the people you expect to be on this Team. Names are provisional only; IPS checks the permanent player registry before any official identity is created.</p></div>
+      <div><Link className="back-link" href="/registration">← My registration</Link><span className="eyebrow">PROVISIONAL TEAM ROSTER</span><h1>{request.name}</h1><p>Add the whole expected roster together. Names remain provisional; IPS checks every person against the permanent player registry before any official identity is created.</p></div>
       <div className="directory-hero-stat"><strong>{members.length}</strong><span>provisional members</span></div>
     </section>
     {typeof sp.ok==='string'&&<div className="ops-message success">{sp.ok}</div>}
@@ -35,15 +36,7 @@ export default async function TeamRequestRosterPage({params,searchParams}:{param
     <section className="registration-overview-grid">
       {editable&&<article className="management-surface">
         <div className="surface-head"><div><span className="eyebrow">ADD MEMBER</span><h2>Provisional roster</h2></div><span>{request.structure.replaceAll('_',' + ')}</span></div>
-        <form action={addRequestedTeamMember} className="compact-form">
-          <input type="hidden" name="team_request_id" value={id}/>
-          <label><span>Full name *</span><input name="full_name" required placeholder="Harsha Silva"/></label>
-          <label><span>Public display name</span><input name="display_name" placeholder="H. Silva"/></label>
-          <div className="form-split"><label><span>Date of birth</span><input name="date_of_birth" type="date"/></label><label><span>Primary role</span><select name="primary_role" defaultValue=""><option value="">Not set</option><option>Batter</option><option>Bowler</option><option>All-rounder</option><option>Wicketkeeper</option><option>Wicketkeeper-batter</option></select></label></div>
-          <div className="form-split"><label><span>Email</span><input name="email" type="email"/></label><label><span>Phone</span><input name="phone" type="tel" placeholder="+393451234567"/></label></div>
-          {request.structure==='SINGLE'?<input type="hidden" name="side_label" value="MAIN"/>:<label><span>Requested side</span><select name="side_label" defaultValue="A"><option>A</option><option>B</option>{request.structure==='A_B_C'&&<option>C</option>}</select></label>}
-          <button>Add provisional member</button>
-        </form>
+        <BulkTeamRequestRoster requestId={id} structure={request.structure}/>
       </article>}
 
       <article className="management-surface">
