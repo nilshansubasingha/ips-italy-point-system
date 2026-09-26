@@ -4623,3 +4623,11 @@
     width:100%;
   }
 }
+
+
+.registration-bulk-layout{
+  grid-template-columns:1fr;
+}
+.registration-bulk-layout>.management-surface:first-child{
+  min-width:0;
+}
