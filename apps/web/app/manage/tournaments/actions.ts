@@ -341,6 +341,47 @@ export async function updateMatchStatus(form: FormData) {
   catch(e:any){go(back,'error',friendlyError(e,'Could not update match.'));}
 }
 
+export async function addMatchPlayerAward(form: FormData) {
+  const supabase=await createClient(); const back=returnPath(form);
+  try {
+    const {error}=await supabase.rpc('ips_add_match_player_award',{
+      p_match_id:s(form,'match_id'),
+      p_player_id:s(form,'player_id'),
+      p_award_name:s(form,'award_name')
+    });
+    if(error)throw error;
+    revalidatePath(back);
+    revalidatePath('/rankings');
+    go(back,'ok','Award added.');
+  } catch(e:any){go(back,'error',friendlyError(e,'Could not add award.'));}
+}
+
+export async function removeMatchPlayerAward(form: FormData) {
+  const supabase=await createClient(); const back=returnPath(form);
+  try {
+    const {error}=await supabase.rpc('ips_remove_match_player_award',{p_award_id:s(form,'award_id')});
+    if(error)throw error;
+    revalidatePath(back);
+    revalidatePath('/rankings');
+    go(back,'ok','Award removed.');
+  } catch(e:any){go(back,'error',friendlyError(e,'Could not remove award.'));}
+}
+
+export async function revokeMatchCertification(form: FormData) {
+  const supabase=await createClient(); const back=returnPath(form);
+  try {
+    const {error}=await supabase.rpc('ips_revoke_match_certification',{
+      p_match_id:s(form,'match_id'),
+      p_reason:s(form,'reason')
+    });
+    if(error)throw error;
+    revalidatePath(back);
+    revalidatePath('/rankings');
+    revalidatePath('/match-centre');
+    go(back,'ok','Certification revoked. The match is excluded from official stats and rankings until certified again.');
+  } catch(e:any){go(back,'error',friendlyError(e,'Could not revoke certification.'));}
+}
+
 export async function assignOfficial(form: FormData) {
   const supabase=await createClient(); const back=returnPath(form);
   try { const {data:{user}}=await supabase.auth.getUser(); if(!user) throw new Error('Not signed in.'); const {error}=await supabase.from('match_official_assignments').insert({match_id:s(form,'match_id'),user_id:s(form,'user_id'),role:s(form,'role'),designation:s(form,'designation')||'STANDARD',assigned_by:user.id,note:nullable(form,'note')}); if(error) throw error; revalidatePath(back); go(back,'ok','Official assigned.'); }
