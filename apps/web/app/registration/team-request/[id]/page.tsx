@@ -33,7 +33,7 @@ export default async function TeamRequestRosterPage({params,searchParams}:{param
     {typeof sp.ok==='string'&&<div className="ops-message success">{sp.ok}</div>}
     {typeof sp.error==='string'&&<div className="ops-message error">{sp.error}</div>}
 
-    <section className="registration-overview-grid">
+    <section className="registration-overview-grid registration-bulk-layout">
       {editable&&<article className="management-surface">
         <div className="surface-head"><div><span className="eyebrow">ADD MEMBER</span><h2>Provisional roster</h2></div><span>{request.structure.replaceAll('_',' + ')}</span></div>
         <BulkTeamRequestRoster requestId={id} structure={request.structure}/>
