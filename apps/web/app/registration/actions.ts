@@ -29,6 +29,31 @@ export async function addRequestedTeamMember(form:FormData){
   }catch(e:any){go(ret,'error',String(e?.message??'Could not add provisional member.'));}
 }
 
+export async function addRequestedTeamMembersBulk(form:FormData){
+  const supabase=await createClient();
+  const requestId=s(form,'team_request_id');
+  const ret=`/registration/team-request/${requestId}`;
+  try{
+    const raw=s(form,'members_json');
+    const members=JSON.parse(raw||'[]');
+    if(!Array.isArray(members))throw new Error('Invalid bulk roster data.');
+    const {data,error}=await supabase.rpc('ips_bulk_add_team_request_members',{
+      p_team_request_id:requestId,
+      p_members:members
+    });
+    if(error)throw error;
+    const created=Number(data?.created??0);
+    const failed=Array.isArray(data?.failed)?data.failed:[];
+    revalidatePath(ret);
+    const details=failed.slice(0,3).map((x:any)=>`${x.full_name||'Row '+x.row}: ${x.error}`).join(' · ');
+    go(ret,failed.length?'error':'ok',
+      failed.length
+        ?`${created} member${created===1?'':'s'} added. ${failed.length} need attention. ${details}`
+        :`${created} provisional member${created===1?'':'s'} added together.`
+    );
+  }catch(e:any){go(ret,'error',String(e?.message??'Could not add roster members.'));}
+}
+
 export async function removeRequestedTeamMember(form:FormData){
   const supabase=await createClient();
   const requestId=s(form,'team_request_id');
