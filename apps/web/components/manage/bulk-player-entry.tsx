@@ -114,7 +114,7 @@ export function BulkTeamRequestRoster({requestId,structure}:{requestId:string;st
   </div>;
 }
 
-export function BulkAdminPlayerCreate({teamId}:{teamId:string}){
+export function BulkAdminPlayerCreate({teamId,teamRouteKey=teamId}:{teamId:string;teamRouteKey?:string}){
   const [rows,setRows]=useState<Draft[]>(()=>Array.from({length:5},()=>blank()));
   const [paste,setPaste]=useState('');
   const payload=useMemo(()=>usable(rows).map(({key,side_label,...row})=>({
@@ -150,7 +150,7 @@ export function BulkAdminPlayerCreate({teamId}:{teamId:string}){
 
     <form action={createPlayersForTeamBulk}>
       <input type="hidden" name="team_id" value={teamId}/>
-      <input type="hidden" name="return_to" value={'/manage/teams/'+teamId+'/players/add'}/>
+      <input type="hidden" name="return_to" value={'/manage/teams/'+teamRouteKey+'/players/add'}/>
       <input type="hidden" name="players_json" value={JSON.stringify(payload)}/>
 
       <div className="bulk-player-table-wrap">
@@ -193,7 +193,7 @@ type SearchPlayer={
   is_on_target_team:boolean;
 };
 
-export function BulkExistingPlayerRequests({teamId,results}:{teamId:string;results:SearchPlayer[]}){
+export function BulkExistingPlayerRequests({teamId,teamRouteKey=teamId,results}:{teamId:string;teamRouteKey?:string;results:SearchPlayer[]}){
   const [selected,setSelected]=useState<Record<string,boolean>>({});
   const [shirts,setShirts]=useState<Record<string,string>>({});
   const payload=results
@@ -202,7 +202,7 @@ export function BulkExistingPlayerRequests({teamId,results}:{teamId:string;resul
 
   return <form action={addExistingPlayersBulk} className="bulk-existing-results">
     <input type="hidden" name="team_id" value={teamId}/>
-    <input type="hidden" name="return_to" value={'/manage/teams/'+teamId+'/players/add'}/>
+    <input type="hidden" name="return_to" value={'/manage/teams/'+teamRouteKey+'/players/add'}/>
     <input type="hidden" name="players_json" value={JSON.stringify(payload)}/>
 
     <div className="bulk-existing-toolbar">
