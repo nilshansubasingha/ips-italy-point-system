@@ -57,9 +57,11 @@ export default async function MatchHistoryPage({searchParams}:{searchParams:Prom
         const home=match.home_team?.name??'Home';
         const away=match.away_team?.name??'Away';
         const official=row.match_status==='OFFICIAL'||row.match_status==='LOCKED';
+        const rankingEligible=Boolean(snap.ranking_eligible);
+        const classification=String(snap.match_classification??(rankingEligible?'RANKING':'FRIENDLY'));
         return <article className="match-archive-card" key={row.match_id}>
           <header>
-            <div><span>{row.competition_kind==='QUICK_MATCH'?'QUICK MATCH':'TOURNAMENT MATCH'} · {row.match_code}</span><strong>{home} <i>vs</i> {away}</strong></div>
+            <div><span>{row.competition_kind==='QUICK_MATCH'?'QUICK MATCH':'TOURNAMENT MATCH'} · {classification.replaceAll('_',' ')} · {row.match_code}</span><strong>{home} <i>vs</i> {away}</strong></div>
             <b className={official?'official':'provisional'}>{official?'OFFICIAL':'PROVISIONAL'}</b>
           </header>
 
@@ -79,7 +81,7 @@ export default async function MatchHistoryPage({searchParams}:{searchParams:Prom
           <footer>
             <div>
               <span>{row.completed_at?new Date(row.completed_at).toLocaleString('en-GB',{timeZone:'Europe/Rome'}):'—'}</span>
-              <small>{official?'Counts in official player statistics':'Saved, but not counted in official statistics yet'}</small>
+              <small>{official?(rankingEligible?'Official stats · counts in rankings':'Official stats · excluded from rankings'):(rankingEligible?'Awaiting certification before stats/rankings':'Saved history · ranking excluded')}</small>
             </div>
             <div className="archive-actions">
               <Link href={'/match-centre/'+row.match_id} target="_blank">Scorecard ↗</Link>
@@ -87,7 +89,7 @@ export default async function MatchHistoryPage({searchParams}:{searchParams:Prom
                 <input type="hidden" name="match_id" value={row.match_id}/>
                 <input type="hidden" name="status" value="OFFICIAL"/>
                 <input type="hidden" name="return_to" value="/manage/matches"/>
-                <ConfirmSubmitButton className="archive-certify" message={'Certify '+home+' vs '+away+' as an official IPS result? Its player statistics will become official and available to the rankings engine.'}>Certify match</ConfirmSubmitButton>
+                <ConfirmSubmitButton className="archive-certify" message={'Certify '+home+' vs '+away+' as an official IPS result? '+(rankingEligible?'Its player statistics will become official and update the rankings engine.':'Its player statistics will become official, but this match will remain excluded from rankings.')}>Certify match</ConfirmSubmitButton>
               </form>}
             </div>
           </footer>
