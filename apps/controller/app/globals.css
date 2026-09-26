@@ -3307,3 +3307,41 @@
   .p6-break-primary,
   .p6-break-secondary{min-height:60px}
 }
+
+
+/* Match-scoped PRISM output controls */
+.p6-header-actions{
+  display:flex;
+  align-items:center;
+  gap:7px;
+}
+.p6-header-output,
+.p6-header-director{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:36px;
+  padding:8px 11px;
+  border-radius:10px;
+  text-decoration:none;
+  font-size:7px;
+  font-weight:950;
+  letter-spacing:.05em;
+}
+.p6-header-output{
+  border:1px solid #b7ddcf;
+  background:#eefaf5;
+  color:#087d54;
+}
+.p6-header-director{
+  border:1px solid #cedce2;
+  background:#f6f9fa;
+  color:#0b3148;
+}
+@media(max-width:700px){
+  .p6-header-output,
+  .p6-header-director{
+    padding:7px 8px;
+    font-size:6px;
+  }
+}
