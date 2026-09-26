@@ -13,19 +13,26 @@ import {addTeamSide,deleteTeam,deleteTeamIdentity,removeEntityImage,updateTeamId
 
 export default async function TeamIdentityOperationsPage({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<Record<string,string|string[]|undefined>>}){
  const account=await requireAccount();
- const {id}=await params;
+ const {id:identifier}=await params;
  const sp=await searchParams;
  const error=typeof sp.error==='string'?sp.error:null;
  const ok=typeof sp.ok==='string'?sp.ok:null;
  const supabase=await createClient();
 
- const [{data:identity},{data:sides},{data:members},{data:canManage}]=await Promise.all([
-   supabase.from('clubs').select('*,city:cities(id,name)').eq('id',id).maybeSingle(),
-   supabase.from('teams').select('id,name,short_name,category,logo_url,status,side_label,side_order').eq('club_id',id).eq('status','ACTIVE').order('side_order'),
+ const isUuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(identifier);
+ const identityLookup=isUuid
+   ?supabase.from('clubs').select('*,city:cities(id,name)').eq('id',identifier).maybeSingle()
+   :supabase.from('clubs').select('*,city:cities(id,name)').eq('slug',decodeURIComponent(identifier).toLowerCase()).maybeSingle();
+ const {data:identity}=await identityLookup;
+ if(!identity)notFound();
+ const id=identity.id;
+ const routeKey=identity.slug||id;
+
+ const [{data:sides},{data:members},{data:canManage}]=await Promise.all([
+   supabase.from('teams').select('id,name,short_name,slug,category,logo_url,status,side_label,side_order').eq('club_id',id).eq('status','ACTIVE').order('side_order'),
    supabase.from('team_memberships').select('id,team_id,player_id,shirt_number,team_role,player:players(id,ips_code,display_name,primary_role,profile_image_url)').eq('status','ACTIVE').is('end_on',null),
    supabase.rpc('ips_can_manage_club',{p_club_id:id})
  ]);
- if(!identity)notFound();
 
  const sideIds=new Set((sides??[]).map((s:any)=>s.id));
  const roster=(members??[]).filter((m:any)=>sideIds.has(m.team_id));
@@ -80,8 +87,8 @@ export default async function TeamIdentityOperationsPage({params,searchParams}:{
            </div>
            <div className="team-side-mini-roster">{sidePlayers.slice(0,5).map((m:any)=><Link href={`/manage/players/${m.player.id}`} key={m.id}><PlayerAvatar name={m.player.display_name} imageUrl={m.player.profile_image_url}/><span>{m.player.display_name}</span></Link>)}</div>
            <div className="team-side-admin-actions">
-             <Link className="button-primary" href={`/manage/teams/${side.id}/players/add`}>Manage {label} →</Link>
-             {canGlobalDelete&&(sides?.length??0)>1&&<form action={deleteTeam}><input type="hidden" name="team_id" value={side.id}/><input type="hidden" name="return_to" value={`/manage/teams/${id}`}/><ConfirmSubmitButton className="danger-link" message={`Delete ${side.name}? This removes only this competitive side and its roster memberships. Scheduled/ready fixture setup is cleaned automatically. Started, completed or official match history still blocks deletion.`}>Delete side</ConfirmSubmitButton></form>}
+             <Link className="button-primary" href={`/manage/teams/${side.slug}/players/add`}>Manage {label} →</Link>
+             {canGlobalDelete&&(sides?.length??0)>1&&<form action={deleteTeam}><input type="hidden" name="team_id" value={side.id}/><input type="hidden" name="return_to" value={`/manage/teams/${routeKey}`}/><ConfirmSubmitButton className="danger-link" message={`Delete ${side.name}? This removes only this competitive side and its roster memberships. Scheduled/ready fixture setup is cleaned automatically. Started, completed or official match history still blocks deletion.`}>Delete side</ConfirmSubmitButton></form>}
            </div>
          </article>;
        })}
@@ -94,7 +101,7 @@ export default async function TeamIdentityOperationsPage({params,searchParams}:{
          <div className="surface-head"><div><span className="eyebrow">TEAM IDENTITY</span><h2>Public details</h2></div><span>Shown across IPS</span></div>
          <form action={updateTeamIdentity} className="compact-form">
            <input type="hidden" name="team_identity_id" value={id}/>
-           <input type="hidden" name="return_to" value={`/manage/teams/${id}`}/>
+           <input type="hidden" name="return_to" value={`/manage/teams/${routeKey}`}/>
            <label><span>Team name</span><input name="name" defaultValue={displayName}/></label>
            <label><span>Short name</span><input name="short_name" defaultValue={identity.short_name??''}/></label>
            <div className="form-split"><label><span>Founded</span><input name="founded_year" type="number" defaultValue={identity.founded_year??''}/></label><label><span>Website</span><input name="website_url" type="url" defaultValue={identity.website_url??''}/></label></div>
@@ -108,11 +115,11 @@ export default async function TeamIdentityOperationsPage({params,searchParams}:{
          <form action={uploadEntityImage} className="media-form" encType="multipart/form-data">
            <input type="hidden" name="kind" value="clubs"/>
            <input type="hidden" name="entity_id" value={id}/>
-           <input type="hidden" name="return_to" value={`/manage/teams/${id}`}/>
+           <input type="hidden" name="return_to" value={`/manage/teams/${routeKey}`}/>
            <ImageCropField name="image" label="Choose team logo" aspect="square" required initialUrl={identity.logo_url}/>
            <button>Upload / replace</button>
          </form>
-         {identity.logo_url&&<form action={removeEntityImage}><input type="hidden" name="kind" value="clubs"/><input type="hidden" name="entity_id" value={id}/><input type="hidden" name="return_to" value={`/manage/teams/${id}`}/><button className="danger-link">Remove logo</button></form>}
+         {identity.logo_url&&<form action={removeEntityImage}><input type="hidden" name="kind" value="clubs"/><input type="hidden" name="entity_id" value={id}/><input type="hidden" name="return_to" value={`/manage/teams/${routeKey}`}/><button className="danger-link">Remove logo</button></form>}
        </section>
      </div>
 
@@ -121,7 +128,7 @@ export default async function TeamIdentityOperationsPage({params,searchParams}:{
        <p className="management-help">Use this only when the Team operates another independent competitive roster.</p>
        <form action={addTeamSide} className="compact-form">
          <input type="hidden" name="team_identity_id" value={id}/>
-         <input type="hidden" name="return_to" value={`/manage/teams/${id}`}/>
+         <input type="hidden" name="return_to" value={`/manage/teams/${routeKey}`}/>
          <label><span>Side label</span><input name="side_label" maxLength={8} placeholder="B" required/></label>
          <label><span>Category</span><select name="category" defaultValue="OPEN"><option value="OPEN">Open</option><option value="MEN">Men</option><option value="WOMEN">Women</option><option value="YOUTH">Youth</option><option value="VETERANS">Veterans</option></select></label>
          <button>Add competitive side</button>
