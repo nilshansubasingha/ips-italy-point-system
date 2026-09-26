@@ -19,15 +19,20 @@ export default async function MatchHistoryDetail({params}:{params:Promise<{id:st
   const account=await requireAccount();
   if(!globalAdmin(account))redirect('/manage');
 
-  const {id}=await params;
-  if(!/^[0-9a-f-]{36}$/i.test(id))notFound();
-
+  const {id:identifier}=await params;
   const supabase=await createClient();
+  const isUuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(identifier);
+  const matchLookup=isUuid
+    ?supabase.from('matches').select('*').eq('id',identifier).maybeSingle()
+    :supabase.from('matches').select('*').eq('match_code',decodeURIComponent(identifier).toUpperCase()).maybeSingle();
+  const {data:match}=await matchLookup;
+  if(!match)notFound();
+  const id=match.id;
+
   const {data:archive}=await supabase.from('match_archives').select('*').eq('match_id',id).maybeSingle();
   if(!archive)notFound();
 
-  const [{data:match},{data:stats},{data:awards}]=await Promise.all([
-    supabase.from('matches').select('*').eq('id',id).maybeSingle(),
+  const [{data:stats},{data:awards}]=await Promise.all([
     supabase.from('player_match_stats').select('*').eq('match_id',id).order('runs',{ascending:false}),
     supabase.from('match_player_awards').select('*').eq('match_id',id).order('created_at')
   ]);
@@ -91,7 +96,7 @@ export default async function MatchHistoryDetail({params}:{params:Promise<{id:st
     </section>
 
     <div className="history-detail-actions">
-      <Link href={'/match-centre/'+id} target="_blank">Open public scorecard ↗</Link>
+      <Link href={'/match-centre/'+encodeURIComponent(match.match_code)} target="_blank">Open public scorecard ↗</Link>
       <Link href={'/manage/tournaments/'+tournamentId}>Tournament operations →</Link>
     </div>
 
