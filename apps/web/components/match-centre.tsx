@@ -118,7 +118,7 @@ export function MatchCentre({
       {visible.length === 0 ? (
         <div className="sports-empty premium-empty"><div className="empty-icon">IPS</div><div><strong>No matches in this view.</strong><span>Change the city or match-state filter.</span></div></div>
       ) : (
-        <div className={`fixture-grid ${visible.length === 1 ? 'fixture-grid-single' : ''}`}>
+        <div className={`fixture-grid ${visible.length === 1 ? 'fixture-grid-single' : ''} ${tab==='LIVE'?'fixture-grid-live':''}`}>
           {visible.map((fixture, index) => {
             const live=liveMap.get(fixture.match_id)??null;
             const state=granularStatus(fixture,live);
