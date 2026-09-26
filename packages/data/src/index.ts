@@ -576,6 +576,20 @@ export async function getPublicMatchScorecard(matchId:string): Promise<PublicMat
   return (data??null) as PublicMatchScorecard|null;
 }
 
+export async function getPublicMatchScorecardByIdentifier(identifier:string): Promise<PublicMatchScorecard|null> {
+  const client=getPublicSupabaseClient();
+  if(!client)return null;
+  const isUuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(identifier);
+  let matchId=identifier;
+  if(!isUuid){
+    const {data:match,error:matchError}=await client.from('matches').select('id,match_code').eq('match_code',identifier.toUpperCase()).maybeSingle();
+    if(matchError)throw new Error(`public match lookup: ${matchError.message}`);
+    if(!match)return null;
+    matchId=match.id;
+  }
+  return getPublicMatchScorecard(matchId);
+}
+
 export async function getPlayerCareerStats(playerId:string): Promise<PlayerCareerStats> {
   const client=getPublicSupabaseClient();
   const empty:PlayerCareerStats={matches:0,runs:0,balls:0,fours:0,sixes:0,wickets:0,bowling_runs:0,bowling_balls:0,strike_rate:0,economy:0};
