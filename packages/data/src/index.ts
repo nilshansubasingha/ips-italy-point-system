@@ -295,6 +295,7 @@ export type PlayerRankingRow = {
   fastest_fifty_fours:number|null;
   fastest_fifty_sixes:number|null;
   hat_tricks:number;
+  awards:number;
   batting_points:number;
   bowling_points:number;
   all_rounder_points:number;
