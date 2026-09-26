@@ -241,8 +241,8 @@ export default async function MatchHistoryPage({searchParams}:{searchParams:Prom
               <span>{official?(row.rankingEligible?'Official stats · counts in rankings':'Official stats · excluded from rankings'):(row.rankingEligible?'Awaiting certification before stats/rankings':'Saved history · ranking excluded')}</span>
             </div>
             <div className="archive-actions">
-              <Link className="archive-detail-link" href={'/manage/matches/'+row.match_id}>Details →</Link>
-              <Link href={'/match-centre/'+row.match_id} target="_blank">Public scorecard ↗</Link>
+              <Link className="archive-detail-link" href={'/manage/matches/'+encodeURIComponent(row.match_code)}>Details →</Link>
+              <Link href={'/match-centre/'+encodeURIComponent(row.match_code)} target="_blank">Public scorecard ↗</Link>
               {!official?<form action={updateMatchStatus}>
                 <input type="hidden" name="match_id" value={row.match_id}/>
                 <input type="hidden" name="status" value="OFFICIAL"/>
