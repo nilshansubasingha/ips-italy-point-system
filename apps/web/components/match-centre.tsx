@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import {useMemo,useState} from 'react';
+import {useCallback,useEffect,useMemo,useState} from 'react';
 import type {CityRow,FixtureContextRow,MatchLiveSummary} from '@ips/data';
 import {Crest} from './identity';
 import {formatDate} from '@/lib/format';
+import {createClient} from '@/lib/supabase/client';
 
 type StateFilter='ALL'|'LIVE'|'UPCOMING'|'FINISHED';
 
@@ -49,15 +50,43 @@ export function MatchCentre({
   const [city,setCity]=useState('ALL');
   const [tournament,setTournament]=useState('ALL');
   const [state,setState]=useState<StateFilter>('ALL');
-  const liveMap=useMemo(()=>new Map(liveSummaries.map(item=>[item.match_id,item])),[liveSummaries]);
+  const [currentFixtures,setCurrentFixtures]=useState(fixtures);
+  const [currentSummaries,setCurrentSummaries]=useState(liveSummaries);
+  const supabase=useMemo(()=>createClient(),[]);
+  const liveMap=useMemo(()=>new Map(currentSummaries.map(item=>[item.match_id,item])),[currentSummaries]);
+
+  const refreshScores=useCallback(async()=>{
+    const {data,error}=await supabase.rpc('ips_public_match_live_summaries');
+    if(!error&&Array.isArray(data))setCurrentSummaries(data as MatchLiveSummary[]);
+  },[supabase]);
+
+  useEffect(()=>{
+    const channel=supabase
+      .channel('public-match-centre-live')
+      .on('postgres_changes',{event:'*',schema:'public',table:'broadcast_realtime_signals'},()=>{void refreshScores();})
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'matches'},payload=>{
+        const next=payload.new as any;
+        if(next?.id){
+          setCurrentFixtures(current=>current.map(f=>f.match_id===next.id?{...f,match_status:next.status,scheduled_at:next.scheduled_at??f.scheduled_at}:f));
+        }
+        void refreshScores();
+      })
+      .subscribe();
+
+    const safety=setInterval(()=>void refreshScores(),2500);
+    return()=>{
+      clearInterval(safety);
+      void supabase.removeChannel(channel);
+    };
+  },[supabase,refreshScores]);
 
   const tournaments=useMemo(()=>{
     const map=new Map<string,string>();
-    fixtures.forEach(f=>map.set(f.tournament_id,f.tournament_name));
+    currentFixtures.forEach(f=>map.set(f.tournament_id,f.tournament_name));
     return [...map.entries()].sort((a,b)=>a[1].localeCompare(b[1]));
-  },[fixtures]);
+  },[currentFixtures]);
 
-  const scoped=useMemo(()=>fixtures.filter(f=>(city==='ALL'||f.city_id===city)&&(tournament==='ALL'||f.tournament_id===tournament)),[fixtures,city,tournament]);
+  const scoped=useMemo(()=>currentFixtures.filter(f=>(city==='ALL'||f.city_id===city)&&(tournament==='ALL'||f.tournament_id===tournament)),[currentFixtures,city,tournament]);
   const counts=useMemo(()=>({
     LIVE:scoped.filter(f=>bucket(f.match_status)==='LIVE').length,
     UPCOMING:scoped.filter(f=>bucket(f.match_status)==='UPCOMING').length,
