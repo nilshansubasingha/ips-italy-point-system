@@ -3536,3 +3536,78 @@
   }
   .archive-certify{width:100%}
 }
+
+
+/* Quick Match ranking classification */
+.quick-match-classification{
+  margin:12px 0 0;
+  padding:0;
+  border:0;
+}
+.quick-match-classification>legend{
+  margin-bottom:7px;
+  padding:0;
+  color:#6e828e;
+  font-size:8px;
+  font-weight:900;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.quick-classification-options{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+}
+.quick-classification-options>label{
+  position:relative;
+  min-width:0;
+  cursor:pointer;
+}
+.quick-classification-options input{
+  position:absolute;
+  opacity:0;
+  pointer-events:none;
+}
+.quick-classification-options>label>span{
+  display:block;
+  min-height:76px;
+  padding:11px 12px;
+  border:1px solid #d8e3e7;
+  border-radius:12px;
+  background:#fbfdfe;
+  transition:.15s ease;
+}
+.quick-classification-options b,
+.quick-classification-options small{
+  display:block;
+}
+.quick-classification-options b{
+  color:#0a2337;
+  font-size:10px;
+}
+.quick-classification-options small{
+  margin-top:5px;
+  color:#758a95;
+  font-size:7px;
+  line-height:1.4;
+}
+.quick-classification-options input:checked+span{
+  border-color:#7bc5aa;
+  background:#edf9f4;
+  box-shadow:inset 0 0 0 1px #a8dbc7;
+}
+.quick-classification-options input:checked+span b{
+  color:#087a53;
+}
+.preview-badge.live{
+  background:#e8f8f0;
+  color:#087a54!important;
+}
+@media(max-width:700px){
+  .quick-classification-options{
+    grid-template-columns:1fr;
+  }
+  .quick-classification-options>label>span{
+    min-height:0;
+  }
+}
