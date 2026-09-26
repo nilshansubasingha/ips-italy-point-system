@@ -97,7 +97,7 @@ export default async function MatchHistoryDetail({params}:{params:Promise<{id:st
 
     <div className="history-detail-actions">
       <Link href={'/match-centre/'+encodeURIComponent(match.match_code)} target="_blank">Open public scorecard ↗</Link>
-      <Link href={'/manage/tournaments/'+tournamentId}>Tournament operations →</Link>
+      <Link href={'/manage/tournaments/'+(tournament?.slug??tournamentId)}>Tournament operations →</Link>
     </div>
 
     <section className="sports-section history-detail-innings-section">
