@@ -7,7 +7,8 @@ import {ManagementNav} from '@/components/manage/manage-nav';
 import {requireAccount} from '@/lib/auth';
 import {createClient} from '@/lib/supabase/server';
 import {PlayerAvatar} from '@/components/identity';
-import {addExistingPlayer,createPlayerForTeam,updateRosterPlayer} from '../../../../registry/actions';
+import {updateRosterPlayer} from '../../../../registry/actions';
+import {BulkAdminPlayerCreate,BulkExistingPlayerRequests} from '@/components/manage/bulk-player-entry';
 
 const ROLE_OPTIONS=['Player','Batter','Bowler','All-rounder','Wicketkeeper','Wicketkeeper-batter'];
 
@@ -45,7 +46,7 @@ export default async function AddPlayerPage({params,searchParams}:{params:Promis
        <Link className="back-link" href={`/manage/teams/${(team.club as any)?.id}`}>← {String((team.club as any)?.name??'Team').replace(/\s+Cricket Club$/i,'')}</Link>
        <span className="eyebrow">ROSTER BUILDER</span>
        <h1>{team.side_label==='MAIN'?'Team roster':`${team.side_label} Team roster`}</h1>
-       <p>Search any IPS player and send a roster request. Existing players are never moved or attached immediately: a free player must accept the join request, while a player already on another Team can be approved by the player or released by the current Team.</p>
+       <p>Search and select several existing IPS players at once, or bulk-create genuinely new identities below. Existing players still require the normal join/transfer approval; duplicate protection remains active for every new player.</p>
      </div>
    </section>
 
@@ -62,23 +63,8 @@ export default async function AddPlayerPage({params,searchParams}:{params:Promis
            <input name="q" defaultValue={q} placeholder="Name, ITA-0001847, email or +39 phone"/>
            <button>Search IPS</button>
          </form>
-         {q&&<div className="search-result-stack">
-           {results.map(p=><article className="player-search-result" key={p.id}>
-             <PlayerAvatar name={p.display_name} imageUrl={p.profile_image_url}/>
-             <div>
-               <span>{p.matched_by}</span>
-               <h3>{p.display_name}</h3>
-               <p>{p.ips_code} · {p.primary_role||'Player'}{p.current_team_identity_name?` · ${String(p.current_team_identity_name).replace(/\s+Cricket Club$/i,'')}`:' · Unattached'}{p.birth_year?` · born ${p.birth_year}`:''}</p>
-             </div>
-             {p.is_on_target_team
-               ?<b className="already-chip">Already on team</b>
-               :<form action={addExistingPlayer}>
-                 <input type="hidden" name="team_id" value={id}/>
-                 <input type="hidden" name="player_id" value={p.id}/>
-                 <input name="shirt_number" type="number" min="0" max="999" placeholder="Shirt #"/>
-                 <button>Request player →</button>
-               </form>}
-           </article>)}
+         {q&&<div>
+           {!!results.length&&<BulkExistingPlayerRequests teamId={id} results={results as any}/>}
            {!results.length&&<div className="search-empty"><strong>No matching IPS player.</strong><p>If you have checked the name and contact details, continue to Step 2 below.</p></div>}
          </div>}
        </section>
@@ -88,37 +74,7 @@ export default async function AddPlayerPage({params,searchParams}:{params:Promis
            <div><span className="eyebrow">STEP 2 · ONLY IF NEW</span><h2>Create player</h2></div>
            <span>Added directly to {team.name}</span>
          </div>
-         <form action={createPlayerForTeam} className="professional-form embedded">
-           <input type="hidden" name="team_id" value={id}/>
-           <input type="hidden" name="return_to" value={`/manage/teams/${id}/players/add`}/>
-           <div className="form-block flat">
-             <div className="form-split">
-               <label><span>Full legal name *</span><input name="full_name" required placeholder="Dinesh Fernando"/><small className="field-note">Private identity field used for duplicate checks.</small></label>
-               <label><span>Public display name *</span><input name="display_name" required placeholder="D. Fernando"/><small className="field-note">Used on scorecards, profiles and rankings.</small></label>
-             </div>
-             <div className="form-split">
-               <label><span>Date of birth</span><input name="date_of_birth" type="date"/><small className="field-note">Optional and private. Helps distinguish players with the same name.</small></label>
-               <label><span>Shirt number</span><input name="shirt_number" type="number" min="0" max="999" placeholder="18"/></label>
-             </div>
-             <div className="form-split">
-               <label><span>Primary role</span><select name="primary_role" defaultValue=""><option value="">Player</option><option>Batter</option><option>Bowler</option><option>All-rounder</option><option>Wicketkeeper</option><option>Wicketkeeper-batter</option></select></label>
-               <label><span>Batting style</span><select name="batting_style" defaultValue=""><option value="">Not set</option><option>Right-hand bat</option><option>Left-hand bat</option></select></label>
-             </div>
-             <label><span>Bowling style</span><input name="bowling_style" placeholder="Right-arm medium / Left-arm spin / etc."/></label>
-           </div>
-
-           <div className="form-block contact-block">
-             <div className="form-block-head"><span>↳</span><div><strong>Optional account/contact identifiers</strong><small>Private. These do not replace the permanent IPS player ID.</small></div></div>
-             <div className="form-split">
-               <label><span>Email</span><input name="email" type="email" placeholder="player@example.com"/></label>
-               <label><span>Phone / WhatsApp</span><input name="phone" type="tel" placeholder="+393451234567"/><small className="field-note">Use international format. Stored as a secondary login/search identifier.</small></label>
-             </div>
-             <label className="consent-check"><input type="checkbox" name="whatsapp_consent"/><span><b>WhatsApp updates allowed</b><small>Record consent now; actual WhatsApp messaging is not enabled yet.</small></span></label>
-           </div>
-
-           <div className="registry-identity-note"><b>Search first. Create only when the person is genuinely new.</b><span>IPS blocks strong email/phone or full-name + date-of-birth matches. Same display names are allowed because two different people may both be “H. Silva”.</span></div>
-           <button className="button-primary">Create player & add to team →</button>
-         </form>
+         <BulkAdminPlayerCreate teamId={id}/>
        </section>
      </div>
 
