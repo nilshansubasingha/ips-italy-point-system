@@ -30,8 +30,9 @@ export async function createTeamIdentity(form:FormData){
     });
     if(error)throw error;
     const identity=Array.isArray(data)?data[0]:data;
+    const routeKey=identity?.slug??(await supabase.from('clubs').select('slug').eq('id',identity.id).single()).data?.slug??identity.id;
     revalidatePath('/manage/teams'); revalidatePath('/teams'); revalidatePath('/');
-    go(`/manage/teams/${identity.id}`,'ok','Team created. You can now manage its side(s) and players.');
+    go(`/manage/teams/${routeKey}`,'ok','Team created. You can now manage its side(s) and players.');
   }catch(e:any){go(ret,'error',friendly(e,'Could not create team.'));}
 }
 
@@ -105,8 +106,8 @@ export async function createTeam(form:FormData){
     const name=s(form,'name'); if(!name)throw new Error('Team name is required.');
     const {data:club}=await supabase.from('clubs').select('slug').eq('id',clubId).single();
     const slug=`${slugify(club?.slug??'club')}-${slugify(name)}`.replace(/-+/g,'-').slice(0,120);
-    const {data,error}=await supabase.from('teams').insert({club_id:clubId,name,short_name:nullable(form,'short_name'),slug,category:s(form,'category')||'OPEN',status:'ACTIVE'}).select('id').single(); if(error)throw error;
-    revalidatePath('/manage/teams'); revalidatePath(`/manage/clubs/${clubId}`); go(`/manage/teams/${data.id}`,'ok','Team created. Add players to build the roster.');
+    const {data,error}=await supabase.from('teams').insert({club_id:clubId,name,short_name:nullable(form,'short_name'),slug,category:s(form,'category')||'OPEN',status:'ACTIVE'}).select('id,slug').single(); if(error)throw error;
+    revalidatePath('/manage/teams'); revalidatePath(`/manage/clubs/${clubId}`); go(`/manage/teams/${data.slug}/players/add`,'ok','Team created. Add players to build the roster.');
   }catch(e:any){go(ret,'error',friendly(e,'Could not create team.'));}
 }
 
