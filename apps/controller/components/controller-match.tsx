@@ -277,6 +277,7 @@ export function ControllerMatch({
   initialScoring,
   nextMatch,
   webUrl,
+  overlayUrl,
   message,
   errorMessage
 }:{
@@ -284,6 +285,7 @@ export function ControllerMatch({
   initialScoring:ScoringContext;
   nextMatch?:NextMatch|null;
   webUrl:string;
+  overlayUrl:string;
   message?:string|null;
   errorMessage?:string|null
 }){
@@ -473,7 +475,11 @@ export function ControllerMatch({
   return <main className="controller-shell project6-shell">
     <header className="controller-header p6-header">
       <div className="controller-brand"><BrandMark compact/><div className="match-id"><span>IPS MATCH CONTROLLER</span><b>{context.match.code}</b></div></div>
-      <Link className="header-menu back-control" href="/">←</Link>
+      <div className="p6-header-actions">
+        <a className="p6-header-output" href={overlayUrl+'/program/'+context.match.id} target="_blank" rel="noreferrer">CURRENT OVERLAY ↗</a>
+        <Link className="p6-header-director" href={'/director/matches/'+context.match.id}>DIRECTOR ↗</Link>
+        <Link className="header-menu back-control" href="/">←</Link>
+      </div>
     </header>
 
     <section className="p6-engine">
