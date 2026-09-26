@@ -3189,3 +3189,121 @@
 .p6-sheet-recovery button:disabled{
   opacity:.4;
 }
+
+
+/* Project 6.6 — innings-break tournament queue workflow */
+.p6-between-innings{background:#fff}
+.p6-break-heading{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:18px;
+}
+.p6-break-heading>small{
+  max-width:520px;
+  color:#6f8490;
+  font-size:8px;
+  line-height:1.45;
+  text-align:right;
+}
+.p6-break-actions{
+  display:grid;
+  grid-template-columns:minmax(0,1.35fr) minmax(260px,.65fr);
+  gap:8px;
+  margin-top:12px;
+}
+.p6-break-primary,
+.p6-break-secondary{
+  position:relative;
+  display:grid;
+  min-width:0;
+  min-height:68px;
+  align-content:center;
+  padding:11px 46px 11px 13px;
+  border-radius:13px;
+  text-decoration:none;
+  overflow:hidden;
+}
+.p6-break-primary{
+  border:1px solid #0c8c5d;
+  background:linear-gradient(135deg,#087b4f,#0aa36a);
+  color:#fff;
+}
+.p6-break-secondary{
+  border:1px solid #d5e2e6;
+  background:#f6f9fa;
+  color:var(--ink);
+}
+.p6-break-primary span,
+.p6-break-secondary span{
+  font-size:6px;
+  font-weight:950;
+  letter-spacing:.11em;
+}
+.p6-break-primary span{color:#b8f2d8}
+.p6-break-secondary span{color:#718691}
+.p6-break-primary strong,
+.p6-break-secondary strong{
+  overflow:hidden;
+  margin-top:4px;
+  font-size:10px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.p6-break-primary>b,
+.p6-break-secondary>b{
+  position:absolute;
+  right:14px;
+  top:50%;
+  transform:translateY(-50%);
+  font-size:20px;
+}
+.p6-chase-now{
+  margin-top:9px;
+  border:1px solid #d8e3e7;
+  border-radius:13px;
+  background:#fbfcfd;
+  overflow:hidden;
+}
+.p6-chase-now>summary{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  align-items:center;
+  gap:10px;
+  min-height:48px;
+  padding:9px 12px;
+  cursor:pointer;
+  list-style:none;
+}
+.p6-chase-now>summary::-webkit-details-marker{display:none}
+.p6-chase-now>summary span{
+  color:var(--green);
+  font-size:6px;
+  font-weight:950;
+  letter-spacing:.1em;
+}
+.p6-chase-now>summary strong{font-size:9px}
+.p6-chase-now>summary>b{
+  color:#728792;
+  font-size:14px;
+  transition:transform .15s ease;
+}
+.p6-chase-now[open]>summary>b{transform:rotate(180deg)}
+.p6-chase-body{
+  padding:0 11px 11px;
+  border-top:1px solid #e7edef;
+}
+@media(max-width:700px){
+  .p6-break-heading{
+    align-items:flex-start;
+    flex-direction:column;
+    gap:5px;
+  }
+  .p6-break-heading>small{
+    max-width:none;
+    text-align:left;
+  }
+  .p6-break-actions{grid-template-columns:1fr}
+  .p6-break-primary,
+  .p6-break-secondary{min-height:60px}
+}
