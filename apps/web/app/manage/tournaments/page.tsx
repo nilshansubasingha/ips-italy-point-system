@@ -14,7 +14,7 @@ export default async function TournamentManagementPage({searchParams}:{searchPar
   const sp=await searchParams; const error=typeof sp.error==='string'?sp.error:null; const ok=typeof sp.ok==='string'?sp.ok:null;
   const supabase=await createClient();
   const [tRes,ttRes,mRes]=await Promise.all([
-    supabase.from('tournaments').select('id,name,code,status,starts_at,format_label,players_per_side,overs_per_innings,balls_per_over,competition_kind,city:cities(name)').order('starts_at',{ascending:false}),
+    supabase.from('tournaments').select('id,name,code,slug,status,starts_at,format_label,players_per_side,overs_per_innings,balls_per_over,competition_kind,city:cities(name)').order('starts_at',{ascending:false}),
     supabase.from('tournament_teams').select('tournament_id,status'),
     supabase.from('matches').select('tournament_id,status'),
   ]);
@@ -32,12 +32,12 @@ export default async function TournamentManagementPage({searchParams}:{searchPar
     <section className="ops-kpi-strip"><article><span>Tournaments</span><strong>{tournaments.length}</strong><small>full competitions</small></article><article><span>Quick Matches</span><strong>{quickMatches.length}</strong><small>fast setups</small></article><article><span>Live</span><strong>{live+quickMatches.filter(t=>t.status==='LIVE').length}</strong><small>in progress</small></article><article><span>Fixtures</span><strong>{mRes.data?.length??0}</strong><small>across IPS</small></article></section>
     <section className="management-surface"><div className="surface-head"><div><span className="eyebrow">ALL COMPETITIONS</span><h2>Tournament control</h2></div><span>{tournaments.length} records</span></div>
       <div className="competition-list">{tournaments.map(t=><article className="competition-admin-card" key={t.id}>
-        <Link href={'/manage/tournaments/'+t.id} className="competition-row">
+        <Link href={'/manage/tournaments/'+t.slug} className="competition-row">
           <div className="competition-code">{t.code}</div><div className="competition-main"><div><span className={'ops-status '+String(t.status).toLowerCase()}>{String(t.status).replaceAll('_',' ')}</span><b>{(t.city as any)?.name??'Italy'}</b></div><h3>{t.name}</h3><p>{t.format_label} · {t.players_per_side} players · {t.overs_per_innings} overs · {t.balls_per_over} balls/over</p></div>
           <div className="competition-metrics"><span><b>{teamCounts.get(t.id)||0}</b> teams</span><span><b>{matchCounts.get(t.id)||0}</b> fixtures</span><span><b>{formatItalyDateTime(t.starts_at).split(',')[0]}</b> starts</span></div><div className="competition-open">Open →</div>
         </Link>
         <div className="competition-admin-actions">
-          <Link href={'/manage/tournaments/'+t.id+'#overview'}>Edit</Link>
+          <Link href={'/manage/tournaments/'+t.slug+'#overview'}>Edit</Link>
           {canGlobalDelete&&<form action={deleteTournament}>
             <input type="hidden" name="tournament_id" value={t.id}/>
             <input type="hidden" name="return_to" value="/manage/tournaments"/>
@@ -47,6 +47,6 @@ export default async function TournamentManagementPage({searchParams}:{searchPar
       </article>)}</div>
       {!tournaments.length&&<div className="sports-empty"><strong>No tournaments yet.</strong><p>Create the first competition from the dedicated tournament workspace.</p></div>}
     </section>
-    {quickMatches.length>0&&<section className="management-surface quick-match-history"><div className="surface-head"><div><span className="eyebrow">QUICK MATCHES</span><h2>Recent one-off matches</h2></div><Link href="/manage/tournaments/quick">＋ New Quick Match</Link></div><div className="competition-list">{quickMatches.slice(0,8).map(t=><article className="competition-admin-card" key={t.id}><Link href={'/manage/tournaments/'+t.id+'#lineups'} className="competition-row"><div className="competition-code">QM</div><div className="competition-main"><div><span className={'ops-status '+String(t.status).toLowerCase()}>{String(t.status).replaceAll('_',' ')}</span><b>{(t.city as any)?.name??'Italy'}</b></div><h3>{t.name}</h3><p>{t.players_per_side} players · {t.overs_per_innings} overs · {t.balls_per_over} balls/over</p></div><div className="competition-open">Setup / score →</div></Link></article>)}</div></section>}
+    {quickMatches.length>0&&<section className="management-surface quick-match-history"><div className="surface-head"><div><span className="eyebrow">QUICK MATCHES</span><h2>Recent one-off matches</h2></div><Link href="/manage/tournaments/quick">＋ New Quick Match</Link></div><div className="competition-list">{quickMatches.slice(0,8).map(t=><article className="competition-admin-card" key={t.id}><Link href={'/manage/tournaments/'+t.slug+'#lineups'} className="competition-row"><div className="competition-code">QM</div><div className="competition-main"><div><span className={'ops-status '+String(t.status).toLowerCase()}>{String(t.status).replaceAll('_',' ')}</span><b>{(t.city as any)?.name??'Italy'}</b></div><h3>{t.name}</h3><p>{t.players_per_side} players · {t.overs_per_innings} overs · {t.balls_per_over} balls/over</p></div><div className="competition-open">Setup / score →</div></Link></article>)}</div></section>}
     <SiteFooter/></main>;
 }
