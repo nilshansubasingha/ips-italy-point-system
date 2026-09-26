@@ -1,158 +1,168 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import type { CityRow, FixtureContextRow, MatchLiveSummary } from '@ips/data';
-import { formatDate, titleCase } from '@/lib/format';
-import { Crest } from './identity';
+import Link from 'next/link';
+import {useMemo,useState} from 'react';
+import type {CityRow,FixtureContextRow,MatchLiveSummary} from '@ips/data';
+import {Crest} from './identity';
+import {formatDate} from '@/lib/format';
 
-type Tab = 'LIVE' | 'YET_TO_PLAY' | 'FINISHED';
+type StateFilter='ALL'|'LIVE'|'UPCOMING'|'FINISHED';
 
-function bucket(status: string): Tab {
-  if (status === 'LIVE') return 'LIVE';
-  if (status === 'SCHEDULED' || status === 'READY') return 'YET_TO_PLAY';
+function bucket(status:string):StateFilter{
+  if(status==='LIVE')return 'LIVE';
+  if(status==='SCHEDULED'||status==='READY')return 'UPCOMING';
   return 'FINISHED';
 }
-
-function statusLabel(status: string) {
-  if (status === 'LIVE') return 'LIVE';
-  if (status === 'READY') return 'READY';
-  if (status === 'SCHEDULED') return 'SCHEDULED';
-  if (status === 'AWAITING_CERTIFICATION') return 'AWAITING CERTIFICATION';
-  return titleCase(status).toUpperCase();
+function statusLabel(status:string){
+  if(status==='LIVE')return 'LIVE';
+  if(status==='READY')return 'READY';
+  if(status==='SCHEDULED')return 'UPCOMING';
+  if(status==='AWAITING_CERTIFICATION')return 'AWAITING CERT.';
+  if(status==='OFFICIAL'||status==='LOCKED')return 'OFFICIAL';
+  if(status==='COMPLETED')return 'FINISHED';
+  return status.replaceAll('_',' ');
 }
-
-function granularStatus(fixture:FixtureContextRow, live?:MatchLiveSummary|null){
-  if(fixture.match_status==='READY')return 'Ready to start';
-  if(fixture.match_status==='SCHEDULED')return 'Scheduled';
-  if(fixture.match_status==='AWAITING_CERTIFICATION')return 'Awaiting certification';
-  if(['COMPLETED','OFFICIAL','LOCKED'].includes(fixture.match_status))return 'Match complete';
-  if(fixture.match_status!=='LIVE')return statusLabel(fixture.match_status);
-  if(!live?.started)return 'Live · waiting for first innings';
-  if(live.innings_no===1&&live.innings_complete)return 'Innings break';
-  if(live.innings_no===1)return '1st innings';
-  if(live.innings_no===2&&live.innings_complete)return 'Match complete';
-  if(live.innings_no===2)return '2nd innings · chase';
-  return 'Live';
+function scoreForTeam(live:MatchLiveSummary|undefined,teamId:string){
+  if(!live)return null;
+  if(live.first_innings_team_id===teamId&&live.first_innings_runs!=null)return {runs:live.first_innings_runs,wickets:live.first_innings_wickets??0};
+  if(live.second_innings_team_id===teamId&&live.second_innings_runs!=null)return {runs:live.second_innings_runs,wickets:live.second_innings_wickets??0};
+  if(live.batting_team_id===teamId&&live.started)return {runs:live.runs,wickets:live.wickets};
+  return null;
 }
-
-function LiveScorePanel({live}:{live:MatchLiveSummary}){
-  if(!live.started){
-    return <div className="fixture-live-panel waiting">
-      <span className="fixture-live-kicker">MATCH STATUS</span>
-      <strong>Waiting for first innings</strong>
-      <small>The Controller is live. Score will appear here from the first delivery.</small>
-    </div>;
-  }
-
-  if(live.innings_no===1&&live.innings_complete){
-    const target=(live.first_innings_runs??live.runs)+1;
-    return <div className="fixture-live-panel innings-break">
-      <span className="fixture-live-kicker">INNINGS BREAK</span>
-      <div className="fixture-live-scoreline">
-        <strong>{live.first_innings_runs??live.runs}/{live.first_innings_wickets??live.wickets}</strong>
-        <span>{live.overs_text} OV</span>
-      </div>
-      <div className="fixture-next-bat">
-        <span>NEXT TO BAT</span>
-        <strong>{live.next_batting_team_name??'Next batting side'}</strong>
-        <small>Target {target}</small>
-      </div>
-    </div>;
-  }
-
-  return <div className="fixture-live-panel">
-    <div className="fixture-live-head">
-      <div><span className="fixture-live-kicker">{live.innings_no===2?'2ND INNINGS · CHASE':'1ST INNINGS'}</span><strong>{live.batting_team_name??'Batting'}</strong></div>
-      <div className="fixture-live-scoreline"><strong>{live.runs}/{live.wickets}</strong><span>{live.overs_text} OV</span></div>
-    </div>
-    {live.innings_no===2&&live.target_runs&&<div className="fixture-chase-line"><span>TARGET <b>{live.target_runs}</b></span><span>NEED <b>{Math.max(live.target_runs-live.runs,0)}</b></span></div>}
-    <div className="fixture-live-players">
-      <div><span>STRIKER</span><strong>{live.striker_name??'—'}</strong><b>{live.striker_runs} <small>({live.striker_balls})</small></b></div>
-      <div><span>NON-STRIKER</span><strong>{live.non_striker_name??'—'}</strong><b>{live.non_striker_runs} <small>({live.non_striker_balls})</small></b></div>
-      <div className="bowler"><span>BOWLER</span><strong>{live.bowler_name??'Select bowler'}</strong><b>{live.bowler_wickets}/{live.bowler_runs} <small>({live.bowler_overs})</small></b></div>
-    </div>
-  </div>;
+function teamState(live:MatchLiveSummary|undefined,teamId:string,status:string){
+  const score=scoreForTeam(live,teamId);
+  if(score)return score.runs+'/'+score.wickets;
+  if(status==='LIVE'&&live?.next_batting_team_id===teamId)return 'NEXT TO BAT';
+  if(status==='LIVE')return 'YET TO BAT';
+  return '—';
 }
 
 export function MatchCentre({
   fixtures,
   cities,
-  liveSummaries = [],
-  compact = false
+  liveSummaries=[]
 }:{
-  fixtures: FixtureContextRow[];
-  cities: CityRow[];
-  liveSummaries?: MatchLiveSummary[];
-  compact?: boolean
-}) {
-  const initial: Tab = fixtures.some((fixture) => fixture.match_status === 'LIVE') ? 'LIVE' : 'YET_TO_PLAY';
-  const [tab, setTab] = useState<Tab>(initial);
-  const [city, setCity] = useState<string>('ALL');
-
+  fixtures:FixtureContextRow[];
+  cities:CityRow[];
+  liveSummaries?:MatchLiveSummary[];
+}){
+  const [city,setCity]=useState('ALL');
+  const [tournament,setTournament]=useState('ALL');
+  const [state,setState]=useState<StateFilter>('ALL');
   const liveMap=useMemo(()=>new Map(liveSummaries.map(item=>[item.match_id,item])),[liveSummaries]);
-  const visible = useMemo(() => fixtures.filter((fixture) => bucket(fixture.match_status) === tab && (city === 'ALL' || fixture.city_id === city)), [fixtures, tab, city]);
-  const counts = useMemo(() => ({
-    LIVE: fixtures.filter((f) => bucket(f.match_status) === 'LIVE' && (city === 'ALL' || f.city_id === city)).length,
-    YET_TO_PLAY: fixtures.filter((f) => bucket(f.match_status) === 'YET_TO_PLAY' && (city === 'ALL' || f.city_id === city)).length,
-    FINISHED: fixtures.filter((f) => bucket(f.match_status) === 'FINISHED' && (city === 'ALL' || f.city_id === city)).length,
-  }), [fixtures, city]);
 
-  const selectedCity = city === 'ALL' ? 'All Italy' : cities.find(c => c.id === city)?.name ?? 'City';
+  const tournaments=useMemo(()=>{
+    const map=new Map<string,string>();
+    fixtures.forEach(f=>map.set(f.tournament_id,f.tournament_name));
+    return [...map.entries()].sort((a,b)=>a[1].localeCompare(b[1]));
+  },[fixtures]);
 
-  return (
-    <div className={`match-centre premium-match-centre ${compact ? 'match-centre-compact' : ''}`}>
-      <div className="match-centre-commandbar">
-        <div><span className="micro-label">MATCH CENTRE</span><strong>{selectedCity}</strong></div>
-        <div className="match-tabs" role="tablist">
-          <button className={tab === 'LIVE' ? 'active live-tab' : ''} onClick={() => setTab('LIVE')}><span className="tab-dot live"/>Live <b>{counts.LIVE}</b></button>
-          <button className={tab === 'YET_TO_PLAY' ? 'active' : ''} onClick={() => setTab('YET_TO_PLAY')}>Upcoming <b>{counts.YET_TO_PLAY}</b></button>
-          <button className={tab === 'FINISHED' ? 'active' : ''} onClick={() => setTab('FINISHED')}>Finished <b>{counts.FINISHED}</b></button>
-        </div>
+  const scoped=useMemo(()=>fixtures.filter(f=>(city==='ALL'||f.city_id===city)&&(tournament==='ALL'||f.tournament_id===tournament)),[fixtures,city,tournament]);
+  const counts=useMemo(()=>({
+    LIVE:scoped.filter(f=>bucket(f.match_status)==='LIVE').length,
+    UPCOMING:scoped.filter(f=>bucket(f.match_status)==='UPCOMING').length,
+    FINISHED:scoped.filter(f=>bucket(f.match_status)==='FINISHED').length
+  }),[scoped]);
+
+  const upcomingOrder=useMemo(()=>{
+    const map=new Map<string,number>();
+    scoped.filter(f=>bucket(f.match_status)==='UPCOMING')
+      .sort((a,b)=>Date.parse(a.scheduled_at)-Date.parse(b.scheduled_at)||a.match_number-b.match_number)
+      .forEach((f,i)=>map.set(f.match_id,i+1));
+    return map;
+  },[scoped]);
+
+  const visible=useMemo(()=>{
+    const weight=(f:FixtureContextRow)=>bucket(f.match_status)==='LIVE'?0:bucket(f.match_status)==='UPCOMING'?1:2;
+    return scoped
+      .filter(f=>state==='ALL'||bucket(f.match_status)===state)
+      .sort((a,b)=>weight(a)-weight(b)||(weight(a)===2?Date.parse(b.scheduled_at)-Date.parse(a.scheduled_at):Date.parse(a.scheduled_at)-Date.parse(b.scheduled_at)));
+  },[scoped,state]);
+
+  const selectedCity=city==='ALL'?'All Italy':cities.find(c=>c.id===city)?.name??'City';
+
+  return <div className="match-centre sketch-match-centre">
+    <div className="sketch-mc-head">
+      <div><span className="micro-label">MATCH CENTRE</span><strong>{selectedCity}</strong></div>
+      <div className="sketch-state-filters">
+        <button className={state==='ALL'?'active':''} onClick={()=>setState('ALL')}>All <b>{scoped.length}</b></button>
+        <button className={state==='LIVE'?'active live':''} onClick={()=>setState('LIVE')}>Live <b>{counts.LIVE}</b></button>
+        <button className={state==='UPCOMING'?'active':''} onClick={()=>setState('UPCOMING')}>Upcoming <b>{counts.UPCOMING}</b></button>
+        <button className={state==='FINISHED'?'active finished':''} onClick={()=>setState('FINISHED')}>Finished <b>{counts.FINISHED}</b></button>
       </div>
-
-      <div className="city-filter-row" aria-label="City filter">
-        <button className={city === 'ALL' ? 'active' : ''} onClick={() => setCity('ALL')}>All Italy</button>
-        {cities.map((item) => <button key={item.id} className={city === item.id ? 'active' : ''} onClick={() => setCity(item.id)}>{item.name}</button>)}
-      </div>
-
-      {visible.length === 0 ? (
-        <div className="sports-empty premium-empty"><div className="empty-icon">IPS</div><div><strong>No matches in this view.</strong><span>Change the city or match-state filter.</span></div></div>
-      ) : (
-        <div className={`fixture-grid ${visible.length === 1 ? 'fixture-grid-single' : ''} ${tab==='LIVE'?'fixture-grid-live':''}`}>
-          {visible.map((fixture, index) => {
-            const live=liveMap.get(fixture.match_id)??null;
-            const state=granularStatus(fixture,live);
-            return <article className={`fixture-card premium-fixture-card ${fixture.match_status === 'LIVE' ? 'fixture-live' : ''}`} key={fixture.match_id}>
-              <div className="fixture-card-accent" />
-              <div className="fixture-card-top">
-                <div><span className="fixture-index">MATCH {String(fixture.match_number ?? index + 1).padStart(2, '0')}</span><strong>{fixture.tournament_name}</strong><span>{fixture.city_name} · {fixture.venue_name ?? 'Venue TBC'}</span></div>
-                <span className={`status-chip status-${fixture.match_status.toLowerCase()}`}>{fixture.match_status === 'LIVE' && <i className="live-pulse"/>}{statusLabel(fixture.match_status)}</span>
-              </div>
-
-              <div className="fixture-state-line">
-                <span className={fixture.match_status==='LIVE'?'live':''}>{state}</span>
-                {live?.updated_at&&fixture.match_status==='LIVE'&&<small>Live scoring</small>}
-              </div>
-
-              <div className={`fixture-versus premium-versus ${fixture.match_status==='LIVE'?'with-live-score':''}`}>
-                <div className="fixture-team"><Crest name={fixture.home_team_name} large/><strong>{fixture.home_team_name}</strong><span>HOME</span></div>
-                <div className="fixture-middle">
-                  {fixture.match_status==='LIVE'&&live
-                    ?<LiveScorePanel live={live}/>
-                    :<><span>{formatDate(fixture.scheduled_at, true, fixture.scheduled_time_tbc)}</span><strong>VS</strong><small>{fixture.match_code}</small></>}
-                </div>
-                <div className="fixture-team right"><Crest name={fixture.away_team_name} large/><strong>{fixture.away_team_name}</strong><span>AWAY</span></div>
-              </div>
-
-              <div className="fixture-card-bottom premium-fixture-meta">
-                <div><span>Format</span><strong>{fixture.overs_per_innings} overs · {fixture.players_per_side} players</strong></div>
-                <div><span>Stage</span><strong>{fixture.round_label ?? fixture.stage}</strong></div>
-              </div>
-              <div className="fixture-card-foot"><span>{state}</span><b>→</b></div>
-            </article>;
-          })}
-        </div>
-      )}
     </div>
-  );
+
+    <div className="sketch-mc-filters">
+      <div className="city-filter-row" aria-label="City filter">
+        <button className={city==='ALL'?'active':''} onClick={()=>setCity('ALL')}>All Italy</button>
+        {cities.map(item=><button key={item.id} className={city===item.id?'active':''} onClick={()=>setCity(item.id)}>{item.name}</button>)}
+      </div>
+      <label className="tournament-filter">
+        <span>Tournament</span>
+        <select value={tournament} onChange={e=>setTournament(e.target.value)}>
+          <option value="ALL">All tournaments</option>
+          {tournaments.map(([id,name])=><option key={id} value={id}>{name}</option>)}
+        </select>
+      </label>
+    </div>
+
+    {!visible.length?<div className="sports-empty premium-empty"><div className="empty-icon">IPS</div><div><strong>No matches in this view.</strong><span>Change the city, tournament or status filter.</span></div></div>:
+    <div className="sketch-match-grid">
+      {visible.map(fixture=>{
+        const live=liveMap.get(fixture.match_id);
+        const kind=bucket(fixture.match_status);
+        const homeScore=teamState(live,fixture.home_team_id,fixture.match_status);
+        const awayScore=teamState(live,fixture.away_team_id,fixture.match_status);
+        const nextNo=upcomingOrder.get(fixture.match_id);
+        const inningsBreak=fixture.match_status==='LIVE'&&live?.innings_no===1&&live.innings_complete;
+
+        return <Link href={'/match-centre/'+fixture.match_id} className={'sketch-match-card '+kind.toLowerCase()} key={fixture.match_id}>
+          <div className="sketch-card-top">
+            <span>MATCH #{fixture.match_number}</span>
+            <b className={'sketch-status '+kind.toLowerCase()}>{kind==='LIVE'&&<i/>}{statusLabel(fixture.match_status)}</b>
+          </div>
+
+          <div className="sketch-card-teams">
+            <div className="sketch-team">
+              <Crest name={fixture.home_team_name} imageUrl={fixture.home_team_logo_url}/>
+              <strong>{fixture.home_team_name}</strong>
+              <b>{homeScore}</b>
+            </div>
+
+            <div className="sketch-card-centre">
+              {kind==='UPCOMING'?<>
+                <span>NEXT MATCH {nextNo??''}</span>
+                <strong>VS</strong>
+                <small>{formatDate(fixture.scheduled_at,true,fixture.scheduled_time_tbc)}</small>
+              </>:kind==='LIVE'?<>
+                <span>{inningsBreak?'INNINGS BREAK':live?.innings_no===2?'2ND INNINGS':'1ST INNINGS'}</span>
+                <strong>{inningsBreak?'NEXT':live?.overs_text?live.overs_text+' OV':'LIVE'}</strong>
+                <small>{inningsBreak?(live?.next_batting_team_name??'Next side'):(live?.batting_team_name??'Scoring')}</small>
+              </>:<>
+                <span>RESULT</span>
+                <strong>FT</strong>
+                <small>{live?.result_text??'Match complete'}</small>
+              </>}
+            </div>
+
+            <div className="sketch-team right">
+              <Crest name={fixture.away_team_name} imageUrl={fixture.away_team_logo_url}/>
+              <strong>{fixture.away_team_name}</strong>
+              <b>{awayScore}</b>
+            </div>
+          </div>
+
+          {kind==='LIVE'&&live&&!inningsBreak&&live.started&&<div className="sketch-live-strip">
+            <span><b>{live.striker_name??'—'}</b> {live.striker_runs} ({live.striker_balls})</span>
+            <span><b>{live.non_striker_name??'—'}</b> {live.non_striker_runs} ({live.non_striker_balls})</span>
+            <span className="bowler"><b>{live.bowler_name??'Bowler'}</b> {live.bowler_wickets}/{live.bowler_runs} · {live.bowler_overs}</span>
+          </div>}
+
+          {kind==='LIVE'&&inningsBreak&&<div className="sketch-result-line"><strong>{live?.next_batting_team_name} next to bat</strong><span>Target {(live?.first_innings_runs??0)+1}</span></div>}
+          {kind==='FINISHED'&&<div className="sketch-result-line finished"><strong>{live?.result_text??'Match complete'}</strong><span>Open scorecard →</span></div>}
+          {kind==='UPCOMING'&&<div className="sketch-result-line"><strong>{fixture.tournament_name}</strong><span>{fixture.city_name}</span></div>}
+        </Link>;
+      })}
+    </div>}
+  </div>;
 }
