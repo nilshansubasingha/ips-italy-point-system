@@ -8,7 +8,7 @@ import {ManagementNav} from '@/components/manage/manage-nav';
 import {ConfirmSubmitButton} from '@/components/manage/confirm-submit-button';
 import {requireAccount} from '@/lib/auth';
 import {createClient} from '@/lib/supabase/server';
-import {updateMatchStatus} from '../tournaments/actions';
+import {revokeMatchCertification,updateMatchStatus} from '../tournaments/actions';
 
 function globalAdmin(account:Awaited<ReturnType<typeof requireAccount>>){
   return account.grants.some(grant=>
@@ -85,11 +85,16 @@ export default async function MatchHistoryPage({searchParams}:{searchParams:Prom
             </div>
             <div className="archive-actions">
               <Link href={'/match-centre/'+row.match_id} target="_blank">Scorecard ↗</Link>
-              {!official&&<form action={updateMatchStatus}>
+              {!official?<form action={updateMatchStatus}>
                 <input type="hidden" name="match_id" value={row.match_id}/>
                 <input type="hidden" name="status" value="OFFICIAL"/>
                 <input type="hidden" name="return_to" value="/manage/matches"/>
                 <ConfirmSubmitButton className="archive-certify" message={'Certify '+home+' vs '+away+' as an official IPS result? '+(rankingEligible?'Its player statistics will become official and update the rankings engine.':'Its player statistics will become official, but this match will remain excluded from rankings.')}>Certify match</ConfirmSubmitButton>
+              </form>:<form action={revokeMatchCertification} className="archive-revoke-form">
+                <input type="hidden" name="match_id" value={row.match_id}/>
+                <input type="hidden" name="return_to" value="/manage/matches"/>
+                <input name="reason" minLength={3} required placeholder="Reason for revoking"/>
+                <button className="archive-revoke">Revoke certification</button>
               </form>}
             </div>
           </footer>
