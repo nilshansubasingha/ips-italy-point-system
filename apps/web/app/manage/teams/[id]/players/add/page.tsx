@@ -71,7 +71,7 @@ export default async function AddPlayerPage({params,searchParams}:{params:Promis
            <button>Search IPS</button>
          </form>
          {q&&<div>
-           {!!results.length&&<BulkExistingPlayerRequests teamId={id} results={results as any}/>}
+           {!!results.length&&<BulkExistingPlayerRequests teamId={id} teamRouteKey={routeKey} results={results as any}/>}
            {!results.length&&<div className="search-empty"><strong>No matching IPS player.</strong><p>If you have checked the name and contact details, continue to Step 2 below.</p></div>}
          </div>}
        </section>
@@ -81,7 +81,7 @@ export default async function AddPlayerPage({params,searchParams}:{params:Promis
            <div><span className="eyebrow">STEP 2 · ONLY IF NEW</span><h2>Bulk-create new players</h2></div>
            <span>One submission · added to {team.name}</span>
          </div>
-         <BulkAdminPlayerCreate teamId={id}/>
+         <BulkAdminPlayerCreate teamId={id} teamRouteKey={routeKey}/>
        </section>
      </div>
 
