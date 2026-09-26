@@ -1842,3 +1842,209 @@
   .hero-editor-note{align-items:flex-start;flex-direction:column}
   .hero-editor-note span{text-align:left}
 }
+
+
+/* Project 6.7 — live Match Centre */
+.fixture-state-line{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-top:10px;
+  padding:7px 9px;
+  border-radius:9px;
+  background:#f2f6f7;
+  border:1px solid #e0e8eb;
+}
+.fixture-state-line>span{
+  color:#516a79;
+  font-size:7px;
+  font-weight:950;
+  letter-spacing:.07em;
+  text-transform:uppercase;
+}
+.fixture-state-line>span.live{color:#ac2e38}
+.fixture-state-line>small{color:#8b9ba4;font-size:6px;font-weight:850}
+.fixture-live .premium-versus.with-live-score{
+  grid-template-columns:minmax(130px,.7fr) minmax(360px,1.45fr) minmax(130px,.7fr);
+  gap:20px;
+  margin:17px 0 18px;
+}
+.fixture-live .fixture-middle{min-width:0}
+.fixture-live-panel{
+  width:100%;
+  min-width:0;
+  padding:12px 13px;
+  border:1px solid #d6e2e6;
+  border-radius:14px;
+  background:linear-gradient(145deg,#f8fbfc,#eef6f3);
+  box-shadow:0 9px 26px rgba(5,24,42,.055);
+  text-align:left;
+}
+.fixture-live-panel.waiting{
+  display:grid;
+  align-content:center;
+  min-height:118px;
+}
+.fixture-live-panel.innings-break{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr);
+  gap:10px 18px;
+  align-items:center;
+}
+.fixture-live-kicker{
+  display:block;
+  color:#0a8558!important;
+  font-size:6px!important;
+  font-weight:950!important;
+  letter-spacing:.12em;
+}
+.fixture-live-panel.waiting>strong{
+  margin-top:5px;
+  font-size:14px;
+}
+.fixture-live-panel.waiting>small{
+  margin-top:4px;
+  color:#748995;
+  font-size:7px;
+  line-height:1.4;
+}
+.fixture-live-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+}
+.fixture-live-head>div:first-child>strong{
+  display:block;
+  margin-top:3px;
+  font-size:11px;
+}
+.fixture-live-scoreline{
+  flex:0 0 auto;
+  text-align:right;
+}
+.fixture-live-scoreline>strong{
+  display:block;
+  font-size:25px!important;
+  line-height:.95;
+  letter-spacing:-.05em;
+}
+.fixture-live-scoreline>span{
+  display:block!important;
+  margin-top:4px!important;
+  color:#758a95!important;
+  font-size:6px!important;
+  font-weight:900!important;
+  letter-spacing:.08em;
+}
+.fixture-chase-line{
+  display:flex;
+  gap:14px;
+  margin-top:8px;
+  padding:6px 0;
+  border-top:1px solid #dbe6e9;
+  border-bottom:1px solid #dbe6e9;
+  color:#647b87;
+  font-size:6px;
+  font-weight:850;
+}
+.fixture-chase-line b{color:var(--ink);font-size:8px}
+.fixture-live-players{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:6px;
+  margin-top:9px;
+}
+.fixture-live-players>div{
+  min-width:0;
+  padding:7px 8px;
+  border-radius:9px;
+  background:#fff;
+  border:1px solid #e2eaed;
+}
+.fixture-live-players>div>span{
+  display:block!important;
+  margin:0!important;
+  color:#899aa3!important;
+  font-size:5.5px!important;
+  font-weight:950!important;
+  letter-spacing:.08em;
+}
+.fixture-live-players>div>strong{
+  display:block;
+  overflow:hidden;
+  margin-top:3px;
+  font-size:8px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.fixture-live-players>div>b{
+  display:block;
+  margin-top:4px;
+  color:var(--green);
+  font-size:11px;
+}
+.fixture-live-players>div>b small{
+  color:#708590;
+  font-size:6px;
+  font-weight:800;
+}
+.fixture-live-players>.bowler>b{color:#1d61ad}
+.fixture-next-bat{
+  min-width:0;
+  padding-left:18px;
+  border-left:1px solid #d7e4e8;
+}
+.fixture-next-bat span,
+.fixture-next-bat strong,
+.fixture-next-bat small{display:block!important}
+.fixture-next-bat span{
+  margin:0!important;
+  color:#a17413!important;
+  font-size:6px!important;
+  font-weight:950!important;
+  letter-spacing:.1em;
+}
+.fixture-next-bat strong{
+  margin-top:4px;
+  overflow:hidden;
+  font-size:12px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.fixture-next-bat small{
+  margin-top:3px;
+  color:#667e8a;
+  font-size:7px;
+  font-weight:850;
+}
+@media(max-width:900px){
+  .fixture-live .premium-versus.with-live-score{
+    grid-template-columns:110px minmax(0,1fr) 110px;
+    gap:10px;
+  }
+}
+@media(max-width:650px){
+  .fixture-live .premium-versus.with-live-score{
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+  }
+  .fixture-live .premium-versus.with-live-score .fixture-middle{
+    grid-column:1/-1;
+    grid-row:1;
+  }
+  .fixture-live .premium-versus.with-live-score .fixture-team{
+    grid-row:2;
+  }
+  .fixture-live-players{grid-template-columns:1fr 1fr}
+  .fixture-live-players>.bowler{grid-column:1/-1}
+  .fixture-live-panel.innings-break{
+    grid-template-columns:1fr;
+  }
+  .fixture-next-bat{
+    padding:8px 0 0;
+    border-left:0;
+    border-top:1px solid #d7e4e8;
+  }
+}
