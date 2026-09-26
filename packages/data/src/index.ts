@@ -290,6 +290,11 @@ export type PlayerRankingRow = {
   five_wicket_hauls:number;
   best_bowling_wickets:number;
   best_bowling_runs:number;
+  fastest_fifty_balls:number|null;
+  fastest_fifty_score:number|null;
+  fastest_fifty_fours:number|null;
+  fastest_fifty_sixes:number|null;
+  hat_tricks:number;
   batting_points:number;
   bowling_points:number;
   all_rounder_points:number;
