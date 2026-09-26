@@ -31,6 +31,7 @@ type MatchFormat={
   overridden_at?:string|null
 };
 type Context={match:any;tournament:any;venue:any;rules:any;match_format:MatchFormat;home:Side;away:Side;officials:any[]};
+type NextMatch={match_id:string;match_code:string;match_number:number;match_status:string;scheduled_at:string;home_team_name:string;away_team_name:string};
 
 type BatterStat={
   player_id:string;name:string;ips_code:string;profile_image_url?:string|null;lineup_order:number;
@@ -274,12 +275,14 @@ function ChoiceSheet({
 export function ControllerMatch({
   context,
   initialScoring,
+  nextMatch,
   webUrl,
   message,
   errorMessage
 }:{
   context:Context;
   initialScoring:ScoringContext;
+  nextMatch?:NextMatch|null;
   webUrl:string;
   message?:string|null;
   errorMessage?:string|null
@@ -520,23 +523,42 @@ export function ControllerMatch({
       </div>}
 
       {ready&&scoring.started&&scoring.innings_complete&&!scoring.match_complete&&<div className="p6-start p6-between-innings">
-        <div className="p6-start-title"><span>INNINGS BREAK · SAVED</span><strong>{firstInnings?.runs??0}/{firstInnings?.wickets??0} · Target {(firstInnings?.runs??0)+1}</strong></div>
-        <p className="p6-break-note">This match is saved. You can leave it, score another match, and return here later to start the chase.</p>
-        {startBattingSide&&startBowlingSide&&<>
-          <div className="p6-team-fixed"><span>BATTING</span><strong>{startBattingSide.team.name}</strong><i>Target {(firstInnings?.runs??0)+1}</i></div>
-          <div className="p6-opening-grid">
-            <label><span>STRIKER</span><select value={openingStriker} onChange={event=>setOpeningStriker(event.target.value)}>
-              {startBattingSide.playing_side.map(player=><option key={player.player_id} value={player.player_id}>{player.name}</option>)}
-            </select></label>
-            <label><span>NON-STRIKER</span><select value={openingNonStriker} onChange={event=>setOpeningNonStriker(event.target.value)}>
-              {startBattingSide.playing_side.filter(player=>player.player_id!==openingStriker).map(player=><option key={player.player_id} value={player.player_id}>{player.name}</option>)}
-            </select></label>
-            <label><span>OPENING BOWLER · {startBowlingSide.team.name}</span><select value={openingBowler} onChange={event=>setOpeningBowler(event.target.value)}>
-              {startBowlingSide.playing_side.map(player=><option key={player.player_id} value={player.player_id}>{player.name}</option>)}
-            </select></label>
-            <button type="button" className="p6-start-button" disabled={pending} onClick={startInnings}>{pending?'Starting…':'Start 2nd innings →'}</button>
+        <div className="p6-break-heading">
+          <div className="p6-start-title"><span>INNINGS BREAK · SAVED</span><strong>{firstInnings?.runs??0}/{firstInnings?.wickets??0} · Target {(firstInnings?.runs??0)+1}</strong></div>
+          <small>This innings is already saved in IPS. Start the chase now, or move to the next fixture and return to this match later.</small>
+        </div>
+
+        <div className="p6-break-actions">
+          {nextMatch&&<Link className="p6-break-primary" href={`/matches/${nextMatch.match_id}`}>
+            <span>SAVE & OPEN NEXT MATCH</span>
+            <strong>{nextMatch.match_code} · {nextMatch.home_team_name} vs {nextMatch.away_team_name}</strong>
+            <b>→</b>
+          </Link>}
+          <a className="p6-break-secondary" href={webUrl+'/manage/tournaments/'+context.tournament.id}>
+            <span>SAVE & RETURN TO TOURNAMENT</span>
+            <strong>{context.tournament.name}</strong>
+            <b>→</b>
+          </a>
+        </div>
+
+        {startBattingSide&&startBowlingSide&&<details className="p6-chase-now" open={!nextMatch}>
+          <summary><span>START 2ND INNINGS NOW</span><strong>{startBattingSide.team.name} chase {(firstInnings?.runs??0)+1}</strong><b>⌄</b></summary>
+          <div className="p6-chase-body">
+            <div className="p6-team-fixed"><span>BATTING</span><strong>{startBattingSide.team.name}</strong><i>Target {(firstInnings?.runs??0)+1}</i></div>
+            <div className="p6-opening-grid">
+              <label><span>STRIKER</span><select value={openingStriker} onChange={event=>setOpeningStriker(event.target.value)}>
+                {startBattingSide.playing_side.map(player=><option key={player.player_id} value={player.player_id}>{player.name}</option>)}
+              </select></label>
+              <label><span>NON-STRIKER</span><select value={openingNonStriker} onChange={event=>setOpeningNonStriker(event.target.value)}>
+                {startBattingSide.playing_side.filter(player=>player.player_id!==openingStriker).map(player=><option key={player.player_id} value={player.player_id}>{player.name}</option>)}
+              </select></label>
+              <label><span>OPENING BOWLER · {startBowlingSide.team.name}</span><select value={openingBowler} onChange={event=>setOpeningBowler(event.target.value)}>
+                {startBowlingSide.playing_side.map(player=><option key={player.player_id} value={player.player_id}>{player.name}</option>)}
+              </select></label>
+              <button type="button" className="p6-start-button" disabled={pending||!openingStriker||!openingNonStriker||!openingBowler||openingStriker===openingNonStriker} onClick={startInnings}>{pending?'Starting…':'Start 2nd innings →'}</button>
+            </div>
           </div>
-        </>}
+        </details>}
       </div>}
 
       {scoring.started&&<div className="p6-live">
