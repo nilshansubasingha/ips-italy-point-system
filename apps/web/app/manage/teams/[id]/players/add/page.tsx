@@ -14,21 +14,28 @@ const ROLE_OPTIONS=['Player','Batter','Bowler','All-rounder','Wicketkeeper','Wic
 
 export default async function AddPlayerPage({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<Record<string,string|string[]|undefined>>}){
  const account=await requireAccount();
- const {id}=await params;
+ const {id:identifier}=await params;
  const sp=await searchParams;
  const q=typeof sp.q==='string'?sp.q.trim():'';
  const error=typeof sp.error==='string'?sp.error:null;
  const ok=typeof sp.ok==='string'?sp.ok:null;
  const supabase=await createClient();
 
- const [{data:team},{data:canManage},{data:members}]=await Promise.all([
-   supabase.from('teams').select('id,name,side_label,club:clubs(id,name)').eq('id',id).maybeSingle(),
+ const isUuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(identifier);
+ const teamLookup=isUuid
+   ?supabase.from('teams').select('id,name,slug,side_label,club:clubs(id,name,slug)').eq('id',identifier).maybeSingle()
+   :supabase.from('teams').select('id,name,slug,side_label,club:clubs(id,name,slug)').eq('slug',decodeURIComponent(identifier).toLowerCase()).maybeSingle();
+ const {data:team}=await teamLookup;
+ if(!team)notFound();
+ const id=team.id;
+ const routeKey=team.slug||id;
+
+ const [{data:canManage},{data:members}]=await Promise.all([
    supabase.rpc('ips_can_manage_team',{p_team_id:id}),
    supabase.from('team_memberships')
      .select('id,player_id,shirt_number,team_role,is_primary,player:players(id,ips_code,display_name,primary_role,profile_image_url)')
      .eq('team_id',id).eq('status','ACTIVE').is('end_on',null).order('start_on')
  ]);
- if(!team)notFound();
  if(!canManage)redirect('/manage/teams?error='+encodeURIComponent('You can only add or edit players for teams assigned to your account.'));
 
  let results:any[]=[];
@@ -43,7 +50,7 @@ export default async function AddPlayerPage({params,searchParams}:{params:Promis
 
    <section className="manage-titlebar compact">
      <div>
-       <Link className="back-link" href={`/manage/teams/${(team.club as any)?.id}`}>← {String((team.club as any)?.name??'Team').replace(/\s+Cricket Club$/i,'')}</Link>
+       <Link className="back-link" href={`/manage/teams/${(team.club as any)?.slug??(team.club as any)?.id}`}>← {String((team.club as any)?.name??'Team').replace(/\s+Cricket Club$/i,'')}</Link>
        <span className="eyebrow">ROSTER BUILDER</span>
        <h1>{team.side_label==='MAIN'?'Team roster':`${team.side_label} Team roster`}</h1>
        <p>Search and select several existing IPS players at once, or bulk-create genuinely new identities below. Existing players still require the normal join/transfer approval; duplicate protection remains active for every new player.</p>
@@ -97,7 +104,7 @@ export default async function AddPlayerPage({params,searchParams}:{params:Promis
              <form action={updateRosterPlayer} className="roster-role-form">
                <input type="hidden" name="membership_id" value={m.id}/>
                <input type="hidden" name="team_id" value={id}/>
-               <input type="hidden" name="return_to" value={`/manage/teams/${id}/players/add`}/>
+               <input type="hidden" name="return_to" value={`/manage/teams/${routeKey}/players/add`}/>
                <label><span>Team role</span><select name="team_role" defaultValue={teamRole}>{ROLE_OPTIONS.map(role=><option key={role} value={role}>{role}</option>)}</select></label>
                <label className="shirt-field"><span>Shirt</span><input name="shirt_number" type="number" min="0" max="999" defaultValue={m.shirt_number??''} placeholder="—"/></label>
                <button>Save</button>
