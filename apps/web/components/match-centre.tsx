@@ -147,7 +147,6 @@ export function MatchCentre({
               <div className="fixture-card-bottom premium-fixture-meta">
                 <div><span>Format</span><strong>{fixture.overs_per_innings} overs · {fixture.players_per_side} players</strong></div>
                 <div><span>Stage</span><strong>{fixture.round_label ?? fixture.stage}</strong></div>
-                <div><span>Rules</span><strong>{fixture.ruleset_name} v{fixture.ruleset_version}</strong></div>
               </div>
               <div className="fixture-card-foot"><span>{state}</span><b>→</b></div>
             </article>;
