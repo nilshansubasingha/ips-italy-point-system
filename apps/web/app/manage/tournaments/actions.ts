@@ -427,6 +427,9 @@ export async function saveQuickMatchSetup(input:{
       p_away_wicketkeeper_id:input.awayWicketkeeperId
     });
     if(error)throw error;
+    // If this account also has Director authority, pin a PRISM session now so
+    // the current-match overlay is ready before the Controller opens.
+    await supabase.rpc('ips_broadcast_ensure_match_session',{p_match_id:input.matchId});
     revalidatePath(`/manage/tournaments/${input.tournamentId}`);
     return {ok:true,message:'Quick Match ready for scoring.'};
   }catch(error:any){
