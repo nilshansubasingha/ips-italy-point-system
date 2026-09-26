@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Pill } from '@ips/ui';
-import { getActiveCities, getDatabaseHealth, getFixtureContexts, getPlayerDirectory, getTeamDirectory, getTeamIdentityDisplayName, getTournamentDirectory } from '@ips/data';
+import { getActiveCities, getDatabaseHealth, getFixtureContexts, getPlayerDirectory, getPlayerRankings, getTeamDirectory, getTeamIdentityDisplayName, getTournamentDirectory } from '@ips/data';
 import { SiteFooter, SiteHeader } from '@/components/site-header';
 import { MatchCentre } from '@/components/match-centre';
 import { Crest, PlayerAvatar } from '@/components/identity';
@@ -10,8 +10,8 @@ import { formatDate } from '@/lib/format';
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
-  const [health, cities, teamIdentities, players, tournaments, fixtures] = await Promise.all([
-    getDatabaseHealth(), getActiveCities(50), getTeamDirectory(), getPlayerDirectory(), getTournamentDirectory(), getFixtureContexts(),
+  const [health, cities, teamIdentities, players, tournaments, fixtures, rankings] = await Promise.all([
+    getDatabaseHealth(), getActiveCities(50), getTeamDirectory(), getPlayerDirectory(), getTournamentDirectory(), getFixtureContexts(), getPlayerRankings(null),
   ]);
   const featuredFixture = fixtures.find((f) => f.match_status === 'LIVE') ?? fixtures[0] ?? null;
   const featuredTournament = tournaments.find((t) => t.status === 'LIVE') ?? tournaments[0] ?? null;
@@ -71,7 +71,7 @@ export default async function Home() {
 
       <section className="sports-section">
         <div className="sports-section-head premium-section-head"><div><span className="eyebrow">RANKINGS</span><h2>Built to feel national.</h2></div><Link href="/rankings">Full rankings →</Link></div>
-        <RankingsPreview players={players} />
+        <RankingsPreview rankings={rankings} />
       </section>
 
       <section className="sports-section premium-directory-section">
