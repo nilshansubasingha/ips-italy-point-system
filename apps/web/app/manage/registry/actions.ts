@@ -140,6 +140,44 @@ export async function deletePlayer(form:FormData){
   }catch(e:any){go(`/manage/players/${id}`,'error',friendly(e,'Could not delete player.'));}
 }
 
+export async function createPlayersForTeamBulk(form:FormData){
+  const supabase=await createClient(); const teamId=s(form,'team_id'); const ret=back(form,`/manage/teams/${teamId}/players/add`);
+  try{
+    const players=JSON.parse(s(form,'players_json')||'[]');
+    if(!Array.isArray(players))throw new Error('Invalid bulk player data.');
+    const {data,error}=await supabase.rpc('ips_bulk_create_players_for_team',{p_team_id:teamId,p_players:players});
+    if(error)throw error;
+    const created=Number(data?.created??0);
+    const failed=Array.isArray(data?.failed)?data.failed:[];
+    revalidatePath(`/manage/teams/${teamId}`); revalidatePath(`/manage/teams/${teamId}/players/add`); revalidatePath('/manage/players');
+    const details=failed.slice(0,3).map((x:any)=>`${x.full_name||'Row '+x.row}: ${friendly({message:x.error},x.error)}`).join(' · ');
+    go(ret,failed.length?'error':'ok',
+      failed.length
+        ?`${created} player${created===1?'':'s'} created. ${failed.length} need review. ${details}`
+        :`${created} player${created===1?'':'s'} created and added to the roster.`
+    );
+  }catch(e:any){go(ret,'error',friendly(e,'Could not create players.'));}
+}
+
+export async function addExistingPlayersBulk(form:FormData){
+  const supabase=await createClient(); const teamId=s(form,'team_id'); const ret=back(form,`/manage/teams/${teamId}/players/add`);
+  try{
+    const players=JSON.parse(s(form,'players_json')||'[]');
+    if(!Array.isArray(players))throw new Error('Invalid player selection.');
+    const {data,error}=await supabase.rpc('ips_bulk_request_existing_players_for_team',{p_team_id:teamId,p_players:players});
+    if(error)throw error;
+    const requested=Number(data?.requested??0);
+    const failed=Array.isArray(data?.failed)?data.failed:[];
+    revalidatePath(`/manage/teams/${teamId}`); revalidatePath(`/manage/teams/${teamId}/players/add`); revalidatePath('/manage/players'); revalidatePath('/manage/registrations');
+    const details=failed.slice(0,3).map((x:any)=>String(x.error??'Could not request player.')).join(' · ');
+    go(ret,failed.length?'error':'ok',
+      failed.length
+        ?`${requested} request${requested===1?'':'s'} sent. ${failed.length} could not be sent. ${details}`
+        :`${requested} player request${requested===1?'':'s'} sent together.`
+    );
+  }catch(e:any){go(ret,'error',friendly(e,'Could not request selected players.'));}
+}
+
 export async function createPlayerForTeam(form:FormData){
   const supabase=await createClient(); const teamId=s(form,'team_id'); const ret=back(form,`/manage/teams/${teamId}/players/add`);
   try{
