@@ -72,7 +72,7 @@ export default async function ManageTeamsPage({searchParams}:{searchParams:Promi
          const canManage=global||cityScopes.has(identity.city_id)||identityScopes.has(identity.id)||identitySides.some((s:any)=>sideScopes.has(s.id));
          const displayName=identitySides.length===1&&identitySides[0].side_label==='MAIN'?identitySides[0].name:String(identity.name).replace(/\s+Cricket Club$/i,'');
          return <article className="team-identity-admin-card" key={identity.id}>
-           <Link href={`/manage/teams/${identity.id}`} className="team-identity-admin-main">
+           <Link href={`/manage/teams/${identity.slug}`} className="team-identity-admin-main">
              <Crest name={displayName} imageUrl={identity.logo_url} large/>
              <div><span>{(identity.city as any)?.name??'Italy'} · {identitySides.length>1?`${identitySides.length} sides`:'1 side'}</span><h3>{displayName}</h3><p>{playersByIdentity.get(identity.id)?.size??0} active players</p></div>
              <i>→</i>
