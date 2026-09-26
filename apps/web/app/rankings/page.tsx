@@ -37,7 +37,7 @@ export default async function RankingsPage({searchParams}:{searchParams:Promise<
       <div className="page-hero-copy">
         <span className="eyebrow">IPS RANKINGS</span>
         <h1>{scopeLabel} rankings.<br/><span>{formatLabel} · certified Ranking Matches only.</span></h1>
-        <p>Rankings are calculated from the same delivery ledger used by the Controller. Claiming a player account is not required: statistics and ranking points attach directly to the permanent IPS player identity.</p>
+        <p>Rankings are calculated from certified IPS match records. Claiming a player account is not required: runs, wickets, milestones and manually assigned awards attach directly to the permanent IPS player identity.</p>
       </div>
       <aside className="hero-insight-card dark-insight">
         <span className="micro-label">RANKING ENGINE</span>
@@ -66,7 +66,7 @@ export default async function RankingsPage({searchParams}:{searchParams:Promise<
     <section className="sports-section no-top">
       <div className="sports-section-head premium-section-head">
         <div><span className="eyebrow">{scopeLabel.toUpperCase()} · {formatLabel.toUpperCase()}</span><h2>Batting, bowling and all-rounder.</h2></div>
-        <span className="section-note">IPS Formula v1 · certified ranking-eligible match facts only.</span>
+        <span className="section-note">Certified Ranking Matches only · Awards are entered manually by tournament admins.</span>
       </div>
       <RankingsPreview rankings={visible} definitions={rankingDefinitions} scopeLabel={scopeLabel} formatLabel={formatLabel} stacked/>
     </section>
