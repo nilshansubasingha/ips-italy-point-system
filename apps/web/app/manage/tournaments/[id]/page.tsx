@@ -10,6 +10,7 @@ import {createClient} from '@/lib/supabase/server';
 import {formatItalyDate,formatItalyDateTime,toItalyInput} from '@/lib/project4';
 import {MatchPlayingSidesEditor} from '@/components/manage/match-playing-sides-editor';
 import {QuickMatchSetupEditor} from '@/components/manage/quick-match-setup-editor';
+import {MatchAwardsManager} from '@/components/manage/match-awards-manager';
 import {addTournamentTeam,decideTournamentTeam,ensureSquad,addSquadPlayer,removeSquadPlayer,submitSquad,lockSquad,requestReplacement,reviewReplacement,createFixture,updateMatchStatus,assignOfficial,removeOfficial,updateTournament,deleteTournament} from '../actions';
 
 function statusLabel(v:string){return v.replaceAll('_',' ')}
@@ -19,7 +20,7 @@ export default async function TournamentOpsDetail({params,searchParams}:{params:
   const {id}=await params; const sp=await searchParams; const error=typeof sp.error==='string'?sp.error:null; const ok=typeof sp.ok==='string'?sp.ok:null;
   const supabase=await createClient();
   const {data:t}=await supabase.from('tournaments').select('*').eq('id',id).maybeSingle(); if(!t)notFound();
-  const [{data:city},{data:ruleset},{data:teams},{data:tournamentTeams},{data:venues},{data:matches},{data:squads},{data:memberships},{data:players},{data:squadPlayers},{data:requests},{data:assignments},{data:playingXI},{data:teamRoles},{data:accountDirectory},canTournamentRes]=await Promise.all([
+  const [{data:city},{data:ruleset},{data:teams},{data:tournamentTeams},{data:venues},{data:matches},{data:squads},{data:memberships},{data:players},{data:squadPlayers},{data:requests},{data:assignments},{data:playingXI},{data:teamRoles},{data:accountDirectory},{data:awards},canTournamentRes]=await Promise.all([
     supabase.from('cities').select('id,name,code').eq('id',t.city_id).maybeSingle(),
     supabase.from('competition_rulesets').select('*').eq('id',t.ruleset_id).maybeSingle(),
     supabase.from('teams').select('id,club_id,name,short_name,slug,logo_url').order('name'),
@@ -35,6 +36,7 @@ export default async function TournamentOpsDetail({params,searchParams}:{params:
     supabase.from('match_playing_xi').select('*').order('lineup_order'),
     supabase.from('match_team_roles').select('*').order('selected_at'),
     supabase.rpc('ips_management_account_directory'),
+    supabase.from('match_player_awards').select('*').eq('tournament_id',id).order('created_at'),
     supabase.rpc('ips_can_manage_tournament',{p_tournament_id:id}),
   ]);
   const canTournament=!!canTournamentRes.data;
@@ -106,6 +108,21 @@ export default async function TournamentOpsDetail({params,searchParams}:{params:
         />
       </section>
 
+      <section className="sports-section quick-ops-awards">
+        <div className="sports-section-head">
+          <div><span className="eyebrow">MATCH AWARDS</span><h2>Manual awards.</h2></div>
+          <span className="section-note">Tournament admins add awards manually. Awards only affect Rankings after a Ranking Match is certified.</span>
+        </div>
+        <MatchAwardsManager
+          matches={(matches??[]) as any}
+          players={(players??[]) as any}
+          playingXI={(playingXI??[]) as any}
+          awards={(awards??[]) as any}
+          canManage={canTournament}
+          returnTo={returnTo}
+        />
+      </section>
+
       <div className="quick-ops-secondary">
         <span>Need to change the match itself?</span>
         <Link href="/manage/tournaments/quick">Create another Quick Match</Link>
@@ -132,7 +149,7 @@ export default async function TournamentOpsDetail({params,searchParams}:{params:
     </div>
     {(error||ok)&&<div className={`ops-message ${error?'error':'success'}`}>{error||ok}</div>}
 
-    <nav className="ops-anchor-nav"><a href="#overview">Overview</a><a href="#teams">Teams</a><a href="#squads">Squads</a><a href="#fixtures">Fixtures</a><a href="#lineups">Playing Side</a><a href="#officials">Officials</a><a href="#replacements">Replacements</a></nav>
+    <nav className="ops-anchor-nav"><a href="#overview">Overview</a><a href="#teams">Teams</a><a href="#squads">Squads</a><a href="#fixtures">Fixtures</a><a href="#lineups">Playing Side</a><a href="#officials">Officials</a><a href="#awards">Awards</a><a href="#replacements">Replacements</a></nav>
 
     <section id="overview" className="sports-section no-top"><div className="sports-section-head"><div><span className="eyebrow">01 · OVERVIEW</span><h2>Competition controls.</h2></div><Link href={`/tournaments/${t.slug}`}>Public tournament →</Link></div>
       <div className="ops-overview-grid"><div className="ops-info-panel"><div><span>Registration deadline</span><strong>{formatItalyDateTime(t.registration_deadline)}</strong></div><div><span>Squad deadline</span><strong>{formatItalyDateTime(t.squad_deadline)}</strong></div><div><span>Squad size</span><strong>{t.squad_size??'Not set'}</strong></div><div><span>Match default</span><strong>{t.players_per_side} players · {t.overs_per_innings} overs · {t.balls_per_over} balls/over</strong></div><div><span>Wickets</span><strong>{t.wicket_limit??'Derived by tournament'}</strong></div><div><span>Bowler max</span><strong>{t.tournament_max_overs_per_bowler??'Ruleset'}</strong></div></div>
@@ -202,7 +219,22 @@ export default async function TournamentOpsDetail({params,searchParams}:{params:
       <div className="official-grid">{(matches??[]).map((m:any)=>{const assigned=(assignments??[]).filter((a:any)=>a.match_id===m.id);return <article className="official-card" key={m.id}><header><span>{m.match_code}</span><strong>{teamMap.get(m.home_team_id)?.short_name||teamMap.get(m.home_team_id)?.name} vs {teamMap.get(m.away_team_id)?.short_name||teamMap.get(m.away_team_id)?.name}</strong></header><div className="official-list">{assigned.map((a:any)=><div key={a.id}><span>{a.role} · {a.designation}</span><strong>{accountMap.get(a.user_id)?.display_name??'IPS account'}</strong>{canTournament&&<form action={removeOfficial}><input type="hidden" name="assignment_id" value={a.id}/><input type="hidden" name="return_to" value={returnTo}/><button>Remove</button></form>}</div>)}</div>{canTournament&&<form action={assignOfficial} className="official-add"><input type="hidden" name="match_id" value={m.id}/><input type="hidden" name="return_to" value={returnTo}/><select name="user_id">{((accountDirectory as any[])??[]).map((u:any)=><option key={u.id} value={u.id}>{u.display_name}</option>)}</select><select name="role"><option>SCORER</option><option>UMPIRE</option><option>MATCH_MANAGER</option></select><select name="designation"><option>STANDARD</option><option>PRIMARY</option><option>BACKUP</option></select><button>Assign</button></form>}</article>})}</div>
     </section>
 
-    <section id="replacements" className="sports-section"><div className="sports-section-head"><div><span className="eyebrow">07 · EMERGENCY CHANGES</span><h2>One approved replacement.</h2></div><span className="section-note">Locked squads stay immutable except through this audited workflow.</span></div>
+    <section id="awards" className="sports-section">
+      <div className="sports-section-head">
+        <div><span className="eyebrow">07 · AWARDS</span><h2>Manual match awards.</h2></div>
+        <span className="section-note">Only authorised tournament admins can add or remove awards. Rankings count awards from certified Ranking Matches only.</span>
+      </div>
+      <MatchAwardsManager
+        matches={(matches??[]) as any}
+        players={(players??[]) as any}
+        playingXI={(playingXI??[]) as any}
+        awards={(awards??[]) as any}
+        canManage={canTournament}
+        returnTo={returnTo}
+      />
+    </section>
+
+    <section id="replacements" className="sports-section"><div className="sports-section-head"><div><span className="eyebrow">08 · EMERGENCY CHANGES</span><h2>One approved replacement.</h2></div><span className="section-note">Locked squads stay immutable except through this audited workflow.</span></div>
       <div className="replacement-grid">{confirmed.map((entry:any)=>{const squad=squadByTeam.get(entry.team_id);if(!squad)return null;const team=teamMap.get(entry.team_id);const roster=activeSquadById.get(squad.id)||[];const rosterIds=new Set(roster.map(r=>r.player_id));const candidates=(membersByTeam.get(entry.team_id)||[]).filter(m=>!rosterIds.has(m.player_id));const locked=squad.status==='LOCKED'||(!!t.squad_deadline&&Date.now()>=new Date(t.squad_deadline).getTime());const canManage=canTournament||!!canTeam.get(entry.team_id);const reqs=(requests??[]).filter((r:any)=>r.squad_id===squad.id);return <article className="replacement-card" key={entry.id}><header><span>{team?.name}</span><b>{locked?'LOCKED':'OPEN'}</b></header>{reqs.map((r:any)=><div className="replacement-request" key={r.id}><div><span>{r.status}</span><strong>{playerMap.get(r.outgoing_player_id)?.display_name} → {playerMap.get(r.incoming_player_id)?.display_name}</strong><small>{r.reason}</small></div>{canTournament&&r.status==='REQUESTED'&&<form action={reviewReplacement}><input type="hidden" name="request_id" value={r.id}/><input type="hidden" name="return_to" value={returnTo}/><button className="positive" name="status" value="APPROVED">Approve</button><button className="danger" name="status" value="REJECTED">Reject</button></form>}</div>)}{locked&&canManage&&!reqs.some((r:any)=>r.status==='APPROVED')&&<form action={requestReplacement} className="replacement-form"><input type="hidden" name="squad_id" value={squad.id}/><input type="hidden" name="return_to" value={returnTo}/><label><span>Outgoing</span><select name="outgoing_player_id">{roster.map((r:any)=><option key={r.player_id} value={r.player_id}>{playerMap.get(r.player_id)?.display_name}</option>)}</select></label><label><span>Incoming</span><select name="incoming_player_id">{candidates.map((m:any)=><option key={m.player_id} value={m.player_id}>{playerMap.get(m.player_id)?.display_name}</option>)}</select></label><label><span>Reason</span><input name="reason" required placeholder="Injury / approved exception"/></label><button disabled={!roster.length||!candidates.length}>Request replacement</button></form>}</article>})}</div>
     </section>
     <SiteFooter/></main>
