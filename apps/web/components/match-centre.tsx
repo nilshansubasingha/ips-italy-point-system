@@ -56,8 +56,20 @@ export function MatchCentre({
   const liveMap=useMemo(()=>new Map(currentSummaries.map(item=>[item.match_id,item])),[currentSummaries]);
 
   const refreshScores=useCallback(async()=>{
-    const {data,error}=await supabase.rpc('ips_public_match_live_summaries');
-    if(!error&&Array.isArray(data))setCurrentSummaries(data as MatchLiveSummary[]);
+    const [summaryRes,matchRes]=await Promise.all([
+      supabase.rpc('ips_public_match_live_summaries'),
+      supabase.from('matches').select('id,status,scheduled_at')
+    ]);
+    if(!summaryRes.error&&Array.isArray(summaryRes.data)){
+      setCurrentSummaries(summaryRes.data as MatchLiveSummary[]);
+    }
+    if(!matchRes.error&&Array.isArray(matchRes.data)){
+      const statusMap=new Map(matchRes.data.map((row:any)=>[row.id,row]));
+      setCurrentFixtures(current=>current.map(f=>{
+        const row=statusMap.get(f.match_id);
+        return row?{...f,match_status:row.status,scheduled_at:row.scheduled_at??f.scheduled_at}:f;
+      }));
+    }
   },[supabase]);
 
   useEffect(()=>{
