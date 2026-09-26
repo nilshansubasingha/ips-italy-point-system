@@ -79,8 +79,8 @@ export async function createTournament(form: FormData) {
       players_per_side:playersPerSide, overs_per_innings:overs, balls_per_over:balls,
       wicket_limit:wicketLimit, tournament_max_overs_per_bowler:maxBowlerOvers,
     };
-    const {data,error}=await supabase.from('tournaments').insert(payload).select('id').single(); if(error) throw error;
-    revalidatePath('/manage/tournaments'); go(`/manage/tournaments/${data.id}`,'ok','Tournament created with frozen tournament match defaults.');
+    const {data,error}=await supabase.from('tournaments').insert(payload).select('id,slug').single(); if(error) throw error;
+    revalidatePath('/manage/tournaments'); go(`/manage/tournaments/${data.slug}`,'ok','Tournament created with frozen tournament match defaults.');
   } catch(e:any) { go(back,'error',friendlyError(e,'Could not create tournament.')); }
 }
 
@@ -219,7 +219,7 @@ export async function createQuickMatch(form: FormData) {
 
     revalidatePath('/manage/tournaments');
     revalidatePath('/match-centre');
-    go(`/manage/tournaments/${tournamentId}`,'ok','Quick Match created. Choose both playing sides, captain and wicketkeeper, then start scoring.');
+    go(`/manage/tournaments/${slug}`,'ok','Quick Match created. Choose both playing sides, captain and wicketkeeper, then start scoring.');
   }catch(e:any){
     go(back,'error',friendlyError(e,'Could not create Quick Match.'));
   }
