@@ -263,6 +263,38 @@ export type PlayerCareerStats = {
   economy:number;
 };
 
+export type PlayerRankingRow = {
+  player_id:string;
+  ips_code:string;
+  slug:string;
+  display_name:string;
+  profile_image_url:string|null;
+  team_id:string|null;
+  team_name:string|null;
+  team_short_name:string|null;
+  city_id:string|null;
+  city_name:string|null;
+  matches:number;
+  runs:number;
+  balls:number;
+  fours:number;
+  sixes:number;
+  wickets:number;
+  bowling_runs:number;
+  bowling_balls:number;
+  strike_rate:number;
+  economy:number;
+  fifties:number;
+  hundreds:number;
+  three_wicket_hauls:number;
+  five_wicket_hauls:number;
+  best_bowling_wickets:number;
+  best_bowling_runs:number;
+  batting_points:number;
+  bowling_points:number;
+  all_rounder_points:number;
+};
+
 export type FixtureContextRow = {
   match_id: string;
   match_code: string;
@@ -545,6 +577,22 @@ export async function getPlayerCareerStats(playerId:string): Promise<PlayerCaree
   const {data,error}=await client.rpc('ips_public_player_career_stats',{p_player_id:playerId});
   if(error)throw new Error(`player career stats: ${error.message}`);
   return {...empty,...(data??{})} as PlayerCareerStats;
+}
+
+export async function getPlayerRankings(overs:number|null=null): Promise<PlayerRankingRow[]> {
+  const client=getPublicSupabaseClient();
+  if(!client)return [];
+  const {data,error}=await client.rpc('ips_public_player_rankings',{p_overs:overs});
+  if(error)throw new Error(`player rankings: ${error.message}`);
+  return (data??[]) as PlayerRankingRow[];
+}
+
+export async function getRankingFormats(): Promise<number[]> {
+  const client=getPublicSupabaseClient();
+  if(!client)return [];
+  const {data,error}=await client.rpc('ips_public_ranking_formats');
+  if(error)throw new Error(`ranking formats: ${error.message}`);
+  return (data??[]).map((row:any)=>Number(row.overs_format)).filter((value:number)=>Number.isFinite(value)&&value>0);
 }
 
 export async function getFixtureContexts(): Promise<FixtureContextRow[]> {
