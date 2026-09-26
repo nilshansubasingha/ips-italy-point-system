@@ -21,6 +21,7 @@ export type CityRow = {
   istat_code?: string | null;
   country_code: string;
   status: string;
+  competition_kind?: 'TOURNAMENT'|'QUICK_MATCH';
 };
 
 export type ActiveCityRow = CityRow & {
@@ -396,7 +397,8 @@ async function getFixtureContextsFromBaseTables(client: SupabaseClient): Promise
     selectAll<TeamRow>(client, 'teams', 'name'),
     selectAll<RulesetRow>(client, 'competition_rulesets', 'name'),
   ]);
-  const cities = await selectByIds<CityRow>(client, 'cities', tournaments.map((row) => row.city_id), 'name');
+  const publicTournaments=tournaments.filter((row)=>row.competition_kind!=='QUICK_MATCH');
+  const cities = await selectByIds<CityRow>(client, 'cities', publicTournaments.map((row) => row.city_id), 'name');
 
   const tournamentMap = byId(tournaments);
   const cityMap = byId(cities);
@@ -584,7 +586,7 @@ export async function getTournamentDirectory(): Promise<TournamentDirectoryItem[
   const cities = await selectByIds<CityRow>(client, 'cities', tournaments.map((row) => row.city_id), 'name');
   const cityMap = byId(cities);
 
-  return tournaments.map((tournament) => ({
+  return publicTournaments.map((tournament) => ({
     ...tournament,
     city: cityMap.get(tournament.city_id) ?? null,
     teamCount: tournamentTeams.filter((row) => row.tournament_id === tournament.id && row.status !== 'WITHDRAWN' && row.status !== 'REJECTED').length,
