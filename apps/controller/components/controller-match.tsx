@@ -499,7 +499,7 @@ export function ControllerMatch({
 
       {!ready&&<div className="p6-blocked">
         <div><strong>Complete Controller Readiness first.</strong><span>{blockers.join(' · ')}</span></div>
-        <a href={webUrl+'/manage/tournaments/'+context.tournament.id+'#lineups'}>Fix match setup →</a>
+        <a href={webUrl+'/manage/tournaments/'+(context.tournament.slug??context.tournament.id)+'#lineups'}>Fix match setup →</a>
       </div>}
 
       {ready&&!scoring.started&&<div className="p6-start">
