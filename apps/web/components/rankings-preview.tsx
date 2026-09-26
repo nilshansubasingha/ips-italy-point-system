@@ -17,12 +17,16 @@ function pointsFor(row:PlayerRankingRow,source:string){
   if(source==='bowling_points')return Number(row.bowling_points);
   if(source==='all_rounder_points')return Number(row.all_rounder_points);
   if(source==='most_fifties')return Number(row.fifties);
+  if(source==='fastest_fifty')return row.fastest_fifty_balls==null?Number.POSITIVE_INFINITY:Number(row.fastest_fifty_balls);
+  if(source==='most_hat_tricks')return Number(row.hat_tricks);
   return 0;
 }
 
 function candidatesFor(rows:PlayerRankingRow[],definition:RankingDefinitionRow){
-  if(definition.source_key==='fastest_fifty'||definition.source_key==='most_hat_tricks')return [];
-  const filtered=definition.source_key==='most_fifties'?rows.filter(row=>row.fifties>0):rows;
+  const filtered=definition.source_key==='most_fifties'?rows.filter(row=>row.fifties>0)
+    :definition.source_key==='fastest_fifty'?rows.filter(row=>row.fastest_fifty_balls!=null)
+    :definition.source_key==='most_hat_tricks'?rows.filter(row=>row.hat_tricks>0)
+    :rows;
   return [...filtered].sort((a,b)=>{
     const delta=pointsFor(b,definition.source_key)-pointsFor(a,definition.source_key);
     if(delta!==0)return definition.sort_direction==='ASC'?-delta:delta;
@@ -40,16 +44,17 @@ function statValue(row:PlayerRankingRow,definition:RankingDefinitionRow,key:stri
     return `${row.runs} R · ${row.wickets} W`;
   }
   if(key==='score_balls'&&definition.source_key==='most_fifties')return String(row.fifties);
-  if(key==='fours')return String(row.fours);
-  if(key==='sixes')return String(row.sixes);
-  if(key==='hat_tricks')return '—';
+  if(key==='score_balls'&&definition.source_key==='fastest_fifty')return row.fastest_fifty_balls==null?'—':`${row.fastest_fifty_score??50} (${row.fastest_fifty_balls})`;
+  if(key==='fours')return String(definition.source_key==='fastest_fifty'?(row.fastest_fifty_fours??0):row.fours);
+  if(key==='sixes')return String(definition.source_key==='fastest_fifty'?(row.fastest_fifty_sixes??0):row.sixes);
+  if(key==='hat_tricks')return String(row.hat_tricks);
   return '—';
 }
 
 function RankingPanel({definition,scopeLabel,formatLabel,rows}:{definition:RankingDefinitionRow;scopeLabel:string;formatLabel:string;rows:PlayerRankingRow[]}){
   const columns=definition.columns??[];
   const candidates=candidatesFor(rows,definition);
-  const activeSource=!['fastest_fifty','most_hat_tricks'].includes(definition.source_key);
+  const activeSource=true;
 
   return <article className="ranking-panel ranking-panel-table" data-ranking-source={definition.source_key}>
     <div className="ranking-panel-head">
