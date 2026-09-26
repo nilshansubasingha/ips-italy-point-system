@@ -250,6 +250,19 @@ export type PublicMatchScorecard = {
   innings:PublicMatchScorecardInnings[];
 };
 
+export type PlayerCareerStats = {
+  matches:number;
+  runs:number;
+  balls:number;
+  fours:number;
+  sixes:number;
+  wickets:number;
+  bowling_runs:number;
+  bowling_balls:number;
+  strike_rate:number;
+  economy:number;
+};
+
 export type FixtureContextRow = {
   match_id: string;
   match_code: string;
@@ -523,6 +536,15 @@ export async function getPublicMatchScorecard(matchId:string): Promise<PublicMat
   const {data,error}=await client.rpc('ips_public_match_scorecard',{p_match_id:matchId});
   if(error)throw new Error(`public match scorecard: ${error.message}`);
   return (data??null) as PublicMatchScorecard|null;
+}
+
+export async function getPlayerCareerStats(playerId:string): Promise<PlayerCareerStats> {
+  const client=getPublicSupabaseClient();
+  const empty:PlayerCareerStats={matches:0,runs:0,balls:0,fours:0,sixes:0,wickets:0,bowling_runs:0,bowling_balls:0,strike_rate:0,economy:0};
+  if(!client)return empty;
+  const {data,error}=await client.rpc('ips_public_player_career_stats',{p_player_id:playerId});
+  if(error)throw new Error(`player career stats: ${error.message}`);
+  return {...empty,...(data??{})} as PlayerCareerStats;
 }
 
 export async function getFixtureContexts(): Promise<FixtureContextRow[]> {
