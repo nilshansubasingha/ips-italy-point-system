@@ -170,14 +170,14 @@ export async function createQuickMatch(form: FormData) {
     if(teamsError)throw teamsError;
 
     const {data:squadRows,error:squadError}=await supabase.from('tournament_squads').insert([
-      {tournament_id:tournamentId,team_id:homeTeamId,status:'LOCKED',submitted_at:nowIso,submitted_by:user.id,locked_at:nowIso,locked_by:user.id},
-      {tournament_id:tournamentId,team_id:awayTeamId,status:'LOCKED',submitted_at:nowIso,submitted_by:user.id,locked_at:nowIso,locked_by:user.id}
+      {tournament_id:tournamentId,team_id:homeTeamId,status:'DRAFT'},
+      {tournament_id:tournamentId,team_id:awayTeamId,status:'DRAFT'}
     ]).select('id,team_id');
     if(squadError)throw squadError;
 
     const homeSquad=squadRows?.find((row:any)=>row.team_id===homeTeamId);
     const awaySquad=squadRows?.find((row:any)=>row.team_id===awayTeamId);
-    if(!homeSquad||!awaySquad)throw new Error('Could not prepare Quick Match squads.');
+    if(!homeSquad||!awaySquad)throw new Error('Could not prepare Quick Match player pools.');
 
     const squadPlayers=[
       ...homeMembers.map((row:any)=>({squad_id:homeSquad.id,player_id:row.player_id,added_by:user.id})),
@@ -185,6 +185,13 @@ export async function createQuickMatch(form: FormData) {
     ];
     const {error:squadPlayersError}=await supabase.from('tournament_squad_players').insert(squadPlayers);
     if(squadPlayersError)throw squadPlayersError;
+
+    const [homeLock,awayLock]=await Promise.all([
+      supabase.rpc('ips_lock_squad',{p_squad_id:homeSquad.id}),
+      supabase.rpc('ips_lock_squad',{p_squad_id:awaySquad.id})
+    ]);
+    if(homeLock.error)throw homeLock.error;
+    if(awayLock.error)throw awayLock.error;
 
     const matchCode=normalizeCode(code+'-01').slice(0,40);
     const {data:match,error:matchError}=await supabase.from('matches').insert({
@@ -207,7 +214,7 @@ export async function createQuickMatch(form: FormData) {
 
     revalidatePath('/manage/tournaments');
     revalidatePath('/match-centre');
-    go(`/manage/tournaments/${tournamentId}#lineups`,'ok','Quick Match created. Select the playing sides, captain and wicketkeeper, then open the Controller.');
+    go(`/manage/tournaments/${tournamentId}`,'ok','Quick Match created. Choose both playing sides, captain and wicketkeeper, then start scoring.');
   }catch(e:any){
     go(back,'error',friendlyError(e,'Could not create Quick Match.'));
   }
