@@ -9,6 +9,7 @@ function n(form:FormData,key:string){const raw=s(form,key); if(!raw)return null;
 
 export async function overrideMatchFormat(form:FormData){
   const matchId=s(form,'match_id');
+  let errorMessage:string|null=null;
   try{
     const supabase=await createClient();
     const {error}=await supabase.rpc('ips_override_match_format',{
@@ -22,10 +23,11 @@ export async function overrideMatchFormat(form:FormData){
     });
     if(error)throw error;
     revalidatePath(`/matches/${matchId}`);
-    redirect(`/matches/${matchId}?ok=${encodeURIComponent('Match format override saved and audited.')}`);
   }catch(e:any){
-    redirect(`/matches/${matchId}?error=${encodeURIComponent(e?.message||'Could not override match format.')}`);
+    errorMessage=e?.message||'Could not override match format.';
   }
+  if(errorMessage)redirect(`/matches/${matchId}?error=${encodeURIComponent(errorMessage)}`);
+  redirect(`/matches/${matchId}?ok=${encodeURIComponent('Match format override saved and audited.')}`);
 }
 
 
