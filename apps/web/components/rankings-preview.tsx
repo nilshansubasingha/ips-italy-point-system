@@ -4,15 +4,17 @@ import type {PlayerRankingRow,RankingDefinitionRow} from '@ips/data';
 import {PlayerAvatar} from './identity';
 
 const fallbackDefinitions:RankingDefinitionRow[]=[
-  {id:'fallback-batting',ranking_key:'best-batsmen',title:'Best batsmen',source_key:'batting_points',section:'PRIMARY',columns:[{key:'sr',label:'SR'},{key:'awards',label:'Awards'},{key:'points',label:'Points'}],sort_direction:'DESC',sort_order:10,description:'IPS Ranking Formula v1 from certified ranking-eligible match facts.',enabled:true,created_at:'',updated_at:''},
-  {id:'fallback-bowling',ranking_key:'best-bowlers',title:'Best bowlers',source_key:'bowling_points',section:'PRIMARY',columns:[{key:'best_figures',label:'Best Figures'},{key:'awards',label:'Awards'},{key:'points',label:'Points'}],sort_direction:'DESC',sort_order:20,description:'Wickets and wicket-haul bonuses from certified ranking-eligible matches.',enabled:true,created_at:'',updated_at:''},
-  {id:'fallback-allrounder',ranking_key:'best-all-rounders',title:'Best all-rounders',source_key:'all_rounder_points',section:'PRIMARY',columns:[{key:'awards',label:'Output'},{key:'points',label:'Points'}],sort_direction:'DESC',sort_order:30,description:'Batting points plus bowling points.',enabled:true,created_at:'',updated_at:''},
-  {id:'fallback-most-fifties',ranking_key:'most-fifties',title:'Most fifties',source_key:'most_fifties',section:'MILESTONE',columns:[{key:'score_balls',label:'50s'},{key:'fours',label:'4'},{key:'sixes',label:'6'}],sort_direction:'DESC',sort_order:110,description:'Certified innings scores between 50 and 99.',enabled:true,created_at:'',updated_at:''},
+  {id:'fallback-batting',ranking_key:'best-batsmen',title:'Best batsmen',source_key:'runs',section:'PRIMARY',columns:[{key:'sr',label:'SR'},{key:'awards',label:'Awards'},{key:'runs',label:'Runs'}],sort_direction:'DESC',sort_order:10,description:'Ranked by total runs from certified Ranking Matches. Awards are assigned manually by tournament admins.',enabled:true,created_at:'',updated_at:''},
+  {id:'fallback-bowling',ranking_key:'best-bowlers',title:'Best bowlers',source_key:'wickets',section:'PRIMARY',columns:[{key:'best_figures',label:'Best Figures'},{key:'awards',label:'Awards'},{key:'wickets',label:'Wickets'}],sort_direction:'DESC',sort_order:20,description:'Ranked by wickets from certified Ranking Matches. Awards are assigned manually by tournament admins.',enabled:true,created_at:'',updated_at:''},
+  {id:'fallback-allrounder',ranking_key:'best-all-rounders',title:'Best all-rounders',source_key:'all_rounder_points',section:'PRIMARY',columns:[{key:'awards',label:'Awards'},{key:'runs',label:'Runs'},{key:'wickets',label:'Wickets'}],sort_direction:'DESC',sort_order:30,description:'Public output shows manual Awards, Runs and Wickets from certified Ranking Matches.',enabled:true,created_at:'',updated_at:''},
+  {id:'fallback-most-fifties',ranking_key:'most-fifties',title:'Most fifties',source_key:'most_fifties',section:'MILESTONE',columns:[{key:'fifties',label:'50s'},{key:'fours',label:'4s'},{key:'sixes',label:'6s'}],sort_direction:'DESC',sort_order:110,description:'Ranked by number of certified innings scores from 50 to 99.',enabled:true,created_at:'',updated_at:''},
   {id:'fallback-fastest-fifty',ranking_key:'fastest-fifty',title:'Fastest fifty',source_key:'fastest_fifty',section:'MILESTONE',columns:[{key:'score_balls',label:'Score (Balls)'},{key:'fours',label:'4'},{key:'sixes',label:'6'}],sort_direction:'ASC',sort_order:120,description:'Activates when ball-by-ball fifty-reach records are available.',enabled:true,created_at:'',updated_at:''},
   {id:'fallback-hattricks',ranking_key:'most-hat-tricks',title:'Most hat-tricks',source_key:'most_hat_tricks',section:'MILESTONE',columns:[{key:'hat_tricks',label:'Hat-tricks'}],sort_direction:'DESC',sort_order:130,description:'Activates from certified consecutive-wicket delivery records.',enabled:true,created_at:'',updated_at:''}
 ];
 
 function pointsFor(row:PlayerRankingRow,source:string){
+  if(source==='runs')return Number(row.runs);
+  if(source==='wickets')return Number(row.wickets);
   if(source==='batting_points')return Number(row.batting_points);
   if(source==='bowling_points')return Number(row.bowling_points);
   if(source==='all_rounder_points')return Number(row.all_rounder_points);
@@ -38,12 +40,10 @@ function statValue(row:PlayerRankingRow,definition:RankingDefinitionRow,key:stri
   if(key==='sr')return Number(row.strike_rate).toFixed(1);
   if(key==='best_figures')return row.best_bowling_wickets>0?`${row.best_bowling_wickets}/${row.best_bowling_runs}`:'—';
   if(key==='points')return Math.round(pointsFor(row,definition.source_key)).toString();
-  if(key==='awards'){
-    if(definition.source_key==='batting_points')return `${row.fifties}×50 · ${row.hundreds}×100`;
-    if(definition.source_key==='bowling_points')return `${row.three_wicket_hauls}×3W · ${row.five_wicket_hauls}×5W`;
-    return `${row.runs} R · ${row.wickets} W`;
-  }
-  if(key==='score_balls'&&definition.source_key==='most_fifties')return String(row.fifties);
+  if(key==='awards')return String(row.awards??0);
+  if(key==='runs')return String(row.runs);
+  if(key==='wickets')return String(row.wickets);
+  if(key==='fifties')return String(row.fifties);
   if(key==='score_balls'&&definition.source_key==='fastest_fifty')return row.fastest_fifty_balls==null?'—':`${row.fastest_fifty_score??50} (${row.fastest_fifty_balls})`;
   if(key==='fours')return String(definition.source_key==='fastest_fifty'?(row.fastest_fifty_fours??0):row.fours);
   if(key==='sixes')return String(definition.source_key==='fastest_fifty'?(row.fastest_fifty_sixes??0):row.sixes);
@@ -96,7 +96,7 @@ export function RankingsPreview({rankings,definitions,scopeLabel='Italy',formatL
   return <div className={'rankings-stage '+(stacked?'rankings-stage-stacked':'')}>
     <div className="rankings-strip-note">
       <strong>OFFICIAL IPS RANKINGS · {formatLabel.toUpperCase()}</strong>
-      <span>Formula v1: batting rewards runs and boundaries; bowling rewards wickets and 3W/5W hauls. Only certified Ranking Matches count.</span>
+      <span>Public tables use certified Ranking Match totals. Awards are entered manually by authorised tournament admins.</span>
     </div>
 
     {!!primary.length&&<div className={stacked?'rankings-spaced-grid rankings-primary-grid':'rankings-carousel'}>
