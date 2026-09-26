@@ -269,8 +269,10 @@ export type FixtureContextRow = {
   venue_name: string | null;
   home_team_id: string;
   home_team_name: string;
+  home_team_logo_url: string | null;
   away_team_id: string;
   away_team_name: string;
+  away_team_logo_url: string | null;
   ruleset_id: string;
   ruleset_name: string;
   ruleset_version: number;
@@ -487,8 +489,10 @@ async function getFixtureContextsFromBaseTables(client: SupabaseClient): Promise
       venue_name: venue?.name ?? null,
       home_team_id: homeTeam?.id ?? match.home_team_id,
       home_team_name: homeTeam?.name ?? 'Home team',
+      home_team_logo_url: homeTeam?.logo_url ?? null,
       away_team_id: awayTeam?.id ?? match.away_team_id,
       away_team_name: awayTeam?.name ?? 'Away team',
+      away_team_logo_url: awayTeam?.logo_url ?? null,
       ruleset_id: ruleset?.id ?? tournament?.ruleset_id ?? '',
       ruleset_name: ruleset?.name ?? 'Ruleset unavailable',
       ruleset_version: ruleset?.version ?? 0,
