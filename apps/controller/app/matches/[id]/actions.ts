@@ -116,3 +116,33 @@ export async function selectNextBowlerAction(input:{matchId:string;bowlerId:stri
     return actionError(error,'Could not select the bowler.');
   }
 }
+
+
+export async function undoLastDeliveryAction(input:{matchId:string}){
+  try{
+    const supabase=await createClient();
+    const {data,error}=await supabase.rpc('ips_undo_last_delivery',{
+      p_match_id:input.matchId
+    });
+    if(error)throw error;
+    revalidatePath('/matches/'+input.matchId);
+    return {ok:true as const,context:await attachOverHistory(supabase,input.matchId,data)};
+  }catch(error:any){
+    return actionError(error,'Could not undo the last delivery.');
+  }
+}
+
+export async function resetCurrentInningsAction(input:{matchId:string;reason?:string|null}){
+  try{
+    const supabase=await createClient();
+    const {data,error}=await supabase.rpc('ips_reset_current_innings',{
+      p_match_id:input.matchId,
+      p_reason:input.reason??null
+    });
+    if(error)throw error;
+    revalidatePath('/matches/'+input.matchId);
+    return {ok:true as const,context:await attachOverHistory(supabase,input.matchId,data)};
+  }catch(error:any){
+    return actionError(error,'Could not reset the innings.');
+  }
+}

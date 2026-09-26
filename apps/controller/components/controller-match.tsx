@@ -7,7 +7,9 @@ import {
   overrideMatchFormat,
   scoreDeliveryAction,
   selectNextBowlerAction,
-  startInningsAction
+  startInningsAction,
+  undoLastDeliveryAction,
+  resetCurrentInningsAction
 } from '@/app/matches/[id]/actions';
 
 type Player={player_id:string;ips_code:string;name:string;primary_role?:string|null;order?:number};
@@ -75,6 +77,8 @@ type Sheet=
   |{kind:'runout'}
   |{kind:'next-batter';wicketKind:WicketKind;dismissedPlayerId:string|null}
   |{kind:'bowler'}
+  |{kind:'undo-confirm'}
+  |{kind:'reset-confirm'}
   |null;
 
 function sideReady(side:Side,n:number){
@@ -104,109 +108,107 @@ function SidePanel({side,required}:{side:Side;required:number}){
 }
 
 
-function ActivePlayerAvatar({name,url}:{name:string;url?:string|null}){
-  const initials=name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0,2)
-    .map(part=>part[0]?.toUpperCase())
-    .join('')||'?';
-
-  return <span className="p6-active-avatar" aria-hidden="true">
-    {url?<img src={url} alt="" width="48" height="48" decoding="async"/>:<b>{initials}</b>}
-  </span>;
+function ballTone(ball:OverBall){
+  return ball.is_wicket?'wicket':ball.label.includes('4')?'four':ball.label.includes('6')?'six':'';
 }
 
-function PlayerScoreCard({
-  role,
-  stat,
-  active
-}:{
-  role:'STRIKER'|'NON-STRIKER';
-  stat:BatterStat|undefined;
-  active?:boolean
-}){
-  const name=stat?.name??'—';
-  return <article className={'p6-player-live '+(active?'active':'')}>
-    <ActivePlayerAvatar name={name} url={stat?.profile_image_url}/>
-    <div className="p6-player-live-content">
-      <div className="p6-player-title"><span>{role}</span>{active&&<b>● ON STRIKE</b>}</div>
-      <div className="p6-player-main"><strong>{name}</strong><div><b>{stat?.runs??0}</b><span>({stat?.balls??0})</span></div></div>
-      <div className="p6-player-numbers"><span><em>4s</em> <b>{stat?.fours??0}</b></span><span><em>6s</em> <b>{stat?.sixes??0}</b></span><span><em>SR</em> <b>{Number(stat?.strike_rate??0).toFixed(1)}</b></span></div>
-    </div>
-  </article>;
+function BallStrip({balls,empty,className='' }:{balls:OverBall[];empty:string;className?:string}){
+  return <div className={'p6-ball-strip '+className}>
+    {balls.length
+      ?balls.map(ball=><i key={ball.id} className={ballTone(ball)}>{ball.label}</i>)
+      :<span>{empty}</span>}
+  </div>;
 }
 
-function BowlerScoreCard({stat}:{stat:BowlerStat|undefined}){
-  const name=stat?.name??'Select bowler';
-  return <article className="p6-player-live bowler">
-    <ActivePlayerAvatar name={name} url={stat?.profile_image_url}/>
-    <div className="p6-player-live-content">
-      <div className="p6-player-title"><span>BOWLER</span><b>● CURRENT</b></div>
-      <div className="p6-player-main"><strong>{name}</strong><div><b>{stat?.wickets??0}/{stat?.runs??0}</b></div></div>
-      <div className="p6-player-numbers"><span><em>OV</em> <b>{stat?.overs??'0.0'}</b></span><span><em>R</em> <b>{stat?.runs??0}</b></span><span><em>ECON</em> <b>{Number(stat?.economy??0).toFixed(2)}</b></span></div>
-    </div>
-  </article>;
-}
-
-
-
-
-function CurrentOverPanel({
-  scoring,
-  bowler
-}:{
-  scoring:ScoringContext;
-  bowler:BowlerStat|undefined;
-}){
-  const liveOver=(scoring.over_history??[]).find(over=>over.current);
-  const overNo=liveOver?.over_no??(Math.floor(scoring.legal_balls/Math.max(scoring.balls_per_over,1))+1);
-  const balls=scoring.awaiting_bowler?[]:scoring.current_over;
-  const overRuns=liveOver?.runs??0;
-  const overWickets=liveOver?.wickets??0;
-
-  return <section className="p6-current-over">
-    <div className="p6-current-over-meta">
-      <span>CURRENT OVER</span>
-      <strong>OVER {overNo}</strong>
-      <small>{scoring.awaiting_bowler?'Over complete · select next bowler':bowler?.name??'Bowler TBC'}</small>
-    </div>
-    <div className="p6-current-over-balls">
-      {balls.length?balls.map(ball=><i key={ball.id} className={ball.is_wicket?'wicket':ball.label.includes('4')?'four':ball.label.includes('6')?'six':''}>{ball.label}</i>):<span>{scoring.awaiting_bowler?'Waiting for next bowler':'No balls yet'}</span>}
-    </div>
-    <div className="p6-current-over-summary">
-      <b>{overRuns}</b>
-      <span>{overRuns===1?'RUN':'RUNS'}{overWickets?' · '+overWickets+'W':''}</span>
-      <strong>{scoring.runs}/{scoring.wickets}</strong>
-    </div>
-  </section>;
-}
-
-function OverHistoryPanel({history}:{history:OverHistoryItem[]}){
+function CompactOverHistoryRows({scoring}:{scoring:ScoringContext}){
   const [expanded,setExpanded]=useState(false);
-  const previous=history.filter(over=>!over.current);
-  const visible=expanded?previous:previous.slice(0,3);
+  const completed=(scoring.over_history??[])
+    .filter(over=>!over.current)
+    .sort((a,b)=>b.over_no-a.over_no);
+  const visible=expanded?completed:completed.slice(0,3);
 
-  return <section className="p6-over-history">
+  return <section className={'p6-compact-history '+(expanded?'expanded':'')}>
     <header>
-      <div><span>OVER HISTORY</span><strong>{previous.length?Math.min(previous.length,3)+' previous overs':'Previous overs appear here'}</strong></div>
-      {previous.length>3&&<button type="button" onClick={()=>setExpanded(value=>!value)}>{expanded?'Show latest 3':'Show all '+previous.length+' overs'}</button>}
+      <div><span>PREVIOUS OVERS</span><b>{completed.length?Math.min(completed.length,3)+' recent':'Waiting for first completed over'}</b></div>
+      {completed.length>3&&<button type="button" onClick={()=>setExpanded(value=>!value)}>
+        {expanded?'LATEST 3':'SHOW ALL '+completed.length}
+      </button>}
     </header>
-    <div className="p6-over-history-grid">
-      {visible.length?visible.map(over=><article key={over.over_no}>
-        <div className="p6-over-history-top">
-          <div><span>OVER {over.over_no}</span><strong>{over.bowler_name??'Bowler'}</strong></div>
-          <div><b>{over.runs}</b><small>{over.runs===1?'RUN':'RUNS'}{over.wickets?' · '+over.wickets+'W':''}</small></div>
+    <div className="p6-compact-history-rows">
+      {visible.length?visible.map(over=><div className="p6-compact-over-row" key={over.over_no}>
+        <div className="p6-compact-over-name">
+          <span>OVER {over.over_no}</span>
+          <b>{over.bowler_name??'Bowler'}</b>
         </div>
-        <div className="p6-history-balls">
-          {over.balls.map(ball=><i key={ball.id} className={ball.is_wicket?'wicket':ball.label.includes('4')?'four':ball.label.includes('6')?'six':''}>{ball.label}</i>)}
+        <BallStrip balls={over.balls} empty="—" className="history"/>
+        <div className="p6-compact-over-result">
+          <b>{over.runs}{over.wickets?<small> · {over.wickets}W</small>:null}</b>
+          <span>{over.score_after}/{over.wickets_after}</span>
         </div>
-        <footer><span>{over.complete?'COMPLETE':'PARTIAL'}</span><b>END {over.score_after}/{over.wickets_after}</b></footer>
-      </article>):<article className="empty">
-        <div><span>HISTORY</span><strong>Complete the first over to start the history.</strong></div>
-      </article>}
+      </div>):<div className="p6-compact-over-row empty">
+        <div className="p6-compact-over-name"><span>OVER HISTORY</span><b>No completed over yet</b></div>
+      </div>}
     </div>
   </section>;
+}
+
+function BatterSlot({role,stat,active}:{role:'STRIKER'|'NON-STRIKER';stat:BatterStat|undefined;active?:boolean}){
+  return <div className={'p6-batter-slot '+(active?'active':'')}>
+    <div className="p6-batter-slot-head"><span>{role}</span>{active&&<b>● ON STRIKE</b>}</div>
+    <div className="p6-batter-slot-main">
+      <strong>{stat?.name??'—'}</strong>
+      <div><b>{stat?.runs??0}</b><span>({stat?.balls??0})</span></div>
+    </div>
+    <div className="p6-batter-mini">
+      <span>4s <b>{stat?.fours??0}</b></span>
+      <span>6s <b>{stat?.sixes??0}</b></span>
+      <span>SR <b>{Number(stat?.strike_rate??0).toFixed(1)}</b></span>
+    </div>
+  </div>;
+}
+
+function CombinedBattersCard({striker,nonStriker}:{striker:BatterStat|undefined;nonStriker:BatterStat|undefined}){
+  return <article className="p6-batters-card">
+    <BatterSlot role="STRIKER" stat={striker} active/>
+    <BatterSlot role="NON-STRIKER" stat={nonStriker}/>
+  </article>;
+}
+
+function BowlerCurrentOverCard({scoring,bowler}:{scoring:ScoringContext;bowler:BowlerStat|undefined}){
+  const bpo=Math.max(scoring.balls_per_over,1);
+  const currentNo=scoring.awaiting_bowler
+    ?Math.max(Math.floor(scoring.legal_balls/bpo),1)
+    :Math.floor(scoring.legal_balls/bpo)+1;
+  const currentRecord=(scoring.over_history??[]).find(over=>over.current)
+    ??(scoring.awaiting_bowler?(scoring.over_history??[]).find(over=>over.over_no===currentNo):undefined);
+  const balls=scoring.current_over??[];
+
+  return <article className="p6-bowler-over-card">
+    <div className="p6-bowler-side">
+      <div className="p6-bowler-side-head"><span>BOWLER</span><b>● CURRENT</b></div>
+      <div className="p6-bowler-side-main">
+        <strong>{bowler?.name??'Select bowler'}</strong>
+        <b>{bowler?.wickets??0}/{bowler?.runs??0}</b>
+      </div>
+      <div className="p6-bowler-mini">
+        <span>OV <b>{bowler?.overs??'0.0'}</b></span>
+        <span>R <b>{bowler?.runs??0}</b></span>
+        <span>ECON <b>{Number(bowler?.economy??0).toFixed(2)}</b></span>
+      </div>
+    </div>
+    <div className="p6-current-over-side">
+      <div className="p6-current-over-side-head">
+        <div><span>CURRENT OVER</span><b>OVER {currentNo}</b></div>
+        <strong>{currentRecord?.runs??0}{currentRecord?.wickets?<small> · {currentRecord.wickets}W</small>:null}</strong>
+      </div>
+      <BallStrip
+        balls={balls}
+        empty={scoring.awaiting_bowler?'Over complete · choose next bowler':'No balls yet'}
+        className="current"
+      />
+      {scoring.free_hit&&<span className="p6-current-free-hit">FREE HIT</span>}
+    </div>
+  </article>;
 }
 
 function OtherPlayersScorecard({
@@ -409,6 +411,25 @@ export function ControllerMatch({
     });
   }
 
+  function undoLastBall(){
+    setNotice(null);
+    startTransition(async()=>{
+      const result=await undoLastDeliveryAction({matchId:context.match.id});
+      applyResult(result,'Last delivery undone.');
+    });
+  }
+
+  function resetInnings(){
+    setNotice(null);
+    startTransition(async()=>{
+      const result=await resetCurrentInningsAction({
+        matchId:context.match.id,
+        reason:'Reset from Match Controller'
+      });
+      applyResult(result,'Current innings reset to its starting state.');
+    });
+  }
+
   function wicketWillEndInnings(){
     return scoring.wickets+1>=scoring.effective_wicket_limit||scoring.legal_balls+1>=scoring.max_balls;
   }
@@ -438,6 +459,12 @@ export function ControllerMatch({
   }
 
   const scoringLocked=!ready||pending||!scoring.started||scoring.innings_complete||scoring.match_complete||scoring.awaiting_bowler;
+  const canUndo=!!scoring.started&&(
+    scoring.legal_balls>0||
+    scoring.runs>0||
+    scoring.wickets>0||
+    (scoring.current_over?.length??0)>0
+  );
   const live=!!scoring.started&&!scoring.match_complete;
 
   return <main className="controller-shell project6-shell">
@@ -493,7 +520,8 @@ export function ControllerMatch({
       </div>}
 
       {ready&&scoring.started&&scoring.innings_complete&&!scoring.match_complete&&<div className="p6-start p6-between-innings">
-        <div className="p6-start-title"><span>INNINGS 1 COMPLETE</span><strong>{firstInnings?.runs??0}/{firstInnings?.wickets??0} · Target {(firstInnings?.runs??0)+1}</strong></div>
+        <div className="p6-start-title"><span>INNINGS BREAK · SAVED</span><strong>{firstInnings?.runs??0}/{firstInnings?.wickets??0} · Target {(firstInnings?.runs??0)+1}</strong></div>
+        <p className="p6-break-note">This match is saved. You can leave it, score another match, and return here later to start the chase.</p>
         {startBattingSide&&startBowlingSide&&<>
           <div className="p6-team-fixed"><span>BATTING</span><strong>{startBattingSide.team.name}</strong><i>Target {(firstInnings?.runs??0)+1}</i></div>
           <div className="p6-opening-grid">
@@ -506,7 +534,7 @@ export function ControllerMatch({
             <label><span>OPENING BOWLER · {startBowlingSide.team.name}</span><select value={openingBowler} onChange={event=>setOpeningBowler(event.target.value)}>
               {startBowlingSide.playing_side.map(player=><option key={player.player_id} value={player.player_id}>{player.name}</option>)}
             </select></label>
-            <button type="button" className="p6-start-button" disabled={pending} onClick={startInnings}>{pending?'Starting…':'Start chase →'}</button>
+            <button type="button" className="p6-start-button" disabled={pending} onClick={startInnings}>{pending?'Starting…':'Start 2nd innings →'}</button>
           </div>
         </>}
       </div>}
@@ -516,10 +544,11 @@ export function ControllerMatch({
           <div className="p6-score-top">
             <div><span>BATTING</span><strong>{battingSide?.team.short_name||battingSide?.team.name||'—'}</strong></div>
             <div className="p6-score"><b>{scoring.runs}</b><span>/{scoring.wickets}</span></div>
-            <div className="p6-over"><span>OVERS</span><strong>{oversLabel(scoring.legal_balls,scoring.balls_per_over)}</strong></div>
           </div>
+          <CompactOverHistoryRows scoring={scoring}/>
           <div className="p6-score-bottom">
             <span>BOWLING <b>{bowlingSide?.team.short_name||bowlingSide?.team.name||'—'}</b></span>
+            <span className="p6-score-overs"><b>{oversLabel(scoring.legal_balls,scoring.balls_per_over)}</b> OVERS</span>
             {scoring.innings_no===2&&<span>TARGET <b>{scoring.target_runs}</b></span>}
             {scoring.innings_no===2&&!scoring.innings_complete&&<span>NEED <b>{scoring.runs_required} from {scoring.balls_remaining}</b></span>}
             {scoring.free_hit&&<span className="p6-free-hit">FREE HIT</span>}
@@ -527,13 +556,27 @@ export function ControllerMatch({
         </section>
 
         <section className="p6-active-players">
-          <PlayerScoreCard role="STRIKER" stat={striker} active/>
-          <PlayerScoreCard role="NON-STRIKER" stat={nonStriker}/>
-          <BowlerScoreCard stat={currentBowler}/>
+          <CombinedBattersCard striker={striker} nonStriker={nonStriker}/>
         </section>
 
-        <CurrentOverPanel scoring={scoring} bowler={currentBowler}/>
-        <OverHistoryPanel history={scoring.over_history??[]}/>
+        <section className="p6-bowler-current">
+          <BowlerCurrentOverCard scoring={scoring} bowler={currentBowler}/>
+        </section>
+
+        <section className="p6-score-tools">
+          <button
+            type="button"
+            className="undo"
+            disabled={pending||!canUndo}
+            onClick={()=>setSheet({kind:'undo-confirm'})}
+          ><b>↶</b><span>UNDO BALL</span></button>
+          <button
+            type="button"
+            className="reset"
+            disabled={pending||!scoring.started}
+            onClick={()=>setSheet({kind:'reset-confirm'})}
+          ><b>↺</b><span>RESET INNINGS</span></button>
+        </section>
 
         {!scoring.innings_complete&&!scoring.match_complete&&<section className="controller-action-zone p6-actions">
           <div className="p6-action-caption"><span>RUNS</span>{scoring.awaiting_bowler&&<b>SELECT NEXT BOWLER</b>}</div>
@@ -547,19 +590,23 @@ export function ControllerMatch({
             ><span>{value}</span><small>{value===0?'DOT':'RUNS'}</small></button>)}
           </div>
 
-          <button type="button" disabled={scoringLocked} className="wicket-action p6-wicket" onClick={()=>setSheet({kind:'wicket'})}>
-            <span>W</span><div><strong>WICKET</strong><small>Choose how it happened</small></div><b>→</b>
+          <button type="button" disabled={scoringLocked} className="p6-grid-action p6-wicket-grid" onClick={()=>setSheet({kind:'wicket'})}>
+            <strong>W</strong><span>WICKET</span>
           </button>
-
-          <div className="extras-grid p6-extras">
-            <button type="button" disabled={scoringLocked} onClick={()=>setSheet({kind:'extra',extra:'WIDE'})}><strong>WD</strong><span>+0 · +1 · +2 · +3 · +4</span></button>
-            <button type="button" disabled={scoringLocked} onClick={()=>setSheet({kind:'extra',extra:'NO_BALL'})}><strong>NB</strong><span>+0 · +1 · +2 · +3 · +4</span></button>
-            <button type="button" disabled={scoringLocked} onClick={()=>setSheet({kind:'extra',extra:'BYE'})}><strong>B</strong><span>+1 · +2 · +3 · +4</span></button>
-            <button type="button" disabled={scoringLocked} onClick={()=>setSheet({kind:'extra',extra:'LEG_BYE'})}><strong>LB</strong><span>+1 · +2 · +3 · +4</span></button>
+          <button type="button" disabled={scoringLocked} className="p6-grid-action p6-wide-grid" onClick={()=>setSheet({kind:'extra',extra:'WIDE'})}>
+            <strong>WD</strong><span>+0 · +1 · +2 · +3 · +4</span>
+          </button>
+          <button type="button" disabled={scoringLocked} className="p6-grid-action p6-noball-grid" onClick={()=>setSheet({kind:'extra',extra:'NO_BALL'})}>
+            <strong>NB</strong><span>+0 · +1 · +2 · +3 · +4</span>
+          </button>
+          <div className="p6-secondary-extras">
+            <span>OTHER EXTRAS</span>
+            <button type="button" disabled={scoringLocked} onClick={()=>setSheet({kind:'extra',extra:'BYE'})}>B · BYE</button>
+            <button type="button" disabled={scoringLocked} onClick={()=>setSheet({kind:'extra',extra:'LEG_BYE'})}>LB · LEG BYE</button>
           </div>
         </section>}
 
-        {scoring.match_complete&&<section className="p6-match-complete">
+            {scoring.match_complete&&<section className="p6-match-complete">
           <span>MATCH COMPLETE</span>
           <strong>{firstInnings?.runs}/{firstInnings?.wickets} · {secondInnings?.runs}/{secondInnings?.wickets}</strong>
           <small>Scoring is locked. Certification can follow from IPS tournament operations.</small>
@@ -608,6 +655,23 @@ export function ControllerMatch({
         </div>
       </details>
     </section>
+
+    {sheet?.kind==='undo-confirm'&&<ChoiceSheet title="Undo the last ball?" kicker="SCORING RECOVERY" onClose={()=>setSheet(null)}>
+      <p className="p6-sheet-copy">This reverses the most recent recorded delivery in the scoring ledger and restores the score, strike, bowler state, wickets and free-hit state from immediately before that ball.</p>
+      <div className="p6-recovery-confirm">
+        <button type="button" className="secondary" disabled={pending} onClick={()=>setSheet(null)}>Cancel</button>
+        <button type="button" className="primary" disabled={pending||!canUndo} onClick={undoLastBall}>{pending?'Undoing…':'Undo last ball'}</button>
+      </div>
+    </ChoiceSheet>}
+
+    {sheet?.kind==='reset-confirm'&&<ChoiceSheet title={'Reset innings '+(scoring.innings_no??'')+'?'} kicker="SCORING RECOVERY" onClose={()=>setSheet(null)}>
+      <p className="p6-sheet-copy">This resets only the current innings back to 0/0 and its original opening batters/bowler. The action is audited. If this is innings 2, the saved target from innings 1 is kept.</p>
+      <div className="p6-reset-warning">This is more destructive than Undo Ball. Use it only when you want to restart the whole current innings.</div>
+      <div className="p6-recovery-confirm">
+        <button type="button" className="secondary" disabled={pending} onClick={()=>setSheet(null)}>Cancel</button>
+        <button type="button" className="danger" disabled={pending} onClick={resetInnings}>{pending?'Resetting…':'Reset current innings'}</button>
+      </div>
+    </ChoiceSheet>}
 
     {sheet?.kind==='extra'&&<ChoiceSheet title={sheet.extra==='WIDE'?'Wide':sheet.extra==='NO_BALL'?'No-ball':sheet.extra==='BYE'?'Byes':'Leg byes'} kicker="EXTRAS" onClose={()=>setSheet(null)}>
       <p className="p6-sheet-copy">{sheet.extra==='WIDE'||sheet.extra==='NO_BALL'?'Choose the additional runs. The mandatory one-run extra is handled automatically.':'Choose the completed extra runs.'}</p>
@@ -663,6 +727,10 @@ export function ControllerMatch({
 
     {sheet?.kind==='bowler'&&<ChoiceSheet title="Choose the next bowler" kicker="OVER COMPLETE" onClose={()=>{}} locked>
       <p className="p6-sheet-copy">The previous bowler and anyone who has reached the over limit are disabled automatically.</p>
+      <div className="p6-sheet-recovery">
+        <button type="button" disabled={pending||!canUndo} onClick={()=>setSheet({kind:'undo-confirm'})}>↶ Undo last ball</button>
+        <button type="button" disabled={pending} onClick={()=>setSheet({kind:'reset-confirm'})}>↺ Reset innings</button>
+      </div>
       <div className="p6-player-choice-list">
         {scoring.bowlers.map(player=>{
           const stats=scoring.bowler_stats.find(item=>item.player_id===player.player_id);
