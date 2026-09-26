@@ -76,6 +76,24 @@ export default async function QuickMatchPage({searchParams}:{searchParams:Promis
           <NumberStepper name="balls_per_over" label="Balls / over" defaultValue={Number(defaultRule.balls_per_over??6)} min={1} max={12}/>
         </div>
 
+        <fieldset className="quick-match-classification">
+          <legend>Match classification</legend>
+          <div className="quick-classification-options">
+            <label>
+              <input type="radio" name="match_classification" value="RANKING" defaultChecked/>
+              <span><b>Ranking Match</b><small>After admin certification, this match updates official player rankings.</small></span>
+            </label>
+            <label>
+              <input type="radio" name="match_classification" value="FRIENDLY"/>
+              <span><b>Friendly</b><small>Saved in IPS history and scorecards, but never changes rankings.</small></span>
+            </label>
+            <label>
+              <input type="radio" name="match_classification" value="PRACTICE"/>
+              <span><b>Practice</b><small>For testing or informal games. Never changes rankings.</small></span>
+            </label>
+          </div>
+        </fieldset>
+
         <div className="quick-match-grid three quick-match-rule-row">
           <label><span>Ruleset</span><select name="ruleset_id" defaultValue={defaultRule.id}>{rules.map((rule:any)=><option key={rule.id} value={rule.id}>{rule.name} v{rule.version}</option>)}</select></label>
 
