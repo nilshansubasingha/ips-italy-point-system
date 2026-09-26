@@ -2069,3 +2069,198 @@
   line-height:1.35;
 }
 #operational-queue{scroll-margin-top:18px}
+
+
+/* Match Centre — keep all live content inside each card */
+.fixture-grid-live:not(.fixture-grid-single){
+  grid-template-columns:repeat(2,minmax(0,1fr));
+}
+.fixture-live .premium-versus.with-live-score{
+  grid-template-columns:92px minmax(0,1fr) 92px;
+  align-items:center;
+  gap:10px;
+}
+.fixture-live .fixture-team{
+  min-width:0;
+}
+.fixture-live .fixture-team .identity-crest-large{
+  width:76px;
+  height:76px;
+  max-width:76px;
+  max-height:76px;
+}
+.fixture-live .fixture-middle{
+  min-width:0;
+  width:100%;
+  overflow:hidden;
+}
+.fixture-live-panel{
+  max-width:100%;
+  min-width:0;
+}
+.fixture-live-panel.innings-break{
+  grid-template-columns:minmax(90px,.55fr) minmax(0,1fr);
+}
+.fixture-live-scoreline>strong{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.fixture-live-players{
+  min-width:0;
+}
+.fixture-live-players>div{
+  overflow:hidden;
+}
+@media(max-width:1150px){
+  .fixture-grid-live:not(.fixture-grid-single){
+    grid-template-columns:1fr;
+  }
+}
+@media(max-width:650px){
+  .fixture-grid-live:not(.fixture-grid-single){
+    grid-template-columns:1fr;
+  }
+  .fixture-live .premium-versus.with-live-score{
+    grid-template-columns:1fr 1fr;
+  }
+}
+
+/* Quick Match */
+.manage-title-actions{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.quick-match-launch{
+  border-color:#b9dcd0;
+  background:#f0faf6;
+  color:#087b4f;
+}
+.quick-match-setup{
+  display:grid;
+  gap:14px;
+  margin-bottom:24px;
+}
+.quick-match-card{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:20px;
+  padding:20px;
+  box-shadow:var(--shadow);
+}
+.quick-match-card-head{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:16px;
+}
+.quick-match-card-head strong{
+  font-size:20px;
+  letter-spacing:-.035em;
+}
+.quick-match-grid{
+  display:grid;
+  gap:10px;
+}
+.quick-match-grid.three{
+  grid-template-columns:repeat(3,minmax(0,1fr));
+}
+.quick-match-grid.four{
+  grid-template-columns:repeat(4,minmax(0,1fr));
+}
+.quick-match-grid label{
+  min-width:0;
+}
+.quick-match-grid label>span{
+  display:block;
+  margin-bottom:6px;
+  color:#6e828e;
+  font-size:8px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+.quick-match-grid input,
+.quick-match-grid select{
+  width:100%;
+  min-height:44px;
+  border:1px solid #d4e0e5;
+  border-radius:11px;
+  background:#fbfdfe;
+  color:var(--ink);
+  padding:10px 11px;
+  font-size:10px;
+  font-weight:800;
+}
+.quick-match-advanced{
+  margin-top:12px;
+  border-top:1px solid #e6edef;
+  padding-top:11px;
+}
+.quick-match-advanced>summary{
+  cursor:pointer;
+  color:#627985;
+  font-size:9px;
+  font-weight:900;
+}
+.quick-match-advanced[open]>summary{
+  margin-bottom:12px;
+}
+.quick-match-footer{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  padding:18px 20px;
+  border-radius:18px;
+  background:linear-gradient(145deg,#071b2e,#0b3b56);
+  color:#fff;
+}
+.quick-match-footer strong,
+.quick-match-footer span{
+  display:block;
+}
+.quick-match-footer strong{
+  font-size:13px;
+}
+.quick-match-footer span{
+  margin-top:4px;
+  color:#a9c0cc;
+  font-size:9px;
+}
+.quick-match-history{
+  margin-top:16px;
+}
+.quick-match-history .surface-head>a{
+  color:var(--green);
+  text-decoration:none;
+  font-size:9px;
+  font-weight:950;
+}
+@media(max-width:820px){
+  .quick-match-grid.three,
+  .quick-match-grid.four{
+    grid-template-columns:1fr 1fr;
+  }
+  .quick-match-footer{
+    align-items:stretch;
+    flex-direction:column;
+  }
+}
+@media(max-width:520px){
+  .manage-title-actions{
+    width:100%;
+    justify-content:stretch;
+  }
+  .manage-title-actions a{
+    flex:1;
+  }
+  .quick-match-grid.three,
+  .quick-match-grid.four{
+    grid-template-columns:1fr;
+  }
+}
