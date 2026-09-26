@@ -159,6 +159,41 @@ export type RulesetRow = {
   points_loss: number;
 };
 
+export type MatchLiveSummary = {
+  match_id: string;
+  started: boolean;
+  innings_no: number | null;
+  innings_complete: boolean;
+  match_complete: boolean;
+  batting_team_id: string | null;
+  batting_team_name: string | null;
+  bowling_team_id: string | null;
+  bowling_team_name: string | null;
+  next_batting_team_id: string | null;
+  next_batting_team_name: string | null;
+  runs: number;
+  wickets: number;
+  legal_balls: number;
+  balls_per_over: number;
+  overs_text: string;
+  target_runs: number | null;
+  striker_name: string | null;
+  striker_runs: number;
+  striker_balls: number;
+  non_striker_name: string | null;
+  non_striker_runs: number;
+  non_striker_balls: number;
+  bowler_name: string | null;
+  bowler_wickets: number;
+  bowler_runs: number;
+  bowler_overs: string;
+  first_innings_runs: number | null;
+  first_innings_wickets: number | null;
+  second_innings_runs: number | null;
+  second_innings_wickets: number | null;
+  updated_at: string | null;
+};
+
 export type FixtureContextRow = {
   match_id: string;
   match_code: string;
@@ -411,6 +446,15 @@ async function getFixtureContextsFromBaseTables(client: SupabaseClient): Promise
       retirement_mode: ruleset?.retirement_mode ?? 'NONE',
     } satisfies FixtureContextRow;
   });
+}
+
+
+export async function getMatchLiveSummaries(): Promise<MatchLiveSummary[]> {
+  const client = getPublicSupabaseClient();
+  if (!client) return [];
+  const { data, error } = await client.rpc('ips_public_match_live_summaries');
+  if (error) throw new Error(`live match summaries: ${error.message}`);
+  return (data ?? []) as MatchLiveSummary[];
 }
 
 export async function getFixtureContexts(): Promise<FixtureContextRow[]> {
