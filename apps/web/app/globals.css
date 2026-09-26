@@ -3745,3 +3745,41 @@
 @media(max-width:560px){
   .match-award-add{grid-template-columns:1fr}
 }
+
+
+.archive-revoke-form{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.archive-revoke-form input{
+  min-width:150px;
+  min-height:32px;
+  border:1px solid #e1cfd2;
+  border-radius:8px;
+  background:#fff;
+  padding:7px 8px;
+  font-size:7px;
+}
+.archive-revoke{
+  min-height:32px;
+  border:1px solid #e6bfc4;
+  border-radius:8px;
+  background:#fff5f6;
+  color:#b62d39;
+  padding:7px 9px;
+  font-size:7px;
+  font-weight:950;
+  cursor:pointer;
+}
+@media(max-width:620px){
+  .archive-revoke-form{
+    width:100%;
+    align-items:stretch;
+    flex-direction:column;
+  }
+  .archive-revoke-form input,
+  .archive-revoke{
+    width:100%;
+  }
+}
