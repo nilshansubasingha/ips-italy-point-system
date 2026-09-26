@@ -18,14 +18,14 @@ export default async function ManagePlayersPage({searchParams}:{searchParams:Pro
  <section className="ops-kpi-strip"><article><span>Visible registry</span><strong>{players.length}</strong><small>players in your scope</small></article><article><span>On a team</span><strong>{withTeam}</strong><small>active membership</small></article><article><span>Claimed account</span><strong>{linked}</strong><small>linked users</small></article><article><span>Identity model</span><strong>ITA</strong><small>permanent codes</small></article></section>
  <section className="management-surface"><div className="surface-head registry-head"><div><span className="eyebrow">REGISTRY</span><h2>Players</h2></div><form className="registry-search compact" method="get"><input name="q" defaultValue={q} placeholder="Search name or ITA ID"/><button>Search</button></form></div>
   <div className="player-registry-table">{players.map(p=><article className="player-registry-row player-registry-admin-row" key={p.id}>
-    <Link href={'/manage/players/'+p.id} className="player-registry-person-link">
+    <Link href={'/manage/players/'+(p.slug??p.id)} className="player-registry-person-link">
       <PlayerAvatar name={p.display_name} imageUrl={p.profile_image_url}/>
       <div className="player-registry-name"><h3>{p.display_name}</h3><span>{p.ips_code} · {p.primary_role||'Player'}</span></div>
     </Link>
     <div><span>TEAM</span><b>{p.team_name||'Unattached'}</b><small>{p.club_name||'No Team'}</small></div>
     <div><span>ACCOUNT</span><b className={p.has_account?'good-text':''}>{p.has_account?'Claimed':'Not claimed'}</b><small>{p.city_name||'—'}</small></div>
     <div className="player-registry-actions">
-      <Link href={'/manage/players/'+p.id} aria-label={'Open '+p.display_name}>Open →</Link>
+      <Link href={'/manage/players/'+(p.slug??p.id)} aria-label={'Open '+p.display_name}>Open →</Link>
       {canGlobalDelete&&<form action={deletePlayer}>
         <input type="hidden" name="player_id" value={p.id}/>
         <ConfirmSubmitButton className="registry-delete-button" message={'Delete '+p.display_name+' ('+p.ips_code+')? This permanently removes the player identity, memberships and private contacts. Tournament or match history is protected and will block deletion.'}>Delete</ConfirmSubmitButton>
