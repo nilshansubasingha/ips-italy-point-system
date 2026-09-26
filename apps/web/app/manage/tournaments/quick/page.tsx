@@ -18,7 +18,8 @@ export default async function QuickMatchPage({searchParams}:{searchParams:Promis
   }
 
   const sp=await searchParams;
-  const error=typeof sp.error==='string'?sp.error:null;
+  const rawError=typeof sp.error==='string'?sp.error:null;
+  const error=rawError?.includes('Squad is locked')?null:rawError;
   const supabase=await createClient();
 
   const [activeCities,teamsRes,seasonsRes,rulesRes,venuesRes]=await Promise.all([
