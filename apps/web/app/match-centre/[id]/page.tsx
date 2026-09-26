@@ -32,7 +32,7 @@ export default async function PublicMatchScorecardPage({params}:{params:Promise<
 
       <div className="public-match-result-strip">
         <div className="public-match-result-team">
-          <Crest name={match.home_team.name} large/>
+          <Crest name={match.home_team.name} imageUrl={match.home_team.logo_url} large/>
           <strong>{match.home_team.name}</strong>
         </div>
         <div className="public-match-result-centre">
@@ -41,7 +41,7 @@ export default async function PublicMatchScorecardPage({params}:{params:Promise<
           <small>{match.code}</small>
         </div>
         <div className="public-match-result-team right">
-          <Crest name={match.away_team.name} large/>
+          <Crest name={match.away_team.name} imageUrl={match.away_team.logo_url} large/>
           <strong>{match.away_team.name}</strong>
         </div>
       </div>
