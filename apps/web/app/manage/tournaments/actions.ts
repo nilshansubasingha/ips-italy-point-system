@@ -84,6 +84,131 @@ export async function createTournament(form: FormData) {
   } catch(e:any) { go(back,'error',friendlyError(e,'Could not create tournament.')); }
 }
 
+
+export async function createQuickMatch(form: FormData) {
+  const supabase=await createClient();
+  const back=returnPath(form,'/manage/tournaments/quick');
+  try{
+    const cityId=s(form,'city_id');
+    const homeTeamId=s(form,'home_team_id');
+    const awayTeamId=s(form,'away_team_id');
+    const seasonId=s(form,'season_id');
+    const rulesetId=s(form,'ruleset_id');
+    const venueId=nullable(form,'venue_id');
+    const playersPerSide=num(form,'players_per_side');
+    const overs=num(form,'overs_per_innings');
+    const balls=num(form,'balls_per_over',6);
+    const maxBowlerOvers=num(form,'max_overs_per_bowler');
+    const wicketLimit=num(form,'wicket_limit');
+
+    if(!cityId||!homeTeamId||!awayTeamId||!seasonId||!rulesetId)throw new Error('City, both teams, season and ruleset are required.');
+    if(homeTeamId===awayTeamId)throw new Error('Choose two different teams.');
+    if(!playersPerSide||playersPerSide<2||playersPerSide>20)throw new Error('Players per side must be between 2 and 20.');
+    if(!overs||overs<1||overs>100)throw new Error('Overs must be between 1 and 100.');
+    if(!balls||balls<1||balls>12)throw new Error('Balls per over must be between 1 and 12.');
+
+    const [{data:home,error:homeError},{data:away,error:awayError},{data:{user}}]=await Promise.all([
+      supabase.from('teams').select('id,name,short_name').eq('id',homeTeamId).maybeSingle(),
+      supabase.from('teams').select('id,name,short_name').eq('id',awayTeamId).maybeSingle(),
+      supabase.auth.getUser()
+    ]);
+    if(homeError)throw homeError;if(awayError)throw awayError;if(!home||!away)throw new Error('One of the selected teams no longer exists.');
+    if(!user)throw new Error('Not signed in.');
+
+    const [homeMembersRes,awayMembersRes]=await Promise.all([
+      supabase.from('team_memberships').select('player_id').eq('team_id',homeTeamId).eq('status','ACTIVE'),
+      supabase.from('team_memberships').select('player_id').eq('team_id',awayTeamId).eq('status','ACTIVE')
+    ]);
+    if(homeMembersRes.error)throw homeMembersRes.error;
+    if(awayMembersRes.error)throw awayMembersRes.error;
+    const homeMembers=homeMembersRes.data??[];
+    const awayMembers=awayMembersRes.data??[];
+    if(homeMembers.length<playersPerSide)throw new Error(home.name+' has only '+homeMembers.length+' active players. '+playersPerSide+' are required.');
+    if(awayMembers.length<playersPerSide)throw new Error(away.name+' has only '+awayMembers.length+' active players. '+playersPerSide+' are required.');
+
+    const stamp=Date.now();
+    const displayName=`Quick Match · ${home.name} vs ${away.name}`;
+    const code=await uniqueTournamentCode(supabase,`QM ${home.short_name||home.name} ${away.short_name||away.name} ${stamp}`,seasonId);
+    const slug=slugify(`quick-${home.name}-vs-${away.name}-${stamp}`);
+    const nowIso=new Date().toISOString();
+
+    const tournamentPayload:any={
+      season_id:seasonId,
+      city_id:cityId,
+      ruleset_id:rulesetId,
+      code,
+      name:displayName,
+      slug,
+      format_label:`${overs} overs · Quick Match`,
+      status:'READY',
+      starts_at:nowIso,
+      ends_at:null,
+      registration_deadline:null,
+      squad_deadline:null,
+      squad_size:null,
+      max_teams:2,
+      registration_mode:'INVITE_ONLY',
+      default_venue_id:venueId,
+      short_description:'Quick Match created from IPS Match Operations.',
+      players_per_side:playersPerSide,
+      overs_per_innings:overs,
+      balls_per_over:balls,
+      wicket_limit:wicketLimit,
+      tournament_max_overs_per_bowler:maxBowlerOvers,
+      competition_kind:'QUICK_MATCH'
+    };
+
+    const {data:tournament,error:tError}=await supabase.from('tournaments').insert(tournamentPayload).select('id').single();
+    if(tError)throw tError;
+    const tournamentId=tournament.id;
+
+    const {error:teamsError}=await supabase.from('tournament_teams').insert([
+      {tournament_id:tournamentId,team_id:homeTeamId,status:'CONFIRMED',accepted_at:nowIso,confirmed_at:nowIso,submitted_by:user.id,decision_by:user.id,application_note:'Quick Match'},
+      {tournament_id:tournamentId,team_id:awayTeamId,status:'CONFIRMED',accepted_at:nowIso,confirmed_at:nowIso,submitted_by:user.id,decision_by:user.id,application_note:'Quick Match'}
+    ]);
+    if(teamsError)throw teamsError;
+
+    const {data:squadRows,error:squadError}=await supabase.from('tournament_squads').insert([
+      {tournament_id:tournamentId,team_id:homeTeamId,status:'LOCKED',submitted_at:nowIso,submitted_by:user.id,locked_at:nowIso,locked_by:user.id},
+      {tournament_id:tournamentId,team_id:awayTeamId,status:'LOCKED',submitted_at:nowIso,submitted_by:user.id,locked_at:nowIso,locked_by:user.id}
+    ]).select('id,team_id');
+    if(squadError)throw squadError;
+
+    const homeSquad=squadRows?.find((row:any)=>row.team_id===homeTeamId);
+    const awaySquad=squadRows?.find((row:any)=>row.team_id===awayTeamId);
+    if(!homeSquad||!awaySquad)throw new Error('Could not prepare Quick Match squads.');
+
+    const squadPlayers=[
+      ...homeMembers.map((row:any)=>({squad_id:homeSquad.id,player_id:row.player_id,added_by:user.id})),
+      ...awayMembers.map((row:any)=>({squad_id:awaySquad.id,player_id:row.player_id,added_by:user.id}))
+    ];
+    const {error:squadPlayersError}=await supabase.from('tournament_squad_players').insert(squadPlayers);
+    if(squadPlayersError)throw squadPlayersError;
+
+    const matchCode=normalizeCode(code+'-01').slice(0,40);
+    const {data:match,error:matchError}=await supabase.from('matches').insert({
+      tournament_id:tournamentId,
+      match_code:matchCode,
+      match_number:1,
+      home_team_id:homeTeamId,
+      away_team_id:awayTeamId,
+      venue_id:venueId,
+      scheduled_at:nowIso,
+      scheduled_time_tbc:false,
+      stage:'QUICK_MATCH',
+      round_label:'Quick Match',
+      status:'READY'
+    }).select('id').single();
+    if(matchError)throw matchError;
+
+    revalidatePath('/manage/tournaments');
+    revalidatePath('/match-centre');
+    go(`/manage/tournaments/${tournamentId}#lineups`,'ok','Quick Match created. Select the playing sides, captain and wicketkeeper, then open the Controller.');
+  }catch(e:any){
+    go(back,'error',friendlyError(e,'Could not create Quick Match.'));
+  }
+}
+
 export async function updateTournament(form: FormData) {
   const supabase=await createClient(); const id=s(form,'tournament_id'); const back=returnPath(form,`/manage/tournaments/${id}`);
   try {
