@@ -1,6 +1,6 @@
 import {notFound} from 'next/navigation';
 import Link from 'next/link';
-import {getPublicMatchScorecard} from '@ips/data';
+import {getPublicMatchScorecardByIdentifier} from '@ips/data';
 import {SiteFooter,SiteHeader} from '@/components/site-header';
 import {Crest} from '@/components/identity';
 import {PublicMatchScorecardView} from '@/components/public-match-scorecard';
@@ -11,8 +11,7 @@ export const revalidate=0;
 
 export default async function PublicMatchScorecardPage({params}:{params:Promise<{id:string}>}){
   const {id}=await params;
-  if(!/^[0-9a-f-]{36}$/i.test(id))notFound();
-  const scorecard=await getPublicMatchScorecard(id);
+  const scorecard=await getPublicMatchScorecardByIdentifier(decodeURIComponent(id));
   if(!scorecard)notFound();
 
   const {match}=scorecard;
