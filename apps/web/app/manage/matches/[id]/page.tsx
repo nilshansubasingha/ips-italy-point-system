@@ -53,8 +53,8 @@ export default async function MatchHistoryDetail({params}:{params:Promise<{id:st
     playerIds.length?supabase.from('players').select('id,display_name,ips_code,slug,primary_role').in('id',playerIds):Promise.resolve({data:[]} as any)
   ]);
 
-  const teamMap=new Map((teams??[]).map((row:any)=>[row.id,row]));
-  const playerMap=new Map((players??[]).map((row:any)=>[row.id,row]));
+  const teamMap=new Map<string,any>((teams??[]).map((row:any)=>[String(row.id),row] as [string,any]));
+  const playerMap=new Map<string,any>((players??[]).map((row:any)=>[String(row.id),row] as [string,any]));
   const snap=archive.snapshot??{};
   const archivedMatch=snap.match??{};
   const innings=Array.isArray(snap.innings)?snap.innings:[];
