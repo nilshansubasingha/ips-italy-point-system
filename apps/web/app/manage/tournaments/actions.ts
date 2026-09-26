@@ -404,6 +404,36 @@ export async function setMatchTeamRoles(form: FormData) {
 }
 
 
+export async function saveQuickMatchSetup(input:{
+  tournamentId:string;
+  matchId:string;
+  homePlayerIds:string[];
+  awayPlayerIds:string[];
+  homeCaptainId:string;
+  homeWicketkeeperId:string;
+  awayCaptainId:string;
+  awayWicketkeeperId:string;
+}){
+  const supabase=await createClient();
+  try{
+    if(!input.tournamentId||!input.matchId)throw new Error('Quick Match context is missing.');
+    const {error}=await supabase.rpc('ips_setup_quick_match',{
+      p_match_id:input.matchId,
+      p_home_player_ids:input.homePlayerIds,
+      p_away_player_ids:input.awayPlayerIds,
+      p_home_captain_id:input.homeCaptainId,
+      p_home_wicketkeeper_id:input.homeWicketkeeperId,
+      p_away_captain_id:input.awayCaptainId,
+      p_away_wicketkeeper_id:input.awayWicketkeeperId
+    });
+    if(error)throw error;
+    revalidatePath(`/manage/tournaments/${input.tournamentId}`);
+    return {ok:true,message:'Quick Match ready for scoring.'};
+  }catch(error:any){
+    return {ok:false,error:friendlyError(error,'Could not prepare Quick Match.')};
+  }
+}
+
 export async function saveMatchPlayingSides(input:{
   tournamentId:string;
   matchId:string;
