@@ -9,6 +9,7 @@ import {requireAccount,hasManagementRole} from '@/lib/auth';
 import {createClient} from '@/lib/supabase/server';
 import {formatItalyDate,formatItalyDateTime,toItalyInput} from '@/lib/project4';
 import {MatchPlayingSidesEditor} from '@/components/manage/match-playing-sides-editor';
+import {QuickMatchSetupEditor} from '@/components/manage/quick-match-setup-editor';
 import {addTournamentTeam,decideTournamentTeam,ensureSquad,addSquadPlayer,removeSquadPlayer,submitSquad,lockSquad,requestReplacement,reviewReplacement,createFixture,updateMatchStatus,assignOfficial,removeOfficial,updateTournament,deleteTournament} from '../actions';
 
 function statusLabel(v:string){return v.replaceAll('_',' ')}
@@ -50,6 +51,74 @@ export default async function TournamentOpsDetail({params,searchParams}:{params:
   const rolesByMatchTeam=new Map<string,any[]>(); for(const x of teamRoles??[]){const k=`${x.match_id}:${x.team_id}`;const a=rolesByMatchTeam.get(k)||[];a.push(x);rolesByMatchTeam.set(k,a)}
   const controllerUrl=process.env.NEXT_PUBLIC_CONTROLLER_URL??'http://localhost:3001';
   const returnTo=`/manage/tournaments/${id}`;
+
+  if(t.competition_kind==='QUICK_MATCH'){
+    const quickMatch=(matches??[])[0] as any;
+    if(!quickMatch)notFound();
+    const required=Number(quickMatch.format_players_per_side||t.players_per_side||0);
+    const makeQuickSide=(teamId:string)=>{
+      const team=teamMap.get(teamId);
+      const squad=squadByTeam.get(teamId);
+      const rosterRows=squad?activeSquadById.get(squad.id)||[]:[];
+      const xi=xiByMatchTeam.get(`${quickMatch.id}:${teamId}`)||[];
+      const roles=rolesByMatchTeam.get(`${quickMatch.id}:${teamId}`)||[];
+      return {
+        teamId,
+        teamName:team?.name??'Team',
+        shortName:team?.short_name||team?.name||'TEAM',
+        roster:rosterRows.map((row:any)=>{
+          const player=playerMap.get(row.player_id);
+          return {id:row.player_id,displayName:player?.display_name??'Player',ipsCode:player?.ips_code??''};
+        }),
+        selectedIds:xi.map((row:any)=>row.player_id),
+        captainId:roles.find((role:any)=>role.role==='CAPTAIN')?.player_id??null,
+        keeperId:roles.find((role:any)=>role.role==='WICKETKEEPER')?.player_id??null
+      };
+    };
+    const home=makeQuickSide(quickMatch.home_team_id);
+    const away=makeQuickSide(quickMatch.away_team_id);
+    const controllerHref=`${controllerUrl}/matches/${quickMatch.id}`;
+
+    return <main className="shell sports-shell">
+      <SiteHeader/>
+      <ManagementNav account={account} active="tournaments"/>
+
+      <section className="quick-ops-hero">
+        <div>
+          <Link className="back-link" href="/manage/tournaments">← Match operations</Link>
+          <span className="eyebrow">QUICK MATCH · {city?.name??'ITALY'}</span>
+          <h1>{teamMap.get(quickMatch.home_team_id)?.name} <i>vs</i> {teamMap.get(quickMatch.away_team_id)?.name}</h1>
+          <p>{required} players · {quickMatch.format_overs_per_innings} overs · {quickMatch.format_balls_per_over} balls/over · {quickMatch.format_free_hit_on_no_ball?'No-ball free hit ON':'No-ball free hit OFF'}</p>
+        </div>
+        <div className="quick-ops-status"><span>STATUS</span><strong>{statusLabel(quickMatch.status)}</strong><small>{quickMatch.match_code}</small></div>
+      </section>
+
+      {(error||ok)&&<div className={`ops-message ${error?'error':'success'}`}>{error||ok}</div>}
+
+      <section className="sports-section quick-ops-section">
+        <QuickMatchSetupEditor
+          tournamentId={id}
+          matchId={quickMatch.id}
+          required={required}
+          controllerUrl={controllerHref}
+          home={home}
+          away={away}
+        />
+      </section>
+
+      <div className="quick-ops-secondary">
+        <span>Need to change the match itself?</span>
+        <Link href="/manage/tournaments/quick">Create another Quick Match</Link>
+        {canGlobalDelete&&<form action={deleteTournament}>
+          <input type="hidden" name="tournament_id" value={id}/>
+          <input type="hidden" name="return_to" value={returnTo}/>
+          <ConfirmSubmitButton className="danger-link" message={'Delete this Quick Match?'}>Delete Quick Match</ConfirmSubmitButton>
+        </form>}
+      </div>
+
+      <SiteFooter/>
+    </main>;
+  }
 
   return <main className="shell sports-shell"><SiteHeader/><ManagementNav account={account} active="tournaments"/>
     <section className="ops-detail-hero"><div><Link className="back-link" href="/manage/tournaments">← Tournament operations</Link><span className="eyebrow">{city?.name??'ITALY'} · {t.code}</span><h1>{t.name}</h1><p>{t.format_label} · {ruleset?.name??'Ruleset'} · starts {formatItalyDateTime(t.starts_at)}</p></div><div className="ops-status-card"><span>TOURNAMENT STATUS</span><strong>{statusLabel(t.status)}</strong><small>{confirmed.length} confirmed teams · {(matches??[]).length} fixtures</small></div></section>
