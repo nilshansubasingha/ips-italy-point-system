@@ -62,7 +62,6 @@ export async function createTournament(form: FormData) {
     const overs=num(form,'overs_per_innings');
     const balls=num(form,'balls_per_over');
     const wicketLimit=num(form,'wicket_limit');
-    const freeHitOnNoBall=s(form,'free_hit_on_no_ball')==='yes';
     const maxBowlerOvers=num(form,'tournament_max_overs_per_bowler');
     if(!playersPerSide || playersPerSide<2 || playersPerSide>20) throw new Error('Players per side must be between 2 and 20.');
     if(!overs || overs<1 || overs>100) throw new Error('Overs per innings must be between 1 and 100.');
@@ -101,6 +100,7 @@ export async function createQuickMatch(form: FormData) {
     const balls=num(form,'balls_per_over',6);
     const maxBowlerOvers=num(form,'max_overs_per_bowler');
     const wicketLimit=num(form,'wicket_limit');
+    const freeHitOnNoBall=s(form,'free_hit_on_no_ball')==='yes';
 
     if(!cityId||!homeTeamId||!awayTeamId||!seasonId||!rulesetId)throw new Error('City, both teams, season and ruleset are required.');
     if(homeTeamId===awayTeamId)throw new Error('Choose two different teams.');
