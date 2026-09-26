@@ -41,11 +41,13 @@ function teamState(live:MatchLiveSummary|undefined,teamId:string,status:string){
 export function MatchCentre({
   fixtures,
   cities,
-  liveSummaries=[]
+  liveSummaries=[],
+  compact=false
 }:{
   fixtures:FixtureContextRow[];
   cities:CityRow[];
   liveSummaries?:MatchLiveSummary[];
+  compact?:boolean;
 }){
   const [city,setCity]=useState('ALL');
   const [tournament,setTournament]=useState('ALL');
@@ -122,7 +124,7 @@ export function MatchCentre({
 
   const selectedCity=city==='ALL'?'All Italy':cities.find(c=>c.id===city)?.name??'City';
 
-  return <div className="match-centre sketch-match-centre">
+  return <div className={'match-centre sketch-match-centre '+(compact?'match-centre-compact':'')}>
     <div className="sketch-mc-head">
       <div><span className="micro-label">MATCH CENTRE</span><strong>{selectedCity}</strong></div>
       <div className="sketch-state-filters">
