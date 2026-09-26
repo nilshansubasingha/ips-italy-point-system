@@ -441,7 +441,7 @@ async function getFixtureContextsFromBaseTables(client: SupabaseClient): Promise
       overs_per_innings: match.format_overs_per_innings ?? tournament?.overs_per_innings ?? ruleset?.max_overs ?? 0,
       players_per_side: match.format_players_per_side ?? tournament?.players_per_side ?? ruleset?.playing_xi_size ?? 0,
       wicket_limit: match.format_wicket_limit ?? tournament?.wicket_limit ?? ruleset?.innings_wicket_limit ?? null,
-      free_hit_on_no_ball: ruleset?.free_hit_on_no_ball ?? false,
+      free_hit_on_no_ball: match.format_free_hit_on_no_ball ?? ruleset?.free_hit_on_no_ball ?? false,
       max_overs_per_bowler: match.format_max_overs_per_bowler ?? tournament?.tournament_max_overs_per_bowler ?? ruleset?.max_overs_per_bowler ?? null,
       retirement_runs: ruleset?.retirement_runs ?? null,
       retirement_mode: ruleset?.retirement_mode ?? 'NONE',
