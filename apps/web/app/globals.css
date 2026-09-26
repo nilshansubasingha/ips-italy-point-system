@@ -2048,3 +2048,24 @@
     border-top:1px solid #d7e4e8;
   }
 }
+
+
+/* Command Centre — explicit action queue */
+.command-kpi-link{display:block;text-decoration:none;min-width:0}
+.command-kpi-link>article{height:100%;transition:.16s ease}
+.command-kpi-link:hover>article{transform:translateY(-1px);box-shadow:0 12px 32px rgba(5,24,42,.08)}
+.action-panel>a.needs-action{
+  margin:5px -5px;
+  padding:11px 8px;
+  border:1px solid #ecd9ad!important;
+  border-radius:11px;
+  background:#fff9ec;
+}
+.action-panel>a span small{
+  display:block;
+  margin-top:3px;
+  color:#8b7750;
+  font-size:7px;
+  line-height:1.35;
+}
+#operational-queue{scroll-margin-top:18px}
