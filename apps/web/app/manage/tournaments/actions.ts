@@ -101,6 +101,9 @@ export async function createQuickMatch(form: FormData) {
     const maxBowlerOvers=num(form,'max_overs_per_bowler');
     const wicketLimit=num(form,'wicket_limit');
     const freeHitOnNoBall=s(form,'free_hit_on_no_ball')==='yes';
+    const classification=(s(form,'match_classification')||'RANKING').toUpperCase();
+    if(!['RANKING','FRIENDLY','PRACTICE'].includes(classification))throw new Error('Invalid match classification.');
+    const rankingEligible=classification==='RANKING';
 
     if(!cityId||!homeTeamId||!awayTeamId||!seasonId||!rulesetId)throw new Error('City, both teams, season and ruleset are required.');
     if(homeTeamId===awayTeamId)throw new Error('Choose two different teams.');
@@ -208,7 +211,9 @@ export async function createQuickMatch(form: FormData) {
       status:'READY',
       format_free_hit_on_no_ball:freeHitOnNoBall,
       format_source:'MATCH_OVERRIDE',
-      format_override_reason:'Quick Match setup'
+      format_override_reason:'Quick Match setup',
+      match_classification:classification,
+      ranking_eligible:rankingEligible
     }).select('id').single();
     if(matchError)throw matchError;
 
