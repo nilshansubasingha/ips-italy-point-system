@@ -190,9 +190,64 @@ export type MatchLiveSummary = {
   bowler_overs: string;
   first_innings_runs: number | null;
   first_innings_wickets: number | null;
+  first_innings_team_id: string | null;
+  first_innings_team_name: string | null;
   second_innings_runs: number | null;
   second_innings_wickets: number | null;
+  second_innings_team_id: string | null;
+  second_innings_team_name: string | null;
+  result_text: string | null;
   updated_at: string | null;
+};
+
+export type PublicMatchScorecardPlayer = {
+  player_id:string;
+  name:string;
+  ips_code:string;
+  order:number;
+  runs?:number;
+  balls?:number;
+  fours?:number;
+  sixes?:number;
+  dismissed?:boolean;
+  dismissal?:string;
+  legal_balls?:number;
+  overs?:string;
+  wickets?:number;
+};
+
+export type PublicMatchScorecardInnings = {
+  innings_no:number;
+  status:string;
+  batting_team:{id:string;name:string;short_name:string|null;logo_url:string|null};
+  bowling_team:{id:string;name:string;short_name:string|null;logo_url:string|null};
+  runs:number;
+  wickets:number;
+  legal_balls:number;
+  overs:string;
+  target_runs:number|null;
+  batting:PublicMatchScorecardPlayer[];
+  bowling:PublicMatchScorecardPlayer[];
+};
+
+export type PublicMatchScorecard = {
+  match:{
+    id:string;
+    code:string;
+    number:number;
+    status:string;
+    scheduled_at:string;
+    stage:string;
+    round_label:string|null;
+    players_per_side:number;
+    overs_per_innings:number;
+    balls_per_over:number;
+    tournament_name:string;
+    home_team:{id:string;name:string;short_name:string|null;logo_url:string|null};
+    away_team:{id:string;name:string;short_name:string|null;logo_url:string|null};
+  };
+  result_text:string|null;
+  innings:PublicMatchScorecardInnings[];
 };
 
 export type FixtureContextRow = {
@@ -456,6 +511,14 @@ export async function getMatchLiveSummaries(): Promise<MatchLiveSummary[]> {
   const { data, error } = await client.rpc('ips_public_match_live_summaries');
   if (error) throw new Error(`live match summaries: ${error.message}`);
   return (data ?? []) as MatchLiveSummary[];
+}
+
+export async function getPublicMatchScorecard(matchId:string): Promise<PublicMatchScorecard|null> {
+  const client=getPublicSupabaseClient();
+  if(!client)return null;
+  const {data,error}=await client.rpc('ips_public_match_scorecard',{p_match_id:matchId});
+  if(error)throw new Error(`public match scorecard: ${error.message}`);
+  return (data??null) as PublicMatchScorecard|null;
 }
 
 export async function getFixtureContexts(): Promise<FixtureContextRow[]> {
