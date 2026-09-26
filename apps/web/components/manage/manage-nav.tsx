@@ -17,6 +17,7 @@ export async function ManagementNav({account, active}:{account:AccountContext;ac
   const items = [
     ['overview','Command Centre','/manage'],
     ['tournaments','Tournaments','/manage/tournaments'],
+    ['matches','Match History','/manage/matches'],
     ['teams','Teams','/manage/teams'],
     ['players','Players','/manage/players'],
     ['venues','Venues','/manage/venues'],
