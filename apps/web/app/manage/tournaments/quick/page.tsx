@@ -6,6 +6,7 @@ import {getActiveCities} from '@ips/data';
 import {SiteFooter,SiteHeader} from '@/components/site-header';
 import {ManagementNav} from '@/components/manage/manage-nav';
 import {NumberStepper} from '@/components/manage/number-stepper';
+import {QuickMatchParticipantsBuilder} from '@/components/manage/quick-match-participants-builder';
 import {requireAccount} from '@/lib/auth';
 import {createClient} from '@/lib/supabase/server';
 import {canCreateTournament} from '@/lib/project4';
@@ -22,16 +23,27 @@ export default async function QuickMatchPage({searchParams}:{searchParams:Promis
   const error=rawError?.includes('Squad is locked')?null:rawError;
   const supabase=await createClient();
 
-  const [activeCities,teamsRes,seasonsRes,rulesRes,venuesRes]=await Promise.all([
+  const [activeCities,teamsRes,membershipsRes,seasonsRes,rulesRes,venuesRes]=await Promise.all([
     getActiveCities(50),
     supabase.from('teams').select('id,name,short_name,club:clubs(city_id,city:cities(name))').eq('status','ACTIVE').order('name'),
+    supabase.from('team_memberships').select('team_id').eq('status','ACTIVE').is('end_on',null),
     supabase.from('seasons').select('id,name,starts_on').order('starts_on',{ascending:false}).limit(5),
     supabase.from('competition_rulesets').select('id,name,version,playing_xi_size,max_overs,balls_per_over,innings_wicket_limit,max_overs_per_bowler,free_hit_on_no_ball').eq('is_active',true).order('name'),
     supabase.from('venues').select('id,name,city_id,city:cities(name)').eq('status','ACTIVE').order('name')
   ]);
 
-  const cities=activeCities.filter(city=>Number(city.team_count)>0);
+  const cities=activeCities;
   const teams=teamsRes.data??[];
+  const membershipCounts=new Map<string,number>();
+  for(const row of membershipsRes.data??[])membershipCounts.set((row as any).team_id,(membershipCounts.get((row as any).team_id)||0)+1);
+  const quickTeams=teams.map((team:any)=>({
+    id:team.id,
+    name:team.name,
+    shortName:team.short_name??null,
+    cityId:(team.club as any)?.city_id??'',
+    cityName:(team.club as any)?.city?.name??null,
+    memberCount:membershipCounts.get(team.id)||0
+  })).filter((team:any)=>team.cityId);
   const seasons=seasonsRes.data??[];
   const rules=rulesRes.data??[];
   const venues=venuesRes.data??[];
@@ -47,25 +59,18 @@ export default async function QuickMatchPage({searchParams}:{searchParams:Promis
         <Link className="back-link" href="/manage/tournaments">← Match operations</Link>
         <span className="eyebrow">FAST SETUP</span>
         <h1>Quick Match</h1>
-        <p>Create one match without building a full tournament. Only IPS cities with registered teams appear here.</p>
+        <p>Create one match without building a full tournament. You can also create new teams and players here without leaving or reloading the page.</p>
       </div>
     </section>
 
     {error&&<div className="ops-message error">{error}</div>}
 
-    {!defaultSeason||!defaultRule||!cities.length?<div className="management-surface"><strong>Quick Match setup is not ready.</strong><p>{!cities.length?'At least one IPS city with a registered team is required.':'An active season and ruleset are required.'}</p></div>:
+    {!defaultSeason||!defaultRule||!cities.length?<div className="management-surface"><strong>Quick Match setup is not ready.</strong><p>{!cities.length?'At least one active IPS city is required.':'An active season and ruleset are required.'}</p></div>:
     <form action={createQuickMatch} className="quick-match-setup">
       <input type="hidden" name="return_to" value="/manage/tournaments/quick"/>
       <input type="hidden" name="season_id" value={defaultSeason.id}/>
 
-      <section className="quick-match-card">
-        <div className="quick-match-card-head"><span className="eyebrow">01 · MATCH</span><strong>Who is playing?</strong></div>
-        <div className="quick-match-grid three">
-          <label><span>Registered city</span><select name="city_id" required>{cities.map(city=><option value={city.id} key={city.id}>{city.name}</option>)}</select></label>
-          <label><span>Team A</span><select name="home_team_id" required><option value="">Select team</option>{teams.map((team:any)=><option value={team.id} key={team.id}>{team.name} · {(team.club as any)?.city?.name??'Italy'}</option>)}</select></label>
-          <label><span>Team B</span><select name="away_team_id" required><option value="">Select team</option>{teams.map((team:any)=><option value={team.id} key={team.id}>{team.name} · {(team.club as any)?.city?.name??'Italy'}</option>)}</select></label>
-        </div>
-      </section>
+      <QuickMatchParticipantsBuilder cities={cities.map(city=>({id:city.id,name:city.name}))} initialTeams={quickTeams}/>
 
       <section className="quick-match-card">
         <div className="quick-match-card-head"><span className="eyebrow">02 · FORMAT</span><strong>Set the match in seconds.</strong></div>
