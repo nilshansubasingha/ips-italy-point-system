@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
 
 type ReplayEvent = { id: string; kind: string; ball: string; at: number };
 type BridgeStatus = { connected: boolean; program: 'LIVE' | 'REPLAY'; cameras: string[]; recording: boolean };
@@ -29,8 +30,56 @@ export default function ReplayConsole({ params }: { params: Promise<{ matchId: s
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState('');
+  const [scorerStatus, setScorerStatus] = useState<'CONNECTING' | 'LIVE' | 'UNAVAILABLE'>('CONNECTING');
   const video = useRef<HTMLVideoElement>(null);
+  const supabase = useMemo(() => createClient(), []);
   useEffect(() => { void params.then(p => setMatchId(p.matchId)); }, [params]);
+  useEffect(() => {
+    if (!matchId) return;
+    const toReplayMarker = (row: any) => {
+      if (!row || row.event_type !== 'DELIVERY') return null;
+      const kind = row.is_wicket ? 'WICKET' : Number(row.runs_off_bat) === 6 ? 'SIX' : Number(row.runs_off_bat) === 4 ? 'FOUR' : null;
+      if (!kind) return null;
+      const parsedAt = Date.parse(row.created_at || row.recorded_at || row.occurred_at || '');
+      return {
+        id: String(row.id),
+        kind,
+        ball: String(row.delivery_label || (row.sequence_no != null ? '#' + row.sequence_no : kind)),
+        at: Number.isFinite(parsedAt) ? parsedAt : Date.now(),
+      };
+    };
+    const pushMarker = async (row: any) => {
+      const marker = toReplayMarker(row);
+      if (!marker) return;
+      try {
+        await command('/matches/' + encodeURIComponent(matchId) + '/events', marker);
+      } catch {
+        // The operator console remains safe when the local bridge is offline.
+      }
+    };
+    const syncRecent = async () => {
+      const { data } = await supabase
+        .from('match_scoring_events')
+        .select('id,event_type,is_wicket,runs_off_bat,delivery_label,sequence_no,created_at')
+        .eq('match_id', matchId)
+        .eq('event_type', 'DELIVERY')
+        .order('sequence_no', { ascending: false })
+        .limit(80);
+      for (const row of [...(data ?? [])].reverse()) await pushMarker(row);
+    };
+    void syncRecent();
+    const channel = supabase
+      .channel('ips-replay-scorer-' + matchId)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'match_scoring_events', filter: 'match_id=eq.' + matchId }, payload => {
+        void pushMarker(payload.new);
+      })
+      .subscribe(state => {
+        if (state === 'SUBSCRIBED') setScorerStatus('LIVE');
+        else if (state === 'CHANNEL_ERROR' || state === 'TIMED_OUT' || state === 'CLOSED') setScorerStatus('UNAVAILABLE');
+      });
+    return () => { void supabase.removeChannel(channel); };
+  }, [matchId, supabase]);
+
   useEffect(() => {
     if (!matchId) return;
     let active = true;
@@ -63,7 +112,11 @@ export default function ReplayConsole({ params }: { params: Promise<{ matchId: s
   return <main style={{ minHeight: '100vh', background: '#0b1220', color: '#eef4ff', fontFamily: 'system-ui,sans-serif', padding: 24 }}>
     <header style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, alignItems: 'center', marginBottom: 22 }}>
       <div><h1 style={{ margin: 0 }}>IPS REPLAY</h1><small>Match {matchId} · Independent replay workstation</small></div>
-      <strong style={{ color: status.program === 'REPLAY' ? '#fb7185' : '#4ade80' }}>● {status.program} {status.connected ? '· ENGINE CONNECTED' : '· ENGINE OFFLINE'}</strong>
+      <div style={{ display:'flex', gap:10, alignItems:'center', flexWrap:'wrap', justifyContent:'flex-end' }}>
+        <span style={{ fontSize:11, color: scorerStatus === 'LIVE' ? '#86efac' : '#fbbf24' }}>SCORER {scorerStatus}</span>
+        <a href={bridge + '/program'} target="_blank" rel="noreferrer" style={{ padding:'9px 12px', borderRadius:8, border:'1px solid #334155', color:'#e2e8f0', textDecoration:'none', fontSize:11, fontWeight:800 }}>OPEN IPS PROGRAM ↗</a>
+        <strong style={{ color: status.program === 'REPLAY' ? '#fb7185' : '#4ade80' }}>● {status.program} {status.connected ? '· ENGINE CONNECTED' : '· ENGINE OFFLINE'}</strong>
+      </div>
     </header>
     {!status.connected && <p role="alert" style={{ background: '#4a2715', padding: 15, borderRadius: 8 }}>Local replay engine unavailable. On-air controls are disabled; no broadcast changes will be made. Start and configure the local engine on the production PC.</p>}
     {error && <p role="alert" style={{ color: '#fda4af' }}>{error}</p>}
@@ -90,7 +143,7 @@ export default function ReplayConsole({ params }: { params: Promise<{ matchId: s
           {button('RETURN LIVE', () => void run('/program/live', { matchId }), !status.connected)}
           {button('ABORT → LIVE', () => void run('/program/abort', { matchId }), !status.connected, true)}
         </div>
-        <p style={{ fontSize: 13, color: '#a5b4ca' }}>TAKE REPLAY requires the local engine to own the PRISM program feed. A successful command must be acknowledged by the engine; this page does not simulate on-air success.</p>
+        <p style={{ fontSize: 13, color: '#a5b4ca' }}>FOUR, SIX and WICKET markers are mirrored from the scorer into the local engine. TAKE REPLAY only reports success after the local engine builds the clip and switches IPS PROGRAM to replay.</p>
       </div>
     </section>
   </main>;
