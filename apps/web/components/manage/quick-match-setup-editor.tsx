@@ -1,7 +1,7 @@
 'use client';
 
 import {useMemo,useState,useTransition} from 'react';
-import {saveQuickMatchSetup} from '@/app/manage/tournaments/actions';
+import {createQuickMatchRosterPlayerInline,saveQuickMatchSetup} from '@/app/manage/tournaments/actions';
 
 type Player={id:string;displayName:string;ipsCode:string};
 type Side={
@@ -14,16 +14,82 @@ type Side={
   keeperId:string|null;
 };
 
+function InlineRosterAdd({
+  matchId,
+  teamId,
+  teamName,
+  onCreated
+}:{
+  matchId:string;
+  teamId:string;
+  teamName:string;
+  onCreated:(player:Player)=>void;
+}){
+  const [open,setOpen]=useState(false);
+  const [fullName,setFullName]=useState('');
+  const [displayName,setDisplayName]=useState('');
+  const [dob,setDob]=useState('');
+  const [role,setRole]=useState('');
+  const [message,setMessage]=useState<{kind:'ok'|'error';text:string}|null>(null);
+  const [pending,startTransition]=useTransition();
+
+  function save(){
+    if(!fullName.trim())return;
+    startTransition(async()=>{
+      setMessage(null);
+      const result=await createQuickMatchRosterPlayerInline({
+        matchId,
+        teamId,
+        fullName,
+        displayName,
+        dateOfBirth:dob,
+        primaryRole:role
+      });
+      if(result.ok&&result.player){
+        onCreated({id:result.player.id,displayName:result.player.displayName,ipsCode:result.player.ipsCode});
+        setMessage({kind:'ok',text:`${result.player.displayName} saved permanently to IPS and added to ${teamName}.`});
+        setFullName('');setDisplayName('');setDob('');setRole('');
+      }else{
+        setMessage({kind:'error',text:result.error??'Could not create player.'});
+      }
+    });
+  }
+
+  return <div className="quick-roster-inline-add">
+    <button type="button" onClick={()=>setOpen(value=>!value)}>{open?'Close':'+ New player'}</button>
+    {open&&<div className="quick-roster-inline-form">
+      <div className="form-split">
+        <label><span>Full legal name *</span><input value={fullName} onChange={e=>setFullName(e.target.value)} placeholder="Dinesh Fernando"/></label>
+        <label><span>Display name</span><input value={displayName} onChange={e=>setDisplayName(e.target.value)} placeholder="D. Fernando"/></label>
+      </div>
+      <div className="form-split">
+        <label><span>Date of birth</span><input type="date" value={dob} onChange={e=>setDob(e.target.value)}/></label>
+        <label><span>Role</span><select value={role} onChange={e=>setRole(e.target.value)}>
+          <option value="">Player</option><option>Batter</option><option>Bowler</option><option>All-rounder</option><option>Wicketkeeper</option><option>Wicketkeeper-batter</option>
+        </select></label>
+      </div>
+      <button type="button" className="button-primary" onClick={save} disabled={pending||!fullName.trim()}>{pending?'Saving…':'Save to IPS roster'}</button>
+      {message&&<div className={'quick-inline-message '+message.kind}>{message.text}</div>}
+    </div>}
+  </div>;
+}
+
 function PlayerPool({
   side,
+  roster,
   selected,
   required,
-  onToggle
+  matchId,
+  onToggle,
+  onPlayerCreated
 }:{
   side:Side;
+  roster:Player[];
   selected:string[];
   required:number;
+  matchId:string;
   onToggle:(id:string,checked:boolean)=>void;
+  onPlayerCreated:(player:Player)=>void;
 }){
   const full=selected.length>=required;
   return <section className="quick-side-card">
@@ -31,8 +97,11 @@ function PlayerPool({
       <div><span>{side.shortName}</span><h3>{side.teamName}</h3></div>
       <b className={selected.length===required?'ready':'waiting'}>{selected.length}/{required}</b>
     </header>
+
+    <InlineRosterAdd matchId={matchId} teamId={side.teamId} teamName={side.teamName} onCreated={onPlayerCreated}/>
+
     <div className="quick-player-pool">
-      {side.roster.map(player=>{
+      {roster.map(player=>{
         const checked=selected.includes(player.id);
         return <label className={checked?'selected':''} key={player.id}>
           <input type="checkbox" checked={checked} disabled={!checked&&full} onChange={event=>onToggle(player.id,event.target.checked)}/>
@@ -61,6 +130,8 @@ export function QuickMatchSetupEditor({
   away:Side;
 }){
   const [pending,startTransition]=useTransition();
+  const [homeRoster,setHomeRoster]=useState<Player[]>(home.roster);
+  const [awayRoster,setAwayRoster]=useState<Player[]>(away.roster);
   const [homeIds,setHomeIds]=useState<string[]>(home.selectedIds);
   const [awayIds,setAwayIds]=useState<string[]>(away.selectedIds);
   const [homeCaptain,setHomeCaptain]=useState(home.captainId??home.selectedIds[0]??'');
@@ -74,8 +145,8 @@ export function QuickMatchSetupEditor({
     &&homeIds.includes(homeCaptain)&&homeIds.includes(homeKeeper)
     &&awayIds.includes(awayCaptain)&&awayIds.includes(awayKeeper);
 
-  const homeSelected=useMemo(()=>home.roster.filter(p=>homeIds.includes(p.id)),[home.roster,homeIds]);
-  const awaySelected=useMemo(()=>away.roster.filter(p=>awayIds.includes(p.id)),[away.roster,awayIds]);
+  const homeSelected=useMemo(()=>homeRoster.filter(p=>homeIds.includes(p.id)),[homeRoster,homeIds]);
+  const awaySelected=useMemo(()=>awayRoster.filter(p=>awayIds.includes(p.id)),[awayRoster,awayIds]);
 
   function toggle(which:'home'|'away',id:string,checked:boolean){
     const set=which==='home'?setHomeIds:setAwayIds;
@@ -87,6 +158,12 @@ export function QuickMatchSetupEditor({
       return current.filter(x=>x!==id);
     });
     setMessage(null);
+  }
+
+  function addRosterPlayer(which:'home'|'away',player:Player){
+    const setRoster=which==='home'?setHomeRoster:setAwayRoster;
+    setRoster(current=>current.some(item=>item.id===player.id)?current:[...current,player].sort((a,b)=>a.displayName.localeCompare(b.displayName)));
+    setMessage({kind:'ok',text:`${player.displayName} is now available in the Quick Match player pool.`});
   }
 
   function saveAndOpen(){
@@ -113,13 +190,13 @@ export function QuickMatchSetupEditor({
 
   return <div className="quick-match-editor">
     <div className="quick-match-editor-head">
-      <div><span className="eyebrow">ONE STEP</span><h2>Pick players. Set roles. Score.</h2><p>The full registered team pool is already prepared by IPS. Select exactly {required} players for each side.</p></div>
+      <div><span className="eyebrow">ONE STEP</span><h2>Pick players. Set roles. Score.</h2><p>Select exactly {required} players per side. Missing player? Create them here—the new IPS identity and team membership are saved immediately without a page reload.</p></div>
       <div className="quick-match-progress"><span>HOME <b>{homeIds.length}/{required}</b></span><span>AWAY <b>{awayIds.length}/{required}</b></span></div>
     </div>
 
     <div className="quick-side-grid">
-      <PlayerPool side={home} selected={homeIds} required={required} onToggle={(id,checked)=>toggle('home',id,checked)}/>
-      <PlayerPool side={away} selected={awayIds} required={required} onToggle={(id,checked)=>toggle('away',id,checked)}/>
+      <PlayerPool side={home} roster={homeRoster} selected={homeIds} required={required} matchId={matchId} onToggle={(id,checked)=>toggle('home',id,checked)} onPlayerCreated={player=>addRosterPlayer('home',player)}/>
+      <PlayerPool side={away} roster={awayRoster} selected={awayIds} required={required} matchId={matchId} onToggle={(id,checked)=>toggle('away',id,checked)} onPlayerCreated={player=>addRosterPlayer('away',player)}/>
     </div>
 
     <section className="quick-role-grid">
