@@ -36,3 +36,6 @@
 .scorer-route button:disabled{opacity:.3;cursor:not-allowed}
 .automation-row>div{display:grid;gap:2px}
 .automation-row>div small{font-size:5px;color:#68848f;font-weight:800;letter-spacing:.04em}
+
+/* IPS Replay integration */
+.director-nav{display:flex;align-items:center;gap:6px}.director-nav>a{height:29px;padding:0 9px;display:grid;place-items:center;border:1px solid #29434f;border-radius:6px;background:#0a1821;color:#9fb1b8;text-decoration:none;font-size:7px;font-weight:950}.director-nav>a:first-child{border-color:#2a8667;background:#0d7655;color:#fff}@media(max-width:1050px){.director-nav>a:last-child{display:none}}
