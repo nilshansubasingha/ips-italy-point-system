@@ -12,7 +12,7 @@ import {MatchPlayingSidesEditor} from '@/components/manage/match-playing-sides-e
 import {QuickMatchSetupEditor} from '@/components/manage/quick-match-setup-editor';
 import {MatchAwardsManager} from '@/components/manage/match-awards-manager';
 import {TournamentSquadEditor} from '@/components/manage/tournament-squad-editor';
-import {addTournamentTeam,decideTournamentTeam,requestReplacement,reviewReplacement,createFixture,updateMatchStatus,assignOfficial,removeOfficial,updateTournament,deleteTournament} from '../actions';
+import {addTournamentTeam,decideTournamentTeam,requestReplacement,reviewReplacement,createFixture,updateMatchStatus,assignOfficial,removeOfficial,updateTournament,deleteMatch,deleteTournament} from '../actions';
 
 function statusLabel(v:string){return v.replaceAll('_',' ')}
 
@@ -136,7 +136,7 @@ export default async function TournamentOpsDetail({params,searchParams}:{params:
         {canGlobalDelete&&<form action={deleteTournament}>
           <input type="hidden" name="tournament_id" value={id}/>
           <input type="hidden" name="return_to" value={returnTo}/>
-          <ConfirmSubmitButton className="danger-link" message={'Delete this Quick Match?'}>Delete Quick Match</ConfirmSubmitButton>
+          <ConfirmSubmitButton className="danger-link" message={'Permanently delete this Quick Match? Its scorecard, deliveries, player match stats, ranking contribution, archive and broadcast state will also be deleted. This cannot be undone.'}>Delete Quick Match</ConfirmSubmitButton>
         </form>}
       </div>
 
@@ -151,7 +151,7 @@ export default async function TournamentOpsDetail({params,searchParams}:{params:
       {canGlobalDelete&&<form action={deleteTournament}>
         <input type="hidden" name="tournament_id" value={id}/>
         <input type="hidden" name="return_to" value={returnTo}/>
-        <ConfirmSubmitButton className="registry-delete-button prominent-delete" message={'Delete '+t.name+'? This removes tournament registrations, squads, scheduled/ready fixtures and setup data. Started, completed or official match history is protected.'}>Delete tournament</ConfirmSubmitButton>
+        <ConfirmSubmitButton className="registry-delete-button prominent-delete" message={'Permanently delete '+t.name+'? This FORCE DELETE removes every match even if started/completed/official, plus scorecards, deliveries, player match stats, ranking contributions, squads, awards and broadcast state. This cannot be undone.'}>Delete tournament</ConfirmSubmitButton>
       </form>}
     </div>
     {(error||ok)&&<div className={`ops-message ${error?'error':'success'}`}>{error||ok}</div>}
@@ -211,7 +211,19 @@ export default async function TournamentOpsDetail({params,searchParams}:{params:
     </section>
 
     <section id="fixtures" className="sports-section"><div className="sports-section-head"><div><span className="eyebrow">04 · FIXTURES</span><h2>Manual-first match schedule.</h2></div><Link href="/manage/venues">Manage venues →</Link></div>
-      <div className="ops-two-col fixture-ops"><div className="ops-fixture-list">{(matches??[]).map((m:any)=><article key={m.id}><div className="fixture-num">#{m.match_number}</div><div><span>{m.match_code} · {statusLabel(m.status)}</span><strong>{teamMap.get(m.home_team_id)?.name} <i>vs</i> {teamMap.get(m.away_team_id)?.name}</strong><small>{m.scheduled_time_tbc?formatItalyDate(m.scheduled_at):formatItalyDateTime(m.scheduled_at)} · {(venues??[]).find((v:any)=>v.id===m.venue_id)?.name??'Venue TBC'} · {m.round_label||m.stage}</small><small className="fixture-format-meta">{m.format_players_per_side} players · {m.format_overs_per_innings} overs · {m.format_balls_per_over} balls/over · {m.format_source==='MATCH_OVERRIDE'?'match override':'tournament snapshot'}</small></div>{canTournament&&<form action={updateMatchStatus}><input type="hidden" name="match_id" value={m.id}/><input type="hidden" name="return_to" value={returnTo}/><select name="status" defaultValue={m.status}><option>SCHEDULED</option><option>READY</option><option>LIVE</option><option>COMPLETED</option><option>AWAITING_CERTIFICATION</option><option>OFFICIAL</option><option>LOCKED</option><option>CANCELLED</option><option>ABANDONED</option></select><button>Save</button></form>}</article>)}</div>
+      <div className="ops-two-col fixture-ops"><div className="ops-fixture-list">{(matches??[]).map((m:any)=><article key={m.id}><div className="fixture-num">#{m.match_number}</div><div><span>{m.match_code} · {statusLabel(m.status)}</span><strong>{teamMap.get(m.home_team_id)?.name} <i>vs</i> {teamMap.get(m.away_team_id)?.name}</strong><small>{m.scheduled_time_tbc?formatItalyDate(m.scheduled_at):formatItalyDateTime(m.scheduled_at)} · {(venues??[]).find((v:any)=>v.id===m.venue_id)?.name??'Venue TBC'} · {m.round_label||m.stage}</small><small className="fixture-format-meta">{m.format_players_per_side} players · {m.format_overs_per_innings} overs · {m.format_balls_per_over} balls/over · {m.format_source==='MATCH_OVERRIDE'?'match override':'tournament snapshot'}</small></div>{canTournament&&<div className="fixture-admin-actions">
+  <form action={updateMatchStatus}>
+    <input type="hidden" name="match_id" value={m.id}/>
+    <input type="hidden" name="return_to" value={returnTo}/>
+    <select name="status" defaultValue={m.status}><option>SCHEDULED</option><option>READY</option><option>LIVE</option><option>COMPLETED</option><option>AWAITING_CERTIFICATION</option><option>OFFICIAL</option><option>LOCKED</option><option>CANCELLED</option><option>ABANDONED</option></select>
+    <button>Save</button>
+  </form>
+  {canGlobalDelete&&<form action={deleteMatch}>
+    <input type="hidden" name="match_id" value={m.id}/>
+    <input type="hidden" name="return_to" value={returnTo}/>
+    <ConfirmSubmitButton className="fixture-force-delete" message={'Permanently delete '+m.match_code+'? All scoring events, innings, player stats, ranking contribution, archive and broadcast data for this match will be deleted. This cannot be undone.'}>Delete</ConfirmSubmitButton>
+  </form>}
+</div>}</article>)}</div>
       {canTournament&&<aside className="ops-mini-form"><span className="eyebrow">NEW FIXTURE</span><form action={createFixture} className="ops-form"><input type="hidden" name="tournament_id" value={id}/><input type="hidden" name="return_to" value={returnTo}/><div className="form-split"><label><span>Match #</span><input name="match_number" type="number" min="1" required defaultValue={(matches?.length??0)+1}/></label><label><span>Match code</span><input name="match_code" required defaultValue={`${t.code}-${String((matches?.length??0)+1).padStart(2,'0')}`}/></label></div><div className="form-split"><label><span>Home</span><select name="home_team_id">{confirmed.map((x:any)=><option key={x.team_id} value={x.team_id}>{teamMap.get(x.team_id)?.name}</option>)}</select></label><label><span>Away</span><select name="away_team_id">{confirmed.map((x:any)=><option key={x.team_id} value={x.team_id}>{teamMap.get(x.team_id)?.name}</option>)}</select></label></div><div className="form-split"><label><span>Date · Italy</span><input name="scheduled_date" type="date" required/></label><label><span>Time · optional</span><input name="scheduled_time" type="time"/><small className="field-hint">Leave blank when the start time is not confirmed.</small></label></div><label><span>Venue</span><select name="venue_id" defaultValue={t.default_venue_id??''}><option value="">TBC</option>{(venues??[]).map((v:any)=><option key={v.id} value={v.id}>{v.name}</option>)}</select></label><div className="form-split"><label><span>Stage</span><input name="stage" defaultValue="LEAGUE"/></label><label><span>Round label</span><input name="round_label" placeholder="Round 1"/></label></div><button className="button-primary" disabled={confirmed.length<2}>Create fixture</button></form></aside>}
       </div>
     </section>
