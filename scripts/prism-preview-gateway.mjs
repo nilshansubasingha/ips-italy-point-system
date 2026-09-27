@@ -70,6 +70,10 @@ const server=http.createServer((req,res)=>{
     proxy(req,res,controllerPort);
     return;
   }
+  if(url==='/replay'||url.startsWith('/replay/')){
+    proxy(req,res,replayPort);
+    return;
+  }
   res.statusCode=404;
   res.setHeader('content-type','text/plain; charset=utf-8');
   res.end('IPS PRISM preview gateway: use /director, /editor, /controller or /replay');
