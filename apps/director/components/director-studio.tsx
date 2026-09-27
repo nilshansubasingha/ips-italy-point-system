@@ -132,7 +132,7 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
       <div className="director-wordmark"><b>IPS</b><span>PRISM DIRECTOR</span></div>
       <div className="match-ident"><span>{match.tournament?.name||'IPS'}</span><strong>{match.home_team?.short_name||match.home_team?.name} <i>v</i> {match.away_team?.short_name||match.away_team?.name}</strong><small>{match.code} · {match.status}</small></div>
       <div className="top-status"><span className="live-dot"/>PROGRAM CONNECTED <b>R{snap.program?.revision??0}</b></div>
-      <Link href="/">← MATCHES</Link>
+      <div className="director-nav"><a href={"/replay/matches/"+matchId}>REPLAY</a><Link href="/">← MATCHES</Link></div>
     </header>
 
     {(notice||error)&&<div className={'director-toast '+(error?'error':'')}>{error??notice}</div>}
