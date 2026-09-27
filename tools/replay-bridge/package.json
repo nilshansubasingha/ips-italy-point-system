@@ -1,0 +1,8 @@
+{
+  "name":"ips-replay-bridge",
+  "version":"0.1.0",
+  "private":true,
+  "type":"module",
+  "scripts":{"start":"node server.mjs","dev":"node --watch server.mjs"},
+  "dependencies":{"express":"^5.1.0","hls.js":"^1.6.13"}
+}
