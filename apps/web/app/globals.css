@@ -4851,3 +4851,176 @@
     flex:1;
   }
 }
+
+
+/* Project 6.23/6.24 — force delete + inline Quick Match identities */
+.fixture-admin-actions{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:wrap;
+}
+.fixture-admin-actions>form{
+  display:flex;
+  align-items:center;
+  gap:5px;
+}
+.fixture-force-delete,
+.archive-force-delete{
+  min-height:32px;
+  border:1px solid #e4b9be;
+  border-radius:8px;
+  background:#fff4f5;
+  color:#b12b38;
+  padding:7px 9px;
+  font-size:7px;
+  font-weight:950;
+  cursor:pointer;
+}
+.quick-participants-builder{
+  overflow:visible;
+}
+.quick-inline-actions-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-top:10px;
+  padding-top:10px;
+  border-top:1px solid #e5ecef;
+}
+.quick-inline-actions-row>button,
+.quick-inline-side-tools>button,
+.quick-roster-inline-add>button{
+  min-height:34px;
+  border:1px solid #cddde2;
+  border-radius:9px;
+  background:#fff;
+  color:#0a334a;
+  padding:7px 10px;
+  font-size:7px;
+  font-weight:950;
+  cursor:pointer;
+}
+.quick-inline-actions-row>span{
+  color:#7b8f99;
+  font-size:7px;
+  line-height:1.4;
+  text-align:right;
+}
+.quick-inline-team-form,
+.quick-inline-player-form,
+.quick-roster-inline-form{
+  margin-top:9px;
+  padding:11px;
+  border:1px solid #d8e5e8;
+  border-radius:12px;
+  background:#f8fbfb;
+}
+.quick-inline-team-form label>span,
+.quick-inline-player-form label>span,
+.quick-roster-inline-form label>span{
+  display:block;
+  margin-bottom:5px;
+  color:#758994;
+  font-size:6px;
+  font-weight:950;
+  letter-spacing:.07em;
+  text-transform:uppercase;
+}
+.quick-inline-team-form input,
+.quick-inline-player-form input,
+.quick-inline-player-form select,
+.quick-roster-inline-form input,
+.quick-roster-inline-form select{
+  width:100%;
+  min-height:36px;
+  border:1px solid #d7e3e7;
+  border-radius:9px;
+  background:#fff;
+  padding:7px 9px;
+  color:#0a2337;
+  font-size:8px;
+  font-weight:750;
+}
+.quick-inline-team-form>.button-primary,
+.quick-inline-player-form>.button-primary,
+.quick-roster-inline-form>.button-primary{
+  margin-top:8px;
+  border:0;
+  cursor:pointer;
+}
+.quick-inline-player-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:9px;
+  margin-top:10px;
+}
+.quick-inline-player-grid>div{
+  min-width:0;
+  padding:10px;
+  border:1px solid #e0e9ec;
+  border-radius:12px;
+  background:#fbfcfd;
+}
+.quick-inline-side-tools{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin-top:7px;
+}
+.quick-inline-side-tools>span{
+  color:#7a8e98;
+  font-size:7px;
+  font-weight:850;
+}
+.quick-inline-message{
+  margin-top:8px;
+  padding:8px 9px;
+  border-radius:9px;
+  font-size:7px;
+  font-weight:800;
+  line-height:1.4;
+}
+.quick-inline-message.ok{
+  border:1px solid #b9ddcf;
+  background:#eef9f4;
+  color:#087a54;
+}
+.quick-inline-message.error{
+  border:1px solid #ebc7cb;
+  background:#fff5f6;
+  color:#b12b38;
+}
+.quick-roster-inline-add{
+  padding:8px 10px;
+  border-bottom:1px solid #e8eef0;
+  background:#fbfcfd;
+}
+.quick-roster-inline-add>button{
+  width:100%;
+}
+.quick-roster-inline-form{
+  text-align:left;
+}
+@media(max-width:720px){
+  .quick-inline-actions-row{
+    align-items:stretch;
+    flex-direction:column;
+  }
+  .quick-inline-actions-row>span{
+    text-align:left;
+  }
+  .quick-inline-player-grid{
+    grid-template-columns:1fr;
+  }
+  .fixture-admin-actions{
+    align-items:stretch;
+    flex-direction:column;
+  }
+  .fixture-admin-actions>form,
+  .fixture-admin-actions>form>*{
+    width:100%;
+  }
+}
