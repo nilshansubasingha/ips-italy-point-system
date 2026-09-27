@@ -4,6 +4,8 @@ export const revalidate=0;
 import Link from 'next/link';
 import {notFound,redirect} from 'next/navigation';
 import {SiteFooter,SiteHeader} from '@/components/site-header';
+import {ConfirmSubmitButton} from '@/components/manage/confirm-submit-button';
+import {deleteMatch} from '../../tournaments/actions';
 import {ManagementNav} from '@/components/manage/manage-nav';
 import {requireAccount} from '@/lib/auth';
 import {createClient} from '@/lib/supabase/server';
@@ -98,6 +100,11 @@ export default async function MatchHistoryDetail({params}:{params:Promise<{id:st
     <div className="history-detail-actions">
       <Link href={'/match-centre/'+encodeURIComponent(match.match_code)} target="_blank">Open public scorecard ↗</Link>
       <Link href={'/manage/tournaments/'+(tournament?.slug??tournamentId)}>Tournament operations →</Link>
+      <form action={deleteMatch}>
+        <input type="hidden" name="match_id" value={id}/>
+        <input type="hidden" name="return_to" value="/manage/matches"/>
+        <ConfirmSubmitButton className="archive-force-delete" message={'Permanently delete '+match.match_code+'? This removes the complete scorecard, ball-by-ball history, player match statistics, ranking contribution, archive and broadcast state. This cannot be undone.'}>Delete match</ConfirmSubmitButton>
+      </form>
     </div>
 
     <section className="sports-section history-detail-innings-section">
