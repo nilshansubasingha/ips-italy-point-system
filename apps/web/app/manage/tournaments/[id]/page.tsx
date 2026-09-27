@@ -11,7 +11,8 @@ import {formatItalyDate,formatItalyDateTime,toItalyInput} from '@/lib/project4';
 import {MatchPlayingSidesEditor} from '@/components/manage/match-playing-sides-editor';
 import {QuickMatchSetupEditor} from '@/components/manage/quick-match-setup-editor';
 import {MatchAwardsManager} from '@/components/manage/match-awards-manager';
-import {addTournamentTeam,decideTournamentTeam,ensureSquad,addSquadPlayer,removeSquadPlayer,submitSquad,lockSquad,requestReplacement,reviewReplacement,createFixture,updateMatchStatus,assignOfficial,removeOfficial,updateTournament,deleteTournament} from '../actions';
+import {TournamentSquadEditor} from '@/components/manage/tournament-squad-editor';
+import {addTournamentTeam,decideTournamentTeam,requestReplacement,reviewReplacement,createFixture,updateMatchStatus,assignOfficial,removeOfficial,updateTournament,deleteTournament} from '../actions';
 
 function statusLabel(v:string){return v.replaceAll('_',' ')}
 
@@ -168,8 +169,45 @@ export default async function TournamentOpsDetail({params,searchParams}:{params:
       </div>
     </section>
 
-    <section id="squads" className="sports-section"><div className="sports-section-head"><div><span className="eyebrow">03 · SQUADS</span><h2>Deadline-controlled rosters.</h2></div><span className="section-note">After the squad deadline, direct roster edits are blocked automatically.</span></div>
-      <div className="squad-grid">{confirmed.map((entry:any)=>{const team=teamMap.get(entry.team_id);const squad=squadByTeam.get(entry.team_id);const canManage=canTournament||!!canTeam.get(entry.team_id);const roster=squad?activeSquadById.get(squad.id)||[]:[];const members=membersByTeam.get(entry.team_id)||[];const rosterIds=new Set(roster.map(r=>r.player_id));const available=members.filter(m=>!rosterIds.has(m.player_id));const deadlinePassed=!!t.squad_deadline&&Date.now()>=new Date(t.squad_deadline).getTime();const locked=!!squad&&(squad.status==='LOCKED'||deadlinePassed);return <article className="squad-card" key={entry.id}><header><div><span>{team?.short_name||team?.name}</span><h3>{team?.name}</h3></div><b className={`ops-status ${(locked?'locked':squad?.status||'draft').toLowerCase()}`}>{locked?'LOCKED':squad?.status||'NOT STARTED'}</b></header>{!squad?<div className="squad-empty"><p>Create the official tournament squad workspace for this team.</p>{canManage&&<form action={ensureSquad}><input type="hidden" name="tournament_id" value={id}/><input type="hidden" name="team_id" value={entry.team_id}/><input type="hidden" name="return_to" value={returnTo}/><button>Create squad</button></form>}</div>:<><div className="squad-roster">{roster.map((r:any)=><div key={r.id}><span>{playerMap.get(r.player_id)?.ips_code}</span><strong>{playerMap.get(r.player_id)?.display_name??'Player'}</strong>{canManage&&!locked&&<form action={removeSquadPlayer}><input type="hidden" name="squad_player_id" value={r.id}/><input type="hidden" name="return_to" value={returnTo}/><button>×</button></form>}</div>)}</div>{canManage&&!locked&&<form action={addSquadPlayer} className="squad-add"><input type="hidden" name="squad_id" value={squad.id}/><input type="hidden" name="return_to" value={returnTo}/><select name="player_id">{available.map((m:any)=><option key={m.player_id} value={m.player_id}>{playerMap.get(m.player_id)?.display_name} · {playerMap.get(m.player_id)?.ips_code}</option>)}</select><button disabled={!available.length}>Add</button></form>}<footer><span>{roster.length}/{t.squad_size??'—'} players</span><div>{canManage&&!locked&&squad.status==='DRAFT'&&<form action={submitSquad}><input type="hidden" name="squad_id" value={squad.id}/><input type="hidden" name="return_to" value={returnTo}/><button>Submit squad</button></form>}{canTournament&&!locked&&<form action={lockSquad}><input type="hidden" name="squad_id" value={squad.id}/><input type="hidden" name="return_to" value={returnTo}/><button className="dark">Lock</button></form>}</div></footer></>}</article>})}</div>
+    <section id="squads" className="sports-section">
+      <div className="sports-section-head">
+        <div><span className="eyebrow">03 · SQUADS</span><h2>Build squads without reloading.</h2></div>
+        <span className="section-note">Select the full squad, then save once. Player selection stays on-screen and no longer refreshes the tournament after every addition.</span>
+      </div>
+      <div className="squad-grid">
+        {confirmed.map((entry:any)=>{
+          const team=teamMap.get(entry.team_id);
+          const squad=squadByTeam.get(entry.team_id);
+          const canManage=canTournament||!!canTeam.get(entry.team_id);
+          const roster=squad?activeSquadById.get(squad.id)||[]:[];
+          const members=membersByTeam.get(entry.team_id)||[];
+          const deadlinePassed=!!t.squad_deadline&&Date.now()>=new Date(t.squad_deadline).getTime();
+          const locked=!!squad&&(squad.status==='LOCKED'||deadlinePassed);
+          const candidates=members.map((membership:any)=>{
+            const player=playerMap.get(membership.player_id);
+            return {
+              id:membership.player_id,
+              displayName:player?.display_name??'Player',
+              ipsCode:player?.ips_code??'',
+              role:player?.primary_role??null
+            };
+          }).sort((a:any,b:any)=>a.displayName.localeCompare(b.displayName));
+          return <TournamentSquadEditor
+            key={entry.id}
+            tournamentId={id}
+            teamId={entry.team_id}
+            teamName={team?.name??'Team'}
+            shortName={team?.short_name||team?.name||'TEAM'}
+            maxSize={t.squad_size??null}
+            candidates={candidates}
+            initialSelectedIds={roster.map((row:any)=>row.player_id)}
+            initialStatus={squad?.status??'NOT_STARTED'}
+            canManage={canManage}
+            canLock={canTournament}
+            locked={locked}
+          />;
+        })}
+      </div>
     </section>
 
     <section id="fixtures" className="sports-section"><div className="sports-section-head"><div><span className="eyebrow">04 · FIXTURES</span><h2>Manual-first match schedule.</h2></div><Link href="/manage/venues">Manage venues →</Link></div>
