@@ -598,6 +598,38 @@ export async function setMatchTeamRoles(form: FormData) {
 }
 
 
+export async function createQuickMatchRosterPlayerInline(input:{
+  matchId:string;
+  teamId:string;
+  fullName:string;
+  displayName?:string;
+  dateOfBirth?:string;
+  primaryRole?:string;
+}):Promise<{ok:boolean;player?:{id:string;displayName:string;ipsCode:string;role:string|null};error?:string}>{
+  const supabase=await createClient();
+  try{
+    const fullName=String(input.fullName??'').trim();
+    if(!input.matchId||!input.teamId||!fullName)throw new Error('Match, team and player name are required.');
+    const {data,error}=await supabase.rpc('ips_quick_match_create_roster_player',{
+      p_match_id:input.matchId,
+      p_team_id:input.teamId,
+      p_full_name:fullName,
+      p_display_name:String(input.displayName??'').trim()||fullName,
+      p_date_of_birth:input.dateOfBirth||null,
+      p_primary_role:String(input.primaryRole??'').trim()||null
+    });
+    if(error)throw error;
+    return {ok:true,player:{
+      id:String(data?.id??''),
+      displayName:String(data?.display_name??fullName),
+      ipsCode:String(data?.ips_code??''),
+      role:data?.primary_role??null
+    }};
+  }catch(e:any){
+    return {ok:false,error:friendlyError(e,'Could not create Quick Match player.')};
+  }
+}
+
 export async function saveQuickMatchSetup(input:{
   tournamentId:string;
   matchId:string;
