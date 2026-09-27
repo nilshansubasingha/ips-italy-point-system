@@ -8,7 +8,7 @@ import {ManagementNav} from '@/components/manage/manage-nav';
 import {ConfirmSubmitButton} from '@/components/manage/confirm-submit-button';
 import {requireAccount} from '@/lib/auth';
 import {createClient} from '@/lib/supabase/server';
-import {revokeMatchCertification,updateMatchStatus} from '../tournaments/actions';
+import {deleteMatch,revokeMatchCertification,updateMatchStatus} from '../tournaments/actions';
 
 function globalAdmin(account:Awaited<ReturnType<typeof requireAccount>>){
   return account.grants.some(grant=>
@@ -243,6 +243,11 @@ export default async function MatchHistoryPage({searchParams}:{searchParams:Prom
             <div className="archive-actions">
               <Link className="archive-detail-link" href={'/manage/matches/'+encodeURIComponent(row.match_code)}>Details →</Link>
               <Link href={'/match-centre/'+encodeURIComponent(row.match_code)} target="_blank">Public scorecard ↗</Link>
+              <form action={deleteMatch}>
+                <input type="hidden" name="match_id" value={row.match_id}/>
+                <input type="hidden" name="return_to" value={returnTo}/>
+                <ConfirmSubmitButton className="archive-force-delete" message={'Permanently delete '+row.match_code+'? Its scorecard, delivery history, player match stats, ranking contribution, archive and broadcast state will be removed. This cannot be undone.'}>Delete</ConfirmSubmitButton>
+              </form>
               {!official?<form action={updateMatchStatus}>
                 <input type="hidden" name="match_id" value={row.match_id}/>
                 <input type="hidden" name="status" value="OFFICIAL"/>
