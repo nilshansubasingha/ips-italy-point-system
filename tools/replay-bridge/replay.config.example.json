@@ -1,0 +1,18 @@
+{
+  "port": 8787,
+  "bufferSeconds": 60,
+  "programCamera": "cam1",
+  "videoBitrate": "6M",
+  "cameras": [
+    {
+      "id": "cam1",
+      "name": "Main Camera",
+      "input": "rtsp://127.0.0.1:8554/cam1"
+    },
+    {
+      "id": "cam2",
+      "name": "Boundary Camera",
+      "input": "rtsp://127.0.0.1:8554/cam2"
+    }
+  ]
+}
