@@ -85,6 +85,85 @@ export async function createTournament(form: FormData) {
 }
 
 
+export async function createQuickMatchTeamInline(input:{
+  cityId:string;
+  name:string;
+  shortName?:string;
+}):Promise<{ok:boolean;team?:{id:string;name:string;shortName:string|null;cityId:string;cityName:string|null;memberCount:number};error?:string}>{
+  const supabase=await createClient();
+  try{
+    const name=String(input.name??'').trim();
+    if(!input.cityId||!name)throw new Error('City and team name are required.');
+    const {data:identity,error}=await supabase.rpc('ips_create_team_identity',{
+      p_city_id:input.cityId,
+      p_name:name,
+      p_short_name:String(input.shortName??'').trim()||null,
+      p_category:'OPEN',
+      p_structure:'SINGLE'
+    });
+    if(error)throw error;
+    const club=Array.isArray(identity)?identity[0]:identity;
+    if(!club?.id)throw new Error('Team identity was created but the competitive side could not be resolved.');
+    const {data:team,error:teamError}=await supabase
+      .from('teams')
+      .select('id,name,short_name,club:clubs(city_id,city:cities(name))')
+      .eq('club_id',club.id)
+      .eq('side_label','MAIN')
+      .single();
+    if(teamError)throw teamError;
+    return {ok:true,team:{
+      id:team.id,
+      name:team.name,
+      shortName:team.short_name??null,
+      cityId:(team.club as any)?.city_id??input.cityId,
+      cityName:(team.club as any)?.city?.name??null,
+      memberCount:0
+    }};
+  }catch(e:any){
+    return {ok:false,error:friendlyError(e,'Could not create team.')};
+  }
+}
+
+export async function createQuickMatchPlayerInline(input:{
+  teamId:string;
+  fullName:string;
+  displayName?:string;
+  primaryRole?:string;
+  dateOfBirth?:string;
+  shirtNumber?:number|null;
+}):Promise<{ok:boolean;player?:{id:string;displayName:string;ipsCode:string;role:string|null};error?:string}>{
+  const supabase=await createClient();
+  try{
+    const fullName=String(input.fullName??'').trim();
+    const displayName=String(input.displayName??'').trim()||fullName;
+    if(!input.teamId||!fullName)throw new Error('Team and player name are required.');
+    const {data,error}=await supabase.rpc('ips_create_player_for_team_v2',{
+      p_team_id:input.teamId,
+      p_full_name:fullName,
+      p_display_name:displayName,
+      p_date_of_birth:input.dateOfBirth||null,
+      p_primary_role:String(input.primaryRole??'').trim()||null,
+      p_batting_style:null,
+      p_bowling_style:null,
+      p_shirt_number:input.shirtNumber??null,
+      p_email:null,
+      p_phone:null,
+      p_whatsapp_consent:false
+    });
+    if(error)throw error;
+    const player=Array.isArray(data)?data[0]:data;
+    if(!player?.id)throw new Error('Player could not be created.');
+    return {ok:true,player:{
+      id:player.id,
+      displayName:player.display_name,
+      ipsCode:player.ips_code,
+      role:player.primary_role??null
+    }};
+  }catch(e:any){
+    return {ok:false,error:friendlyError(e,'Could not create player.')};
+  }
+}
+
 export async function createQuickMatch(form: FormData) {
   const supabase=await createClient();
   const back=returnPath(form,'/manage/tournaments/quick');
@@ -241,6 +320,26 @@ export async function updateTournament(form: FormData) {
     revalidatePath(back); revalidatePath('/tournaments');
     go(back,'ok','Tournament defaults updated. Unstarted tournament-snapshot fixtures were synchronized automatically; overrides and started matches stayed frozen.');
   } catch(e:any){go(back,'error',friendlyError(e,'Could not update tournament.'));}
+}
+
+export async function deleteMatch(form: FormData) {
+  const supabase=await createClient();
+  const id=s(form,'match_id');
+  const back=returnPath(form,'/manage/matches');
+  try{
+    if(!id)throw new Error('Match id is required.');
+    const {data:match,error:readError}=await supabase.from('matches').select('match_code').eq('id',id).maybeSingle();
+    if(readError)throw readError;
+    if(!match)throw new Error('Match not found.');
+    const {error}=await supabase.rpc('ips_delete_match',{p_match_id:id});
+    if(error)throw error;
+    revalidatePath('/manage/matches');
+    revalidatePath('/manage/tournaments');
+    revalidatePath('/match-centre');
+    revalidatePath('/rankings');
+    revalidatePath(back);
+    go(back,'ok',`${match.match_code} permanently deleted, including its score/stat/broadcast records.`);
+  }catch(e:any){go(back,'error',friendlyError(e,'Could not delete match.'));}
 }
 
 export async function deleteTournament(form: FormData) {
