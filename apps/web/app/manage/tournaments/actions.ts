@@ -276,6 +276,55 @@ export async function decideTournamentTeam(form: FormData) {
   } catch(e:any){go(back,'error',friendlyError(e,'Could not update application.'));}
 }
 
+export async function saveTournamentSquadSelection(input:{
+  tournamentId:string;
+  teamId:string;
+  playerIds:string[];
+}):Promise<{ok:boolean;squadId?:string;status?:string;count?:number;error?:string}>{
+  const supabase=await createClient();
+  try{
+    const playerIds=[...new Set((input.playerIds??[]).filter(Boolean))];
+    const {data,error}=await supabase.rpc('ips_save_tournament_squad_selection',{
+      p_tournament_id:input.tournamentId,
+      p_team_id:input.teamId,
+      p_player_ids:playerIds
+    });
+    if(error)throw error;
+    return {
+      ok:true,
+      squadId:String(data?.squad_id??''),
+      status:String(data?.status??'DRAFT'),
+      count:Number(data?.count??playerIds.length)
+    };
+  }catch(e:any){
+    return {ok:false,error:friendlyError(e,'Could not save squad.')};
+  }
+}
+
+export async function submitTournamentSquadInline(input:{tournamentId:string;teamId:string}):Promise<{ok:boolean;status?:string;error?:string}>{
+  const supabase=await createClient();
+  try{
+    const {data:squad,error:squadError}=await supabase.from('tournament_squads').select('id').eq('tournament_id',input.tournamentId).eq('team_id',input.teamId).maybeSingle();
+    if(squadError)throw squadError;
+    if(!squad)throw new Error('Save the squad before submitting it.');
+    const {error}=await supabase.rpc('ips_submit_squad',{p_squad_id:squad.id});
+    if(error)throw error;
+    return {ok:true,status:'SUBMITTED'};
+  }catch(e:any){return {ok:false,error:friendlyError(e,'Could not submit squad.')};}
+}
+
+export async function lockTournamentSquadInline(input:{tournamentId:string;teamId:string}):Promise<{ok:boolean;status?:string;error?:string}>{
+  const supabase=await createClient();
+  try{
+    const {data:squad,error:squadError}=await supabase.from('tournament_squads').select('id').eq('tournament_id',input.tournamentId).eq('team_id',input.teamId).maybeSingle();
+    if(squadError)throw squadError;
+    if(!squad)throw new Error('Save the squad before locking it.');
+    const {error}=await supabase.rpc('ips_lock_squad',{p_squad_id:squad.id});
+    if(error)throw error;
+    return {ok:true,status:'LOCKED'};
+  }catch(e:any){return {ok:false,error:friendlyError(e,'Could not lock squad.')};}
+}
+
 export async function ensureSquad(form: FormData) {
   const supabase=await createClient(); const tid=s(form,'tournament_id'); const back=returnPath(form,`/manage/tournaments/${tid}`);
   try { const {error}=await supabase.from('tournament_squads').upsert({tournament_id:tid,team_id:s(form,'team_id')},{onConflict:'tournament_id,team_id',ignoreDuplicates:true}); if(error) throw error; revalidatePath(back); go(back,'ok','Squad workspace ready.'); }
