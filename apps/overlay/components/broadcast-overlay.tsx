@@ -86,10 +86,10 @@ function Scorebar({live,card,over}:{live:LiveSummary;card:any;over:CurrentOver})
       <div className="ips-team-mark"><Logo url={batting?.logo_url} name={live.batting_team_name}/></div>
       <div className="ips-team-score">
         <span>{teamShort(live.batting_team_name)}</span>
-        <strong>{live.runs}<i>/</i>{live.wickets}</strong>
+        <strong key={String(live.runs)+'-'+String(live.wickets)} className="ips-data-update">{live.runs}<i>/</i>{live.wickets}</strong>
       </div>
       <div className="ips-over">
-        <strong>{live.overs_text}</strong>
+        <strong key={live.overs_text} className="ips-data-update">{live.overs_text}</strong>
         <span>OVERS</span>
       </div>
     </div>
@@ -269,7 +269,9 @@ export function BroadcastOverlay({matchId,output,debug=false}:{matchId:string;ou
   const [over,setOver]=useState<CurrentOver>({balls:[],free_hit:false});
   const [layers,setLayers]=useState<Record<number,Cue>>({});
   const [error,setError]=useState('');
+  const [exiting,setExiting]=useState<Record<number,boolean>>({});
   const timers=useRef<Record<number,ReturnType<typeof setTimeout>>>({});
+  const outTimers=useRef<Record<number,ReturnType<typeof setTimeout>>>({});
   const supabase=useMemo(()=>createOverlayClient(),[]);
 
   useEffect(()=>{
@@ -304,6 +306,8 @@ export function BroadcastOverlay({matchId,output,debug=false}:{matchId:string;ou
         if(next.output!==output)return;
         const layer=Number(next.layer);
         if(timers.current[layer])clearTimeout(timers.current[layer]);
+        if(outTimers.current[layer])clearTimeout(outTimers.current[layer]);
+        setExiting(current=>({...current,[layer]:false}));
         if(next.graphic==='CLEAR_LAYER'){
           setLayers(current=>{
             const copy={...current};
@@ -314,6 +318,8 @@ export function BroadcastOverlay({matchId,output,debug=false}:{matchId:string;ou
         }
         setLayers(current=>({...current,[layer]:next}));
         if(typeof next.duration_ms==='number'&&next.duration_ms>0){
+          const outAt=Math.max(next.duration_ms-220,0);
+          outTimers.current[layer]=setTimeout(()=>setExiting(current=>({...current,[layer]:true})),outAt);
           timers.current[layer]=setTimeout(()=>{
             setLayers(current=>{
               if(current[layer]?.id!==next.id)return current;
@@ -321,6 +327,7 @@ export function BroadcastOverlay({matchId,output,debug=false}:{matchId:string;ou
               delete copy[layer];
               return copy;
             });
+            setExiting(current=>({...current,[layer]:false}));
           },next.duration_ms);
         }
       })
@@ -329,6 +336,7 @@ export function BroadcastOverlay({matchId,output,debug=false}:{matchId:string;ou
     return ()=>{
       mounted=false;
       Object.values(timers.current).forEach(clearTimeout);
+      Object.values(outTimers.current).forEach(clearTimeout);
       void supabase.removeChannel(stateChannel);
       void supabase.removeChannel(cueChannel);
     };
@@ -340,7 +348,7 @@ export function BroadcastOverlay({matchId,output,debug=false}:{matchId:string;ou
 
   return <main className="ips-stage">
     {scorebarVisible&&live&&<Scorebar live={live} card={card} over={over}/>}
-    {active.map(cue=><div className={'ips-layer layer-'+cue.layer} key={cue.id}><CueRenderer cue={cue} live={live} card={card}/></div>)}
+    {active.map(cue=><div className={'ips-layer layer-'+cue.layer+(exiting[cue.layer]?' out':'')+((cue.payload as any)?.transition==='CUT'?' cut':'')} key={cue.id}><CueRenderer cue={cue} live={live} card={card}/></div>)}
     {debug&&<div className="ips-debug"><b>{output}</b><span>{matchId||'NO MATCH'}</span><span>{active.map(x=>x.graphic).join(' · ')||'NO CUE'}</span></div>}
     {debug&&error&&<div className="ips-error">{error}</div>}
   </main>;
