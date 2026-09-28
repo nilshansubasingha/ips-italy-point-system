@@ -10,6 +10,7 @@ type Layer={instanceId:string;variantKey:string;priority:number;replacementGroup
 type Suggestion={id:string;suggestion_key:string;variant_key:string;title:string;subtitle:string|null;payload:Record<string,unknown>;created_at:string};
 type EventConfig={event_key:string;mode:'MANUAL'|'ASSISTED'|'AUTOMATIC';default_variant_key:string;enabled:boolean};
 type ReleaseOption={release_id:string;package_id:string;package_name:string;package_slug:string;is_factory:boolean;version:number;published_at:string;variant_count:number;is_current:boolean};
+type Sponsor={id:string;name:string;logo_url:string|null;message:string|null;metadata:any};
 type Snapshot={match_id:string;session:any;program:{revision:number;preview:any;active_layers:Layer[];queue:any[];persistent_snapshot:Layer[]};release:{id:string;version:number;manifest:{variants:Record<string,Meta>};theme:any};data:any;signal:any;event_config:EventConfig[];suggestions:Suggestion[];available_releases?:ReleaseOption[]};
 
 const OVERLAY_URL=process.env.NEXT_PUBLIC_IPS_OVERLAY_URL??'http://localhost:3002';
@@ -21,12 +22,17 @@ function graphicLabel(name:string){return name.replace(/^PRISM\s+/i,'');}
 export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapshot}){
   const [snap,setSnap]=useState<Snapshot>(initial);
   const [selected,setSelected]=useState<string>('six.fullscreen');
-  const [view,setView]=useState<'live'|'graphics'|'automation'>('live');
+  const [view,setView]=useState<'live'|'graphics'|'automation'|'sponsors'>('live');
   const [defaults,setDefaults]=useState<Record<string,string>>({four:'four.fullscreen',six:'six.fullscreen',wicket:'wicket.fullscreen'});
   const [notice,setNotice]=useState<string|null>(null);
   const [error,setError]=useState<string|null>(null);
   const [search,setSearch]=useState('');
   const [releaseChoice,setReleaseChoice]=useState(initial.release?.id??'');
+  const [showBatterPhotos,setShowBatterPhotos]=useState(false);
+  const [sponsors,setSponsors]=useState<Sponsor[]>([]);
+  const [sponsorId,setSponsorId]=useState('');
+  const [sponsorEnabled,setSponsorEnabled]=useState(false);
+  const [sponsorPlacement,setSponsorPlacement]=useState<'auto'|'lower-third'|'scorebar'|'top-right'|'bottom-right'|'fullscreen'>('auto');
   const [pending,startTransition]=useTransition();
   const supabase=useMemo(()=>createClient(),[]);
 
@@ -65,6 +71,25 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
   const queue=snap.program?.queue??[];
   const match=snap.data?.match??{};
   const innings=snap.data?.innings??{};
+  const selectedSponsor=useMemo(()=>sponsors.find(s=>s.id===sponsorId)??null,[sponsors,sponsorId]);
+
+  useEffect(()=>{
+    const tournamentId=match.tournament?.id||match.tournament_id;
+    if(!tournamentId){setSponsors([]);setSponsorId('');return;}
+    let alive=true;
+    void supabase.from('broadcast_sponsors').select('id,name,logo_url,message,metadata').eq('tournament_id',tournamentId).eq('status','ACTIVE').order('name').then(({data})=>{
+      if(!alive)return;
+      const list=(data??[]) as Sponsor[];
+      setSponsors(list);
+      setSponsorId(current=>current&&list.some(x=>x.id===current)?current:(list[0]?.id??''));
+    });
+    return()=>{alive=false;};
+  },[supabase,match.tournament?.id,match.tournament_id]);
+
+  const sponsorPayload=(placement=sponsorPlacement)=>selectedSponsor&&sponsorEnabled?{
+    sponsor:{id:selectedSponsor.id,name:selectedSponsor.name,logo_url:selectedSponsor.logo_url,message:selectedSponsor.message||'SPONSORED BY',placement}
+  }:{};
+  const payloadFor=(extra:Record<string,unknown>={},placement=sponsorPlacement)=>({...extra,...sponsorPayload(placement)});
 
   const command=(payload:Record<string,unknown>)=>{
     setNotice(null);setError(null);
@@ -76,10 +101,11 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
     });
   };
 
-  const take=(key:string,persistent=false)=>command({type:'TAKE',variantKey:key,persistent,payload:{}});
-  const preview=(key:string)=>{setSelected(key);command({type:'PREVIEW',variantKey:key,payload:{}});};
-  const queueAdd=(key:string)=>command({type:'QUEUE_ADD',variantKey:key,payload:{}});
+  const take=(key:string,persistent=false,extra:Record<string,unknown>={})=>command({type:'TAKE',variantKey:key,persistent,payload:payloadFor(extra)});
+  const preview=(key:string,extra:Record<string,unknown>={})=>{setSelected(key);command({type:'PREVIEW',variantKey:key,payload:payloadFor(extra)});};
+  const queueAdd=(key:string,extra:Record<string,unknown>={})=>command({type:'QUEUE_ADD',variantKey:key,payload:payloadFor(extra)});
   const queueRemove=(id:string)=>command({type:'QUEUE_REMOVE',queueId:id});
+  const applyScorebar=()=>command({type:'TAKE',variantKey:'scorebar.default',persistent:true,payload:payloadFor({scorebar:{showBatterPhotos}},'scorebar')});
 
   const loadRelease=()=>{
     if(!releaseChoice||releaseChoice===snap.release?.id)return;
@@ -143,7 +169,7 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
       <div className="director-wordmark"><b>IPS</b><span>PRISM DIRECTOR</span></div>
       <div className="match-ident">
         <span>{match.tournament?.name||'IPS LIVE'}</span>
-        <strong>{match.home_team?.short_name||match.home_team?.name} <i>v</i> {match.away_team?.short_name||match.away_team?.name}</strong>
+        <strong>{match.home_team?.name||match.home_team?.short_name} <i>v</i> {match.away_team?.name||match.away_team?.short_name}</strong>
         <small>{match.code} · {match.status}</small>
       </div>
       <div className="top-status"><span className="live-dot"/>PROGRAM CONNECTED <b>R{snap.program?.revision??0}</b></div>
@@ -154,6 +180,7 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
       <button className={view==='live'?'active':''} onClick={()=>setView('live')}><b>LIVE CONTROL</b><span>On-air operation</span></button>
       <button className={view==='graphics'?'active':''} onClick={()=>setView('graphics')}><b>GRAPHICS</b><span>{variantList.length} published</span></button>
       <button className={view==='automation'?'active':''} onClick={()=>setView('automation')}><b>AUTOMATION</b><span>{snap.session?.automation_enabled?'Enabled':'Manual'}</span></button>
+      <button className={view==='sponsors'?'active':''} onClick={()=>setView('sponsors')}><b>SPONSORS</b><span>{sponsorEnabled&&selectedSponsor?selectedSponsor.name:'Control center'}</span></button>
       <div className="tab-spacer"/>
       <button className="utility" onClick={()=>command({type:'CLEAR_TEMPORARY'})}>CLEAR TEMP</button>
       <button className="utility danger" onClick={()=>command({type:'CLEAR_ALL'})}>CLEAR ALL</button>
@@ -181,6 +208,12 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
         </section>
 
         {view==='live'&&<>
+          <section className="live-config-strip">
+            <div><span>SCOREBAR</span><b>Live layout</b></div>
+            <label><input type="checkbox" checked={showBatterPhotos} onChange={e=>setShowBatterPhotos(e.target.checked)}/> BATTER PHOTOS</label>
+            <button onClick={applyScorebar}>APPLY SCOREBAR</button>
+            <div className={'sponsor-live-state '+(sponsorEnabled?'active':'')}><span>SPONSOR</span><b>{sponsorEnabled&&selectedSponsor?selectedSponsor.name:'OFF'}</b></div>
+          </section>
           <section className="live-events">
             <header className="section-head"><div><span>LIVE EVENTS</span><h2>One-click match control</h2></div><small>Scorer-linked events remain automatic when enabled.</small></header>
             <div className="event-hero-grid">
@@ -236,6 +269,32 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
               <div><button onClick={()=>preview(v.key)}>PREVIEW</button><button className="take" onClick={()=>take(v.key)}>TAKE</button><button onClick={()=>queueAdd(v.key)}>QUEUE</button></div>
             </article>)}
           </div>
+        </section>}
+
+
+        {view==='sponsors'&&<section className="sponsor-workspace">
+          <section className="settings-card sponsor-center-card">
+            <header><div><span>SPONSOR CENTER</span><h2>Brand any live graphic</h2></div><b>{sponsorEnabled?'ARMED':'OFF'}</b></header>
+            <div className="sponsor-controls">
+              <label><span>SPONSOR</span><select value={sponsorId} onChange={e=>setSponsorId(e.target.value)}><option value="">No sponsor</option>{sponsors.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+              <label><span>PLACEMENT</span><select value={sponsorPlacement} onChange={e=>setSponsorPlacement(e.target.value as any)}><option value="auto">AUTO BY GRAPHIC</option><option value="lower-third">LOWER THIRD</option><option value="scorebar">SCOREBAR</option><option value="top-right">TOP RIGHT</option><option value="bottom-right">BOTTOM RIGHT</option><option value="fullscreen">FULLSCREEN BRAND</option></select></label>
+              <button className={sponsorEnabled?'active':''} disabled={!selectedSponsor} onClick={()=>setSponsorEnabled(v=>!v)}>{sponsorEnabled?'SPONSOR ATTACH ON':'ATTACH SPONSOR TO TAKES'}</button>
+            </div>
+            <div className="sponsor-preview">
+              <div>{selectedSponsor?.logo_url?<img src={selectedSponsor.logo_url} alt=""/>:<b>{selectedSponsor?.name||'NO ACTIVE SPONSOR'}</b>}</div>
+              <span>{selectedSponsor?.message||'SPONSORED BY'}</span>
+              <p>When armed, sponsor branding travels with Preview, Take and Queue commands. Placement can be lower-third, scorebar, corner or fullscreen.</p>
+            </div>
+          </section>
+          <section className="settings-card sponsor-actions-card">
+            <header><div><span>QUICK BRANDING</span><h2>Scorebar & lower thirds</h2></div></header>
+            <div className="sponsor-action-grid">
+              <button disabled={!selectedSponsor} onClick={()=>{setSponsorEnabled(true);setSponsorPlacement('lower-third');}}>ARM LOWER THIRD</button>
+              <button disabled={!selectedSponsor} onClick={()=>{setSponsorEnabled(true);setSponsorPlacement('top-right');}}>ARM CORNER BUG</button>
+              <button disabled={!selectedSponsor} onClick={()=>{setSponsorEnabled(true);setSponsorPlacement('fullscreen');}}>ARM FULLSCREEN</button>
+              <button disabled={!selectedSponsor} onClick={()=>{setSponsorEnabled(true);setSponsorPlacement('scorebar');setTimeout(applyScorebar,0);}}>SPONSOR SCOREBAR</button>
+            </div>
+          </section>
         </section>}
 
         {view==='automation'&&<section className="automation-workspace">
