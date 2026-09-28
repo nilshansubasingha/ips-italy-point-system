@@ -47,7 +47,7 @@ async function waitForVideoReady(stream:MediaStream,video?:HTMLVideoElement|null
     window.setTimeout(done,3500);
   });
 
-  if(track.readyState==='ended')throw new Error('Video track ended before MediaRecorder could start.');
+  if(stream.getVideoTracks()[0]?.readyState==='ended')throw new Error('Video track ended before MediaRecorder could start.');
 }
 
 function startRollingRecorder(
