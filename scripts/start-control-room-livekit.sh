@@ -1,6 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
+# PRISM apps are built with gateway base paths and served together by this process.
 TCP_PROXY_DOMAIN="${RAILWAY_TCP_PROXY_DOMAIN:-}"
 TCP_PROXY_PORT="${RAILWAY_TCP_PROXY_PORT:-}"
 TCP_APP_PORT="${RAILWAY_TCP_APPLICATION_PORT:-}"
