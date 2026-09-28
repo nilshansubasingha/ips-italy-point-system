@@ -267,8 +267,8 @@ function PlayingXI({side,data,payload,startedAt,now}:{side:'home'|'away';data:J;
   const team=data.match?.[side+'_team']||{},players=(data.playing_xi?.[side]||[]).slice(0,11);
   const count=players.length;
   const perRow=count<=6?3:count<=8?4:count<=10?5:6;
-  const cardSize=count<=6?270:count<=8?255:count<=10?225:205;
-  const gap=count>=9?16:22;
+  const cardSize=count<=6?'min(14vw,27vh)':count<=8?'min(12.5vw,26vh)':count<=10?'min(10.5vw,23vh)':'min(9vw,21vh)';
+  const gap=count>=9?14:18;
   const rows:Array<any[]>=[];
 
   for(let i=0;i<count;i+=perRow)rows.push(players.slice(i,i+perRow));
@@ -284,7 +284,7 @@ function PlayingXI({side,data,payload,startedAt,now}:{side:'home'|'away';data:J;
       {rows.map((row,rowIndex)=><div className="tv-xi-row" key={rowIndex} style={{gap}}>
         {row.map((p:any,i:number)=>{
           const playerIndex=rowIndex*perRow+i;
-          return <article className="tv-xi-card" key={p.id||playerIndex} style={{width:cardSize,height:cardSize}}>
+          return <article className="tv-xi-card" key={p.id||playerIndex} style={{width:cardSize}}>
             <div className="tv-xi-photo">
               {p.photo_url?<img src={p.photo_url} alt=""/>:<span>{initials(p.name)}</span>}
               <i>{String(p.order??playerIndex+1).padStart(2,'0')}</i>
