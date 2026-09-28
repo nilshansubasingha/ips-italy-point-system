@@ -264,26 +264,23 @@ function Versus({data,payload,startedAt,now}:{data:J;payload:J;startedAt?:string
   </section>;
 }
 function PlayingXI({side,data,payload,startedAt,now}:{side:'home'|'away';data:J;payload:J;startedAt?:string;now:number}){
-  const team=data.match?.[side+'_team']||{},players=data.playing_xi?.[side]||[];
-  const pageSize=6;
-  const pageCount=Math.max(1,Math.ceil(players.length/pageSize));
-  const started=Date.parse(startedAt||'');
-  const elapsed=Number.isFinite(started)?Math.max(0,now-started):0;
-  const page=pageCount>1?Math.floor(elapsed/3500)%pageCount:0;
-  const startIndex=Math.min(page*pageSize,Math.max(0,players.length-pageSize));
-  const visiblePlayers=players.slice(startIndex,startIndex+pageSize);
+  const team=data.match?.[side+'_team']||{},players=(data.playing_xi?.[side]||[]).slice(0,11);
+  const count=Math.max(1,players.length);
+  const columns=Math.max(2,Math.ceil(count/2));
+  const cardSize=count<=6?260:count<=8?235:count<=10?210:195;
+  const gap=count>=9?16:20;
   return <section className="tv-fullboard tv-xi">
     <div className="tv-board-top"><span>PLAYING XI</span><b>{data.match?.tournament?.name||'IPS CRICKET'}</b></div>
     <header>
       <Logo team={team}/>
       <div><span>{side.toUpperCase()} TEAM</span><strong>{team.name||'TEAM'}</strong></div>
-      {pageCount>1&&<em>{page+1}/{pageCount}</em>}
+      <em>{players.length} PLAYERS</em>
     </header>
-    <div className="tv-xi-cards" key={side+'-'+page}>
-      {visiblePlayers.map((p:any,i:number)=><article className="tv-xi-card" key={p.id||i}>
+    <div className="tv-xi-cards" style={{gap}}>
+      {players.map((p:any,i:number)=><article className="tv-xi-card" key={p.id||i} style={{width:cardSize,height:cardSize}}>
         <div className="tv-xi-photo">
           {p.photo_url?<img src={p.photo_url} alt=""/>:<span>{initials(p.name)}</span>}
-          <i>{String(p.order??startIndex+i+1).padStart(2,'0')}</i>
+          <i>{String(p.order??i+1).padStart(2,'0')}</i>
         </div>
         <div className="tv-xi-player-copy">
           <b>{p.name}</b>
