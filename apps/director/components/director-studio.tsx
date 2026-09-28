@@ -29,6 +29,7 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
   const [search,setSearch]=useState('');
   const [releaseChoice,setReleaseChoice]=useState(initial.release?.id??'');
   const [showBatterPhotos,setShowBatterPhotos]=useState(false);
+  const [durationOverrideMs,setDurationOverrideMs]=useState<number|null>(null);
   const [sponsors,setSponsors]=useState<Sponsor[]>([]);
   const [sponsorId,setSponsorId]=useState('');
   const [sponsorEnabled,setSponsorEnabled]=useState(false);
@@ -101,7 +102,7 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
     });
   };
 
-  const take=(key:string,persistent=false,extra:Record<string,unknown>={})=>command({type:'TAKE',variantKey:key,persistent,payload:payloadFor(extra)});
+  const take=(key:string,persistent=false,extra:Record<string,unknown>={})=>command({type:'TAKE',variantKey:key,persistent,payload:payloadFor(extra),...(!persistent&&durationOverrideMs?{durationMs:durationOverrideMs}:{})});
   const preview=(key:string,extra:Record<string,unknown>={})=>{setSelected(key);command({type:'PREVIEW',variantKey:key,payload:payloadFor(extra)});};
   const queueAdd=(key:string,extra:Record<string,unknown>={})=>command({type:'QUEUE_ADD',variantKey:key,payload:payloadFor(extra)});
   const queueRemove=(id:string)=>command({type:'QUEUE_REMOVE',queueId:id});
@@ -199,6 +200,10 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
             <header><span>PREVIEW</span><strong>{selectedMeta?graphicLabel(selectedMeta.name):'Select a graphic'}</strong></header>
             <div className="monitor-screen">{selectedMeta?<FitSceneCanvas document={selectedMeta.document} data={snap.data}/>:<div className="monitor-empty">Select a graphic to prepare it.</div>}</div>
             <footer>
+              <label className="duration-control"><span>AUTO HIDE</span><select value={durationOverrideMs??''} onChange={e=>setDurationOverrideMs(e.target.value?Number(e.target.value):null)}>
+                <option value="">DEFAULT {selectedMeta?.durationMs?Math.round(selectedMeta.durationMs/100)/10+'s':'5s'}</option>
+                <option value="2000">2s</option><option value="3000">3s</option><option value="5000">5s</option><option value="8000">8s</option><option value="10000">10s</option><option value="15000">15s</option><option value="30000">30s</option>
+              </select></label>
               <button className="queue-action" disabled={!selectedMeta||pending} onClick={()=>selectedMeta&&queueAdd(selected)}>+ QUEUE</button>
               <button className="take-action" disabled={!selectedMeta||pending} onClick={()=>selectedMeta&&take(selected)}>TAKE →</button>
             </footer>
