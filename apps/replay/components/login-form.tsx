@@ -2,20 +2,25 @@
 import {FormEvent,useState} from 'react';
 import {useRouter} from 'next/navigation';
 import {createClient} from '@/lib/supabase/client';
-export function LoginForm(){
+
+export function LoginForm({nextPath}:{nextPath?:string}){
   const router=useRouter();
   const [email,setEmail]=useState('');
   const [password,setPassword]=useState('');
   const [error,setError]=useState<string|null>(null);
   const [busy,setBusy]=useState(false);
+
   async function submit(e:FormEvent){
-    e.preventDefault();setBusy(true);setError(null);
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
     const supabase=createClient();
     const {error}=await supabase.auth.signInWithPassword({email,password});
     setBusy(false);
     if(error){setError(error.message);return;}
-    router.replace('/');router.refresh();
+    window.location.assign(nextPath||'/replay');
   }
+
   return <form className="login-form" onSubmit={submit}>
     <label>Email<input type="email" value={email} onChange={e=>setEmail(e.target.value)} required autoComplete="email"/></label>
     <label>Password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} required autoComplete="current-password"/></label>
