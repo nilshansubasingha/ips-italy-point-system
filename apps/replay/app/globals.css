@@ -30,3 +30,31 @@
   .clip-select{grid-template-columns:42px minmax(0,1fr) auto;gap:6px}
   .clip-delete{margin-right:5px;padding:0 6px}
 }
+
+
+/* Central remote camera contribution */
+.remote-camera-session{display:grid;grid-template-columns:minmax(190px,1.2fr) minmax(160px,.8fr) auto;gap:10px;align-items:center;margin:8px 10px 10px;padding:10px;border:1px solid #1c3540;border-radius:9px;background:linear-gradient(120deg,#07151d,#091b22)}
+.remote-camera-session>div{min-width:0}.remote-camera-session span,.remote-camera-session small{display:block}.remote-camera-session span{font-size:6px;font-weight:950;letter-spacing:.14em;color:#66818d}.remote-camera-session strong{display:block;margin-top:3px;font-size:22px;letter-spacing:.06em}.remote-camera-session small{margin-top:3px;font-size:6px;color:#7d939d}
+.remote-camera-session button{height:34px;padding:0 10px;border:1px solid #2c4854;border-radius:7px;background:#0a1a22;color:#9db2bb;font-size:6px;font-weight:950}.remote-camera-session button:disabled{opacity:.45}
+.remote-source-label{min-width:0;display:flex;flex-direction:column;justify-content:center;padding:0 4px}.remote-source-label b{font-size:7px;color:#64dfb2;letter-spacing:.08em}.remote-source-label span{margin-top:2px;font-size:6px;color:#78909a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* IPS Camera phone page */
+.camera-publisher-shell{min-height:100vh;background:radial-gradient(circle at 50% -20%,#10352d 0,transparent 34%),#050b0f;color:#fff}
+.camera-publisher-top{height:66px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #17303a;background:rgba(5,12,16,.94);position:sticky;top:0;z-index:5}
+.camera-link-state{display:flex;align-items:center;gap:7px;font-size:7px;font-weight:950;letter-spacing:.09em;color:#80949d}.camera-link-state i{width:8px;height:8px;border-radius:50%;background:#52656d}.camera-link-state.ready i,.camera-link-state.live i{background:#19d18f;box-shadow:0 0 12px rgba(25,209,143,.55)}.camera-link-state.error i{background:#ff4f5d}
+.camera-join-card,.camera-live-card{width:min(680px,calc(100vw - 28px));margin:34px auto;padding:22px;border:1px solid #1d3945;border-radius:16px;background:linear-gradient(145deg,#08171f,#061016);box-shadow:0 24px 70px rgba(0,0,0,.4)}
+.camera-join-card .eyebrow{margin:0;color:#6a8b98;font-size:7px;font-weight:950;letter-spacing:.16em}.camera-join-card h1{margin:7px 0 0;font-size:31px;letter-spacing:-.04em}.camera-join-copy{margin:8px 0 20px;font-size:9px;line-height:1.55;color:#8398a1}
+.camera-pin-field{display:block}.camera-pin-field span,.camera-join-grid label span{display:block;margin-bottom:6px;font-size:6px;font-weight:950;letter-spacing:.12em;color:#728b96}.camera-pin-field input{width:100%;height:70px;border:1px solid #2a5360;border-radius:11px;background:#06131a;color:#fff;text-align:center;font-size:34px;font-weight:1000;letter-spacing:.28em;outline:none}.camera-pin-field input:focus{border-color:#19d18f;box-shadow:0 0 0 3px rgba(25,209,143,.09)}
+.camera-join-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.camera-join-grid label{min-width:0}.camera-join-grid select,.camera-join-grid input{width:100%;height:44px;border:1px solid #23404b;border-radius:8px;background:#07151c;color:#dce7eb;padding:0 10px;font-size:8px}
+.camera-start-button,.camera-stop-button{width:100%;height:54px;margin-top:17px;border:0;border-radius:9px;font-size:9px;font-weight:1000;letter-spacing:.09em}.camera-start-button{background:#19d18f;color:#04110d}.camera-start-button:disabled{opacity:.55}.camera-stop-button{background:#8d2631;color:#fff}
+.camera-message{margin:12px 0 0;text-align:center;font-size:8px;color:#8ba1aa}.camera-message.error{color:#ff8b95}
+.camera-live-meta{display:grid;grid-template-columns:1fr auto;gap:14px;margin-bottom:14px}.camera-live-meta>div{min-width:0}.camera-live-meta span,.camera-live-meta small{display:block}.camera-live-meta span{font-size:6px;font-weight:950;letter-spacing:.12em;color:#66808c}.camera-live-meta strong{display:block;margin-top:4px;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.camera-live-meta strong i{font-style:normal;color:#607984}.camera-live-meta small{margin-top:3px;font-size:6px;color:#77909a}
+.camera-phone-preview{position:relative;overflow:hidden;aspect-ratio:16/9;border-radius:12px;background:#000;border:1px solid #23404a}.camera-phone-preview video{width:100%;height:100%;object-fit:contain;background:#000}.camera-phone-preview>div{position:absolute;left:10px;bottom:10px;padding:7px 9px;border-radius:7px;background:rgba(2,7,10,.72);backdrop-filter:blur(8px)}.camera-phone-preview b,.camera-phone-preview span{display:block}.camera-phone-preview b{font-size:8px}.camera-phone-preview span{margin-top:2px;font-size:6px;color:#9aabb2}
+.camera-keep-open{margin:10px 0 0;text-align:center;font-size:7px;color:#657b85}
+
+@media(max-width:720px){
+  .remote-camera-session{grid-template-columns:1fr 1fr}.remote-camera-session button{grid-column:1/-1}
+  .camera-publisher-top{height:58px}.camera-join-card,.camera-live-card{margin:18px auto;padding:16px}
+  .camera-join-card h1{font-size:26px}.camera-join-grid{grid-template-columns:1fr}
+  .camera-pin-field input{height:62px;font-size:30px}.camera-live-meta{grid-template-columns:1fr}
+}
