@@ -329,10 +329,10 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
         };
         pc.onconnectionstatechange=()=>{
           if(pc.connectionState==='connected'){
-            setRemoteCameras(prev=>prev.map((cam,i)=>i===index&&cam?.connectionId===p.connectionId?{...cam,status:'LIVE',lastSeen:Date.now()}:cam));
+            setRemoteCameras(prev=>prev.map((cam,i)=>i===index&&cam&&cam.connectionId===p.connectionId?{...cam,status:'LIVE',lastSeen:Date.now()}:cam));
           }
           if(pc.connectionState==='failed'){
-            setRemoteCameras(prev=>prev.map((cam,i)=>i===index&&cam?.connectionId===p.connectionId?{...cam,status:'ERROR'}:cam));
+            setRemoteCameras(prev=>prev.map((cam,i)=>i===index&&cam&&cam.connectionId===p.connectionId?{...cam,status:'ERROR'}:cam));
           }
         };
         await pc.setRemoteDescription(p.sdp).catch(()=>{});
@@ -359,7 +359,7 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
         const pc=remotePeersRef.current.get(p.connectionId);
         if(pc){try{pc.close();}catch{}remotePeersRef.current.delete(p.connectionId);}
         if(slotsRef.current[index]?.source==='REMOTE'&&slotsRef.current[index]?.connectionId===p.connectionId)stopSlot(index);
-        setRemoteCameras(prev=>prev.map((cam,i)=>i===index&&cam?.connectionId===p.connectionId?null:cam));
+        setRemoteCameras(prev=>prev.map((cam,i)=>i===index&&cam&&cam.connectionId===p.connectionId?null:cam));
       })
       .subscribe((status:string)=>{
         if(status==='SUBSCRIBED'){
