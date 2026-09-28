@@ -1,15 +1,21 @@
 import {redirect} from 'next/navigation';
 import {createClient} from '@/lib/supabase/server';
 import {LoginForm} from '@/components/login-form';
+
 export const dynamic='force-dynamic';
-export default async function LoginPage(){
+
+export default async function LoginPage({searchParams}:{searchParams:Promise<{next?:string}>}){
+  const params=await searchParams;
+  const base=process.env.PRISM_PREVIEW_GATEWAY==='1'?'/replay':'';
+  const next=params?.next&&params.next.startsWith(base+'/')?params.next:base+'/';
   const supabase=await createClient();
   const {data:{user}}=await supabase.auth.getUser();
-  if(user)redirect('/');
+  if(user)redirect(next);
+
   return <main className="login-page"><section className="login-card">
     <div className="replay-wordmark"><b>IPS</b><span>REPLAY ENGINE</span></div>
-    <p className="eyebrow">LOCAL PRODUCTION ACCESS</p><h1>Replay Workstation</h1>
-    <p className="login-copy">Arm local cameras, capture scorer-linked replay clips and drive the clean IPS PROGRAM output for PRISM.</p>
-    <LoginForm/>
+    <p className="eyebrow">PRODUCTION ACCESS</p><h1>Replay Workstation</h1>
+    <p className="login-copy">Sign in to open the Replay workstation on this device.</p>
+    <LoginForm nextPath={next}/>
   </section></main>;
 }
