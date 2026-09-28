@@ -64,6 +64,7 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
   const [matchInfoAuto,setMatchInfoAuto]=useState(true);
   const [matchInfoInterval,setMatchInfoInterval]=useState(4000);
   const [matchInfoPin,setMatchInfoPin]=useState('AUTO');
+  const [matchInfoItems,setMatchInfoItems]=useState<string[]>(['CRR','OVERS','LAST_WICKET','PARTNERSHIP','TARGET','NEED','RRR']);
   const [matchCardShow,setMatchCardShow]=useState(true);
   const [matchCardMode,setMatchCardMode]=useState('AUTO');
   const [matchCardInterval,setMatchCardInterval]=useState(5000);
@@ -189,10 +190,11 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
   const queueRemove=(id:string)=>command({type:'QUEUE_REMOVE',queueId:id});
   const scorebarSettings=()=>({
     showBatterPhotos,
-    matchInfo:{autoRotate:matchInfoAuto,intervalMs:matchInfoInterval,pin:matchInfoPin},
+    matchInfo:{autoRotate:matchInfoAuto,intervalMs:matchInfoInterval,pin:matchInfoPin,items:matchInfoItems},
     matchCard:{show:matchCardShow,mode:matchCardMode,intervalMs:matchCardInterval,showTeamLogos:matchCardLogos,placement:matchCardPlacement},
     includeSponsorInRotation:includeSponsorInScorebar
   });
+  const toggleMatchInfoItem=(key:string)=>setMatchInfoItems(items=>items.includes(key)?items.filter(x=>x!==key):[...items,key]);
   const applyScorebar=()=>command({type:'TAKE',variantKey:'scorebar.default',persistent:true,payload:payloadFor({scorebar:scorebarSettings()},'scorebar')});
   const applySponsoredScorebar=()=>{setSponsorEnabled(true);command({type:'TAKE',variantKey:'scorebar.default',persistent:true,payload:{scorebar:scorebarSettings(),...sponsorPayload('scorebar',true)}});};
 
@@ -379,6 +381,13 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
                 <label><span>ROTATION SPEED</span><select value={matchInfoInterval} onChange={e=>setMatchInfoInterval(Number(e.target.value))}><option value={3000}>3 sec</option><option value={4000}>4 sec</option><option value={5000}>5 sec</option><option value={7000}>7 sec</option><option value={10000}>10 sec</option></select></label>
                 <label><span>PIN ITEM</span><select value={matchInfoPin} onChange={e=>setMatchInfoPin(e.target.value)}><option>AUTO</option><option>CRR</option><option>RRR</option><option>TARGET</option><option value="NEED_FROM">NEED FROM</option><option>OVERS</option><option>PARTNERSHIP</option><option value="LAST_WICKET">LAST WICKET</option></select></label>
                 <label><span>SPONSOR IN ROTATION</span><input type="checkbox" checked={includeSponsorInScorebar} onChange={e=>setIncludeSponsorInScorebar(e.target.checked)}/></label>
+                <div className="match-info-item-picks">
+                  <span>ROTATE ITEMS</span>
+                  {[
+                    ['CRR','CRR'],['OVERS','OVERS'],['LAST_WICKET','LAST WICKET'],['PARTNERSHIP','PARTNERSHIP'],
+                    ['TARGET','TARGET'],['NEED','NEED FROM'],['RRR','RRR']
+                  ].map(([key,label])=><label key={key}><input type="checkbox" checked={matchInfoItems.includes(key)} onChange={()=>toggleMatchInfoItem(key)}/><b>{label}</b></label>)}
+                </div>
               </div>
             </details>
             <details>
