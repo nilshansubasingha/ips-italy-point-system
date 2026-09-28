@@ -298,7 +298,7 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
           label:p.label||('CAM '+channelNo),
           quality:p.quality,
           lastSeen:Date.now(),
-          status:existing?.connectionId===p.connectionId&&existing.status==='LIVE'?'LIVE':'READY'
+          status:existing?.connectionId===p.connectionId&&existing?.status==='LIVE'?'LIVE':'READY'
         };
         setRemoteCameras(prev=>prev.map((cam,i)=>i===index?info:cam));
         void channel.send({type:'broadcast',event:'control-ready',payload:{viewerId,connectionId:p.connectionId,channelNo}});
