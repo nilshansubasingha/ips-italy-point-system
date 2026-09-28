@@ -17,6 +17,13 @@ type SponsorDraft={id?:string;name:string;message:string;logo_url:string;status:
 type Snapshot={match_id:string;session:any;program:{revision:number;preview:any;active_layers:Layer[];queue:any[];persistent_snapshot:Layer[]};release:{id:string;version:number;manifest:{variants:Record<string,Meta>};theme:any};data:any;signal:any;event_config:EventConfig[];suggestions:Suggestion[];available_releases?:ReleaseOption[]};
 
 const OVERLAY_URL=process.env.NEXT_PUBLIC_IPS_OVERLAY_URL??'http://localhost:3002';
+const SPONSOR_PLACEMENTS=[
+  ['auto','AUTO BY GRAPHIC'],['scorebar','SCOREBAR SPONSOR'],['lower-third','LOWER THIRD SPONSOR'],
+  ['top-right','TOP RIGHT BUG'],['top-left','TOP LEFT BUG'],['bottom-right','BOTTOM RIGHT BUG'],['fullscreen','FULLSCREEN SPONSOR'],
+  ['boundary','BOUNDARY SPONSOR'],['six','SIX SPONSOR'],['wicket','WICKET SPONSOR'],['over','OVER SPONSOR'],
+  ['batting-scorecard','BATTING SCORECARD'],['bowling-scorecard','BOWLING SCORECARD'],['player-info','PLAYER INFO'],
+  ['match-intro','MATCH INTRO'],['vs-graphic','VS GRAPHIC'],['playing-xi','PLAYING XI'],['result','RESULT'],['replay','REPLAY']
+] as const;
 
 function age(ts:string){const sec=Math.max(0,Math.round((Date.now()-Date.parse(ts))/1000));return sec<60?sec+'s':Math.floor(sec/60)+'m';}
 function sceneLabel(key:string){return key.replaceAll('_',' ').replaceAll('-',' ').replace(/\b\w/g,c=>c.toUpperCase());}
@@ -123,6 +130,7 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
   const selectedSponsor=useMemo(()=>sponsors.find(s=>s.id===sponsorId)??null,[sponsors,sponsorId]);
   const selectedPlaylist=useMemo(()=>sponsorPlaylists.find(p=>p.id===sponsorPlaylistId)??null,[sponsorPlaylists,sponsorPlaylistId]);
   const activeSponsors=useMemo(()=>sponsors.filter(s=>s.status==='ACTIVE'),[sponsors]);
+  const sponsorReady=Boolean(sponsorRotationEnabled?selectedPlaylist?.items?.some(i=>i.sponsor?.status==='ACTIVE'):selectedSponsor?.status==='ACTIVE');
 
   const loadSponsorState=useCallback(async()=>{
     const {data,error}=await supabase.rpc('ips_broadcast_sponsor_state',{p_match_id:matchId});
@@ -338,7 +346,7 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
         <section className="monitor-deck">
           <article className="monitor preview-monitor">
             <header><span>PREVIEW</span><strong>{selectedMeta?graphicLabel(selectedMeta.name):'Select a graphic'}</strong></header>
-            <div className="monitor-screen">{selectedMeta?<FitSceneCanvas document={selectedMeta.document} data={snap.data}/>:<div className="monitor-empty">Select a graphic to prepare it.</div>}</div>
+            <div className="monitor-screen">{selected==='sponsor.fullscreen'&&sponsorReady?<div className="director-sponsor-preview"><span>{selectedSponsor?.message||'SPONSORED BY'}</span>{selectedSponsor?.logo_url?<img src={selectedSponsor.logo_url} alt=""/>:<strong>{selectedSponsor?.name||selectedPlaylist?.name||'SPONSOR'}</strong>}</div>:selectedMeta?<FitSceneCanvas document={selectedMeta.document} data={snap.data}/>:<div className="monitor-empty">Select a graphic to prepare it.</div>}</div>
             <footer>
               <label className="duration-control"><span>AUTO HIDE</span><select value={durationOverrideMs??''} onChange={e=>setDurationOverrideMs(e.target.value?Number(e.target.value):null)}>
                 <option value="">DEFAULT {selectedMeta?.durationMs?Math.round(selectedMeta.durationMs/100)/10+'s':'5s'}</option>
@@ -358,10 +366,31 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
 
         {view==='live'&&<>
           <section className="live-config-strip">
-            <div><span>SCOREBAR</span><b>Live layout</b></div>
+            <div><span>SCOREBAR</span><b>Compact live layout</b></div>
             <label><input type="checkbox" checked={showBatterPhotos} onChange={e=>setShowBatterPhotos(e.target.checked)}/> BATTER PHOTOS</label>
             <button onClick={applyScorebar}>APPLY SCOREBAR</button>
-            <div className={'sponsor-live-state '+(sponsorEnabled?'active':'')}><span>SPONSOR</span><b>{sponsorEnabled&&selectedSponsor?selectedSponsor.name:'OFF'}</b></div>
+            <div className={'sponsor-live-state '+(sponsorEnabled?'active':'')}><span>SPONSOR</span><b>{sponsorEnabled?(sponsorRotationEnabled?(selectedPlaylist?.name||'ROTATION'):(selectedSponsor?.name||'ON')):'OFF'}</b></div>
+          </section>
+          <section className="live-config-details">
+            <details>
+              <summary><div><span>MATCH INFO ROTATION</span><b>{matchInfoPin==='AUTO'?(matchInfoAuto?'AUTO · '+matchInfoInterval/1000+'s':'STATIC'):matchInfoPin.replace('_',' ')}</b></div><i>Configure</i></summary>
+              <div className="compact-config-grid">
+                <label><span>AUTO ROTATE</span><input type="checkbox" checked={matchInfoAuto} onChange={e=>setMatchInfoAuto(e.target.checked)}/></label>
+                <label><span>ROTATION SPEED</span><select value={matchInfoInterval} onChange={e=>setMatchInfoInterval(Number(e.target.value))}><option value={3000}>3 sec</option><option value={4000}>4 sec</option><option value={5000}>5 sec</option><option value={7000}>7 sec</option><option value={10000}>10 sec</option></select></label>
+                <label><span>PIN ITEM</span><select value={matchInfoPin} onChange={e=>setMatchInfoPin(e.target.value)}><option>AUTO</option><option>CRR</option><option>RRR</option><option>TARGET</option><option value="NEED_FROM">NEED FROM</option><option>OVERS</option><option>PARTNERSHIP</option><option value="LAST_WICKET">LAST WICKET</option></select></label>
+                <label><span>SPONSOR IN ROTATION</span><input type="checkbox" checked={includeSponsorInScorebar} onChange={e=>setIncludeSponsorInScorebar(e.target.checked)}/></label>
+              </div>
+            </details>
+            <details>
+              <summary><div><span>MATCH IDENTIFIER CARD</span><b>{matchCardShow?matchCardMode.replace('_',' ')+' · '+matchCardPlacement.replace('_',' '):'HIDDEN'}</b></div><i>Configure</i></summary>
+              <div className="compact-config-grid">
+                <label><span>SHOW CARD</span><input type="checkbox" checked={matchCardShow} onChange={e=>setMatchCardShow(e.target.checked)}/></label>
+                <label><span>MODE</span><select value={matchCardMode} onChange={e=>setMatchCardMode(e.target.value)}><option>AUTO</option><option>TEAMS</option><option value="MATCH_NUMBER">MATCH NUMBER</option><option value="MATCH_STAGE">MATCH STAGE</option></select></label>
+                <label><span>ROTATION</span><select value={matchCardInterval} onChange={e=>setMatchCardInterval(Number(e.target.value))}><option value={3000}>3 sec</option><option value={5000}>5 sec</option><option value={7000}>7 sec</option><option value={10000}>10 sec</option></select></label>
+                <label><span>TEAM LOGOS</span><input type="checkbox" checked={matchCardLogos} onChange={e=>setMatchCardLogos(e.target.checked)}/></label>
+                <label><span>PLACEMENT</span><select value={matchCardPlacement} onChange={e=>setMatchCardPlacement(e.target.value)}><option>TOP_LEFT</option><option>TOP_CENTER</option><option>TOP_RIGHT</option></select></label>
+              </div>
+            </details>
           </section>
           <section className="live-events">
             <header className="section-head"><div><span>LIVE EVENTS</span><h2>One-click match control</h2></div><small>Scorer-linked events remain automatic when enabled.</small></header>
@@ -421,28 +450,60 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
         </section>}
 
 
-        {view==='sponsors'&&<section className="sponsor-workspace">
-          <section className="settings-card sponsor-center-card">
-            <header><div><span>SPONSOR CENTER</span><h2>Brand any live graphic</h2></div><b>{sponsorEnabled?'ARMED':'OFF'}</b></header>
-            <div className="sponsor-controls">
-              <label><span>SPONSOR</span><select value={sponsorId} onChange={e=>setSponsorId(e.target.value)}><option value="">No sponsor</option>{sponsors.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
-              <label><span>PLACEMENT</span><select value={sponsorPlacement} onChange={e=>setSponsorPlacement(e.target.value as any)}><option value="auto">AUTO BY GRAPHIC</option><option value="lower-third">LOWER THIRD</option><option value="scorebar">SCOREBAR</option><option value="top-right">TOP RIGHT</option><option value="bottom-right">BOTTOM RIGHT</option><option value="fullscreen">FULLSCREEN BRAND</option></select></label>
-              <button className={sponsorEnabled?'active':''} disabled={!selectedSponsor} onClick={()=>setSponsorEnabled(v=>!v)}>{sponsorEnabled?'SPONSOR ATTACH ON':'ATTACH SPONSOR TO TAKES'}</button>
-            </div>
-            <div className="sponsor-preview">
-              <div>{selectedSponsor?.logo_url?<img src={selectedSponsor.logo_url} alt=""/>:<b>{selectedSponsor?.name||'NO ACTIVE SPONSOR'}</b>}</div>
-              <span>{selectedSponsor?.message||'SPONSORED BY'}</span>
-              <p>When armed, sponsor branding travels with Preview, Take and Queue commands. Placement can be lower-third, scorebar, corner or fullscreen.</p>
+        {view==='sponsors'&&<section className="sponsor-workspace sponsor-workspace-full">
+          <section className="settings-card sponsor-manager-card">
+            <header><div><span>SPONSOR CONTROL CENTER</span><h2>Partners & on-air branding</h2></div><button className="header-action" onClick={()=>openSponsorEditor()}>+ ADD SPONSOR</button></header>
+            <div className="sponsor-card-grid">
+              {sponsors.length?sponsors.map(sp=><article className={'sponsor-card status-'+sp.status.toLowerCase()} key={sp.id}>
+                <div className="sponsor-logo-box">{sp.logo_url?<img src={sp.logo_url} alt=""/>:<b>{sp.name.slice(0,2).toUpperCase()}</b>}</div>
+                <div className="sponsor-card-copy"><span>{sp.message||'SPONSORED BY'}</span><strong>{sp.name}</strong><small>{sp.status}</small></div>
+                <div className="sponsor-card-actions">
+                  <button onClick={()=>openSponsorEditor(sp)}>EDIT</button>
+                  {sp.status==='ACTIVE'?<button onClick={()=>void setSponsorStatus(sp.id,'INACTIVE')}>DEACTIVATE</button>:sp.status!=='ARCHIVED'&&<button onClick={()=>void setSponsorStatus(sp.id,'ACTIVE')}>ACTIVATE</button>}
+                  {sp.status!=='ARCHIVED'&&<button className="danger" onClick={()=>void setSponsorStatus(sp.id,'ARCHIVED')}>ARCHIVE</button>}
+                </div>
+              </article>):<p className="empty-inline">No sponsors yet. Add the first sponsor and upload its logo from this device.</p>}
             </div>
           </section>
-          <section className="settings-card sponsor-actions-card">
-            <header><div><span>QUICK BRANDING</span><h2>Scorebar & lower thirds</h2></div></header>
-            <div className="sponsor-action-grid">
-              <button disabled={!selectedSponsor} onClick={()=>{setSponsorEnabled(true);setSponsorPlacement('lower-third');}}>ARM LOWER THIRD</button>
-              <button disabled={!selectedSponsor} onClick={()=>{setSponsorEnabled(true);setSponsorPlacement('top-right');}}>ARM CORNER BUG</button>
-              <button disabled={!selectedSponsor} onClick={()=>{setSponsorEnabled(true);setSponsorPlacement('fullscreen');}}>ARM FULLSCREEN</button>
-              <button disabled={!selectedSponsor} onClick={()=>{setSponsorEnabled(true);setSponsorPlacement('scorebar');applySponsoredScorebar();}}>SPONSOR SCOREBAR</button>
+
+          <section className="settings-card sponsor-onair-card">
+            <header><div><span>ON-AIR SPONSOR</span><h2>Reusable SponsorSlot</h2></div><b>{sponsorEnabled?'ARMED':'OFF'}</b></header>
+            <div className="sponsor-control-grid">
+              <label><span>MODE</span><select value={sponsorRotationEnabled?'AUTO':'MANUAL'} onChange={e=>setSponsorRotationEnabled(e.target.value==='AUTO')}><option>MANUAL</option><option>AUTO</option></select></label>
+              {sponsorRotationEnabled?<label><span>PLAYLIST</span><select value={sponsorPlaylistId} onChange={e=>setSponsorPlaylistId(e.target.value)}><option value="">Choose playlist</option>{sponsorPlaylists.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+                :<label><span>SPONSOR</span><select value={sponsorId} onChange={e=>setSponsorId(e.target.value)}><option value="">Choose sponsor</option>{activeSponsors.map(sp=><option key={sp.id} value={sp.id}>{sp.name}</option>)}</select></label>}
+              <label className="wide"><span>PLACEMENT</span><select value={sponsorPlacement} onChange={e=>setSponsorPlacement(e.target.value)}>{SPONSOR_PLACEMENTS.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
+              <button className={sponsorEnabled?'armed':''} disabled={!sponsorReady} onClick={()=>setSponsorEnabled(v=>!v)}>{sponsorEnabled?'ATTACHMENT ARMED':'ARM SPONSOR'}</button>
             </div>
+            <div className="sponsor-current-preview">
+              <div>{selectedSponsor?.logo_url?<img src={selectedSponsor.logo_url} alt=""/>:<b>{sponsorRotationEnabled?(selectedPlaylist?.name||'PLAYLIST'):(selectedSponsor?.name||'NO SPONSOR')}</b>}</div>
+              <p><span>{sponsorRotationEnabled?'AUTO ROTATION':'MANUAL'}</span>{sponsorRotationEnabled&&selectedPlaylist?<><strong>{selectedPlaylist.items.length} sponsors</strong><small>{selectedPlaylist.rotation_interval_ms/1000}s rotation</small></>:selectedSponsor?<><strong>{selectedSponsor.name}</strong><small>{selectedSponsor.message||'SPONSORED BY'}</small></>:<small>Select an active sponsor.</small>}</p>
+            </div>
+          </section>
+
+          <section className="settings-card sponsor-fullscreen-card">
+            <header><div><span>FULLSCREEN SPONSOR</span><h2>Dedicated sponsor break</h2></div><b>AUTO HIDE</b></header>
+            <div className="sponsor-fullscreen-actions">
+              <button disabled={!sponsorReady} onClick={previewSponsorFullscreen}>PREVIEW</button>
+              <button className="take" disabled={!sponsorReady} onClick={takeSponsorFullscreen}>TAKE</button>
+              <button disabled={!sponsorReady} onClick={queueSponsorFullscreen}>QUEUE</button>
+              <label><span>DURATION</span><select value={durationOverrideMs??''} onChange={e=>setDurationOverrideMs(e.target.value?Number(e.target.value):null)}><option value="">DEFAULT 5s</option><option value="2000">2s</option><option value="3000">3s</option><option value="5000">5s</option><option value="8000">8s</option><option value="10000">10s</option><option value="15000">15s</option><option value="30000">30s</option></select></label>
+            </div>
+          </section>
+
+          <section className="settings-card sponsor-playlist-card">
+            <header><div><span>SPONSOR PLAYLIST</span><h2>Rotation & exposure schedule</h2></div><button className="header-action" onClick={()=>{setSponsorPlaylistId('');setPlaylistName('Sponsor Rotation');setPlaylistInterval(10000);setPlaylistSponsorIds([]);}}>NEW PLAYLIST</button></header>
+            <div className="playlist-config">
+              <label><span>PLAYLIST NAME</span><input value={playlistName} onChange={e=>setPlaylistName(e.target.value)}/></label>
+              <label><span>ROTATION</span><select value={playlistInterval} onChange={e=>setPlaylistInterval(Number(e.target.value))}><option value={5000}>5 sec</option><option value={10000}>10 sec</option><option value={15000}>15 sec</option><option value={30000}>30 sec</option><option value={60000}>60 sec</option></select></label>
+              <div className="playlist-sponsors"><span>ACTIVE SPONSORS</span>{activeSponsors.map(sp=><label key={sp.id}><input type="checkbox" checked={playlistSponsorIds.includes(sp.id)} onChange={()=>togglePlaylistSponsor(sp.id)}/>{sp.logo_url&&<img src={sp.logo_url} alt=""/>}<b>{sp.name}</b></label>)}</div>
+              <button className="save-playlist" disabled={!playlistSponsorIds.length} onClick={()=>void saveSponsorPlaylist()}>SAVE PLAYLIST</button>
+            </div>
+          </section>
+
+          <section className="settings-card sponsor-scorebar-card">
+            <header><div><span>SCOREBAR SPONSOR</span><h2>Rotation without hiding cricket</h2></div></header>
+            <div className="sponsor-scorebar-actions"><label><input type="checkbox" checked={includeSponsorInScorebar} onChange={e=>setIncludeSponsorInScorebar(e.target.checked)}/> INCLUDE SPONSOR IN SCOREBAR ROTATION</label><button disabled={!sponsorReady} onClick={applySponsoredScorebar}>APPLY TO SCOREBAR</button></div>
           </section>
         </section>}
 
@@ -482,6 +543,33 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
           </section>
         </section>}
       </div>
+
+      {sponsorDraft&&<div className="sponsor-editor-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget&&!sponsorSaving)setSponsorDraft(null);}}>
+        <section className="sponsor-editor-modal">
+          <header><div><span>{sponsorDraft.id?'EDIT SPONSOR':'ADD SPONSOR'}</span><h2>{sponsorDraft.name||'New sponsor'}</h2></div><button disabled={sponsorSaving} onClick={()=>setSponsorDraft(null)}>×</button></header>
+          <div className="sponsor-editor-body">
+            <div className="sponsor-form-fields">
+              <label><span>SPONSOR NAME</span><input value={sponsorDraft.name} onChange={e=>setSponsorDraft({...sponsorDraft,name:e.target.value})}/></label>
+              <label><span>SPONSOR MESSAGE</span><input value={sponsorDraft.message} onChange={e=>setSponsorDraft({...sponsorDraft,message:e.target.value})} placeholder="SPONSORED BY"/></label>
+              <label><span>STATUS</span><select value={sponsorDraft.status} onChange={e=>setSponsorDraft({...sponsorDraft,status:e.target.value as SponsorDraft['status']})}><option>ACTIVE</option><option>INACTIVE</option><option>ARCHIVED</option></select></label>
+              <label className="upload-field"><span>LOGO / PHOTO</span><input type="file" accept=".png,.jpg,.jpeg,.webp,.svg,image/png,image/jpeg,image/webp,image/svg+xml" onChange={e=>setSponsorFile(e.target.files?.[0]||null)}/><small>PNG, JPG/JPEG, WEBP or SVG · max 10 MB</small></label>
+            </div>
+            <div className="sponsor-image-editor">
+              <div className="sponsor-crop-preview">
+                {(sponsorFilePreview||sponsorDraft.logo_url)?<img src={sponsorFilePreview||sponsorDraft.logo_url} alt="" style={{objectFit:sponsorFit,transform:`translate(${(sponsorPosX-50)*.45}%,${(sponsorPosY-50)*.45}%) scale(${sponsorZoom})`}}/>:<b>UPLOAD LOGO</b>}
+              </div>
+              <div className="image-adjust-controls">
+                <label><span>FIT</span><select value={sponsorFit} onChange={e=>setSponsorFit(e.target.value as 'contain'|'cover')}><option value="contain">CONTAIN</option><option value="cover">COVER / CROP</option></select></label>
+                <label><span>ZOOM {sponsorZoom.toFixed(2)}×</span><input type="range" min=".5" max="3" step=".05" value={sponsorZoom} onChange={e=>setSponsorZoom(Number(e.target.value))}/></label>
+                <label><span>POSITION X</span><input type="range" min="0" max="100" value={sponsorPosX} onChange={e=>setSponsorPosX(Number(e.target.value))}/></label>
+                <label><span>POSITION Y</span><input type="range" min="0" max="100" value={sponsorPosY} onChange={e=>setSponsorPosY(Number(e.target.value))}/></label>
+                <button onClick={()=>{setSponsorZoom(1);setSponsorPosX(50);setSponsorPosY(50);setSponsorFit('contain');}}>RESET IMAGE</button>
+              </div>
+            </div>
+          </div>
+          <footer><button disabled={sponsorSaving} onClick={()=>setSponsorDraft(null)}>CANCEL</button><button className="save" disabled={sponsorSaving||!sponsorDraft.name.trim()} onClick={()=>void saveSponsor()}>{sponsorSaving?'SAVING…':'SAVE SPONSOR'}</button></footer>
+        </section>
+      </div>}
 
       <aside className="director-rail">
         <section className="rail-card match-now">
