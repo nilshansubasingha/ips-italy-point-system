@@ -205,15 +205,17 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
     return publicUrl;
   };
 
-  const takeReplay=async()=>{
-    if(!selectedClip||!selectedReplayAngle){setNotice('Choose a saved replay clip first.');return;}
+  const takeReplay=async(clipOverride?:ReplayClip,angleOverride?:ReplayAngle)=>{
+    const clip=clipOverride??selectedClip;
+    const angle=angleOverride??selectedReplayAngle;
+    if(!clip||!angle){setNotice('Choose a saved replay clip first.');return;}
     setReplayTakeBusy(true);
     setReplayTakeError(null);
     try{
       setNotice('Preparing replay for PRISM overlay…');
-      const videoUrl=await ensureReplayUrl(selectedClip,selectedReplayAngle);
+      const videoUrl=await ensureReplayUrl(clip,angle);
       const stingMs=1100;
-      const durationMs=Math.min(120000,Math.max(2500,Math.round(stingMs+(selectedClip.durationSec*1000/Math.max(speed,.25))+800)));
+      const durationMs=Math.min(120000,Math.max(2500,Math.round(stingMs+(clip.durationSec*1000/Math.max(speed,.25))+800)));
       const {error:commandError}=await supabase.rpc('ips_broadcast_program_command',{
         p_match_id:matchId,
         p_command:{
@@ -223,11 +225,11 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
           payload:{replay:{
             videoUrl,
             speed,
-            title:selectedClip.title,
-            kind:selectedClip.kind,
-            angle:selectedReplayAngle.label,
-            clipId:selectedClip.id,
-            durationSec:selectedClip.durationSec,
+            title:clip.title,
+            kind:clip.kind,
+            angle:angle.label,
+            clipId:clip.id,
+            durationSec:clip.durationSec,
             stingMs
           }}
         }
@@ -235,8 +237,8 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
       if(commandError)throw commandError;
       setProgramMode('REPLAY');
       setReadyClipId(null);
-      channelRef.current?.postMessage({type:'REPLAY',clipId:selectedClip.id,url:selectedReplayAngle.url,speed,title:selectedClip.title,kind:selectedClip.kind,angle:selectedReplayAngle.label});
-      setNotice('REPLAY ON AIR · '+selectedReplayAngle.label+' · '+speed+'×');
+      channelRef.current?.postMessage({type:'REPLAY',clipId:clip.id,url:angle.url,speed,title:clip.title,kind:clip.kind,angle:angle.label});
+      setNotice('REPLAY ON AIR · '+angle.label+' · '+speed+'×');
       window.setTimeout(()=>setProgramMode('LIVE'),durationMs);
     }catch(e:any){
       const message=e?.message||'Replay could not be taken to air.';
@@ -249,7 +251,7 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
   const returnLive=async()=>{
     setProgramMode('LIVE');
     channelRef.current?.postMessage({type:'LIVE'});
-    await supabase.rpc('ips_broadcast_program_command',{p_match_id:matchId,p_command:{type:'CLEAR_TEMPORARY'}}).catch(()=>{});
+    try{await supabase.rpc('ips_broadcast_program_command',{p_match_id:matchId,p_command:{type:'CLEAR_TEMPORARY'}});}catch{}
     setNotice('Returned to LIVE.');
   };
   const openProgram=()=>{
@@ -308,8 +310,8 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
 
       <aside className="replay-operation">
         <section className="replay-panel preview-panel">
-          <header><div><span>REPLAY PREVIEW</span><h2>{selectedClip?.kind||'No clip selected'}</h2></div>{selectedReplayAngle&&<b>{selectedReplayAngle.label}</b>}</header>
-          <div className="replay-preview">{selectedReplayAngle?<video key={selectedReplayAngle.url} src={selectedReplayAngle.url} controls playsInline/>:<div>Capture an event to preview replay.</div>}</div>
+          <header><div><span>REPLAY PREVIEW</span><h2>{selectedClip?.kind||'No clip selected'}</h2></div>{selectedReplayAngle&&<b>{angle.label}</b>}</header>
+          <div className="replay-preview">{selectedReplayAngle?<video key={angle.url} src={angle.url} controls playsInline/>:<div>Capture an event to preview replay.</div>}</div>
           {selectedClip&&<div className="angle-tabs">{selectedClip.angles.map(a=><button className={a.slot===selectedReplayAngle?.slot?'active':''} key={a.slot} onClick={()=>setSelectedAngle(a.slot)}>CAM {a.slot+1}</button>)}</div>}
           <div className="speed-row"><span>SPEED</span>{[1,.75,.5,.25].map(v=><button className={speed===v?'active':''} key={v} onClick={()=>setSpeed(v)}>{v}×</button>)}</div>
         </section>
@@ -338,7 +340,11 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
         {replayTakeError&&<p className="replay-ready-error">{replayTakeError}</p>}
         <div className="ready-actions">
           <button className="dismiss" onClick={()=>setReadyClipId(null)}>KEEP FOR LATER</button>
-          <button className="take" disabled={replayTakeBusy} onClick={()=>{setSelectedClipId(readyClip.id);void takeReplay();}}>{replayTakeBusy?'PREPARING…':'TAKE REPLAY'}</button>
+          <button className="take" disabled={replayTakeBusy} onClick={()=>{
+            setSelectedClipId(readyClip.id);
+            const modalAngle=readyClip.angles.find(a=>a.slot===selectedAngle)??readyClip.angles[0];
+            void takeReplay(readyClip,modalAngle);
+          }}>{replayTakeBusy?'PREPARING…':'TAKE REPLAY'}</button>
         </div>
       </section>
     </div>}
