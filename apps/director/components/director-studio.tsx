@@ -148,8 +148,8 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
     setPlaylistName(p.name);setPlaylistInterval(p.rotation_interval_ms);setPlaylistSponsorIds(p.items.map(i=>i.sponsor_id));
   },[sponsorPlaylistId,sponsorPlaylists]);
 
-  const sponsorPayload=(placement=sponsorPlacement)=>{
-    if(!sponsorEnabled)return {};
+  const sponsorPayload=(placement=sponsorPlacement,force=false)=>{
+    if(!force&&!sponsorEnabled)return {};
     if(sponsorRotationEnabled&&selectedPlaylist?.items?.length){
       return {
         sponsor:{placement},
@@ -186,7 +186,71 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
     includeSponsorInRotation:includeSponsorInScorebar
   });
   const applyScorebar=()=>command({type:'TAKE',variantKey:'scorebar.default',persistent:true,payload:payloadFor({scorebar:scorebarSettings()},'scorebar')});
-  const applySponsoredScorebar=()=>{setSponsorEnabled(true);command({type:'TAKE',variantKey:'scorebar.default',persistent:true,payload:{scorebar:scorebarSettings(),...sponsorPayload('scorebar')}});};
+  const applySponsoredScorebar=()=>{setSponsorEnabled(true);command({type:'TAKE',variantKey:'scorebar.default',persistent:true,payload:{scorebar:scorebarSettings(),...sponsorPayload('scorebar',true)}});};
+
+  const consumeSponsorState=(data:any)=>{
+    const nextSponsors=(data?.sponsors??[]) as Sponsor[];
+    const nextPlaylists=(data?.playlists??[]) as SponsorPlaylist[];
+    setSponsors(nextSponsors);setSponsorPlaylists(nextPlaylists);
+    setSponsorId(current=>current&&nextSponsors.some(x=>x.id===current)?current:(nextSponsors.find(x=>x.status==='ACTIVE')?.id??nextSponsors[0]?.id??''));
+    setSponsorPlaylistId(current=>current&&nextPlaylists.some(x=>x.id===current)?current:(nextPlaylists[0]?.id??''));
+  };
+
+  const openSponsorEditor=(sponsor?:Sponsor)=>{
+    setSponsorDraft(sponsor?{id:sponsor.id,name:sponsor.name,message:sponsor.message||'SPONSORED BY',logo_url:sponsor.logo_url||'',status:sponsor.status,metadata:sponsor.metadata||{}}:{name:'',message:'SPONSORED BY',logo_url:'',status:'ACTIVE',metadata:{}});
+    setSponsorFile(null);setSponsorZoom(1);setSponsorPosX(50);setSponsorPosY(50);setSponsorFit('contain');
+  };
+
+  const saveSponsor=async()=>{
+    if(!sponsorDraft)return;
+    if(!sponsorDraft.name.trim()){setError('Sponsor name is required.');return;}
+    const tournamentId=match.tournament?.id||match.tournament_id;
+    if(!tournamentId){setError('Tournament is unavailable for this match.');return;}
+    setSponsorSaving(true);setError(null);
+    try{
+      let logoUrl=sponsorDraft.logo_url||null;
+      if(sponsorFile){
+        if(!['image/png','image/jpeg','image/webp','image/svg+xml'].includes(sponsorFile.type))throw new Error('Use PNG, JPG/JPEG, WEBP or SVG.');
+        if(sponsorFile.size>10*1024*1024)throw new Error('Sponsor image must be 10 MB or smaller.');
+        const blob=await adjustedSponsorBlob(sponsorFile,sponsorZoom,sponsorPosX,sponsorPosY,sponsorFit);
+        const objectPath='sponsors/'+tournamentId+'/'+crypto.randomUUID()+'-'+safeFilePart(sponsorDraft.name)+'.png';
+        const {error:uploadError}=await supabase.storage.from('ips-media').upload(objectPath,blob,{contentType:'image/png',upsert:false});
+        if(uploadError)throw uploadError;
+        logoUrl=supabase.storage.from('ips-media').getPublicUrl(objectPath).data.publicUrl;
+      }
+      const {data,error}=await supabase.rpc('ips_broadcast_save_sponsor',{
+        p_match_id:matchId,p_sponsor_id:sponsorDraft.id??null,p_name:sponsorDraft.name.trim(),
+        p_message:sponsorDraft.message.trim()||'SPONSORED BY',p_logo_url:logoUrl,p_status:sponsorDraft.status,
+        p_metadata:{...(sponsorDraft.metadata||{}),image_fit:sponsorFit,image_zoom:sponsorZoom,image_position:{x:sponsorPosX,y:sponsorPosY}}
+      });
+      if(error)throw error;
+      consumeSponsorState(data);setSponsorDraft(null);setSponsorFile(null);setNotice('Sponsor saved.');
+    }catch(reason:any){setError(reason?.message||'Sponsor could not be saved.');}
+    finally{setSponsorSaving(false);}
+  };
+
+  const setSponsorStatus=async(id:string,status:'ACTIVE'|'INACTIVE'|'ARCHIVED')=>{
+    setError(null);
+    const {data,error}=await supabase.rpc('ips_broadcast_set_sponsor_status',{p_match_id:matchId,p_sponsor_id:id,p_status:status});
+    if(error){setError(error.message);return;}
+    consumeSponsorState(data);setNotice(status==='ARCHIVED'?'Sponsor archived.':'Sponsor '+status.toLowerCase()+'.');
+  };
+
+  const togglePlaylistSponsor=(id:string)=>setPlaylistSponsorIds(ids=>ids.includes(id)?ids.filter(x=>x!==id):[...ids,id]);
+  const saveSponsorPlaylist=async()=>{
+    setError(null);
+    const {data,error}=await supabase.rpc('ips_broadcast_save_sponsor_playlist',{
+      p_match_id:matchId,p_playlist_id:sponsorPlaylistId||null,p_name:playlistName.trim()||'Sponsor Rotation',
+      p_rotation_interval_ms:playlistInterval,p_sponsor_ids:playlistSponsorIds
+    });
+    if(error){setError(error.message);return;}
+    consumeSponsorState(data);setNotice('Sponsor playlist saved.');
+  };
+
+  const sponsorScenePayload=(placement=sponsorPlacement)=>sponsorPayload(placement,true);
+  const previewSponsorFullscreen=()=>{setSelected('sponsor.fullscreen');command({type:'PREVIEW',variantKey:'sponsor.fullscreen',payload:sponsorScenePayload('fullscreen')});};
+  const takeSponsorFullscreen=()=>command({type:'TAKE',variantKey:'sponsor.fullscreen',persistent:false,payload:sponsorScenePayload('fullscreen'),...(durationOverrideMs?{durationMs:durationOverrideMs}:{})});
+  const queueSponsorFullscreen=()=>command({type:'QUEUE_ADD',variantKey:'sponsor.fullscreen',payload:sponsorScenePayload('fullscreen')});
 
   const loadRelease=()=>{
     if(!releaseChoice||releaseChoice===snap.release?.id)return;
