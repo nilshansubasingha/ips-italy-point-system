@@ -1,123 +1,133 @@
 'use client';
 
-import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
+import {CSSProperties,useCallback,useEffect,useMemo,useState} from 'react';
 import {createBroadcastClient} from '@/lib/supabase';
 
-type Team={id:string;name:string;short_name?:string|null;logo_url?:string|null};
-type Batter={player_id:string;name:string;runs:number;balls:number;fours:number;sixes:number;dismissed:boolean;dismissal?:string};
-type Bowler={player_id:string;name:string;overs:string;runs:number;wickets:number;legal_balls:number};
-type Innings={innings_no:number;status:string;batting_team:Team;bowling_team:Team;runs:number;wickets:number;legal_balls:number;overs:string;target_runs:number|null;batting:Batter[];bowling:Bowler[]};
-type Scorecard={match:{id:string;code:string;number:number;status:string;stage:string;round_label?:string|null;tournament_name:string;overs_per_innings:number;balls_per_over:number;home_team:Team;away_team:Team};result_text?:string|null;innings:Innings[]};
-type BroadcastState={active_graphic:string;mode:'FULLSCREEN'|'LOWER_THIRD'|'SIDE_PANEL'|'COMPACT';payload:Record<string,any>;visible:boolean;duration_ms:number;transition:string;sequence_no:number};
+type J=Record<string,any>;
+type Snapshot={match_id:string;session:J;program:J;release:J;data:J;signal:J};
 
-const demo:Scorecard={match:{id:'demo',code:'IPS-DEMO',number:1,status:'LIVE',stage:'GROUP',tournament_name:'IPS PREMIER CRICKET',overs_per_innings:15,balls_per_over:6,home_team:{id:'a',name:'Torino Lions',short_name:'TOR'},away_team:{id:'b',name:'Milano Warriors',short_name:'MIL'}},innings:[{innings_no:2,status:'OPEN',batting_team:{id:'a',name:'Torino Lions',short_name:'TOR'},bowling_team:{id:'b',name:'Milano Warriors',short_name:'MIL'},runs:126,wickets:4,legal_balls:75,overs:'12.3',target_runs:161,batting:[{player_id:'1',name:'A. Silva',runs:44,balls:28,fours:5,sixes:2,dismissed:false},{player_id:'2',name:'R. Perera',runs:18,balls:11,fours:2,sixes:1,dismissed:false}],bowling:[{player_id:'3',name:'M. Rossi',overs:'2.3',runs:21,wickets:2,legal_balls:15}]}]};
-const initialBroadcast:BroadcastState={active_graphic:'NONE',mode:'COMPACT',payload:{},visible:false,duration_ms:5000,transition:'AUTO',sequence_no:0};
-
-function initials(name:string){return name.split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]?.toUpperCase()).join('')||'IPS'}
-function TeamMark({team}:{team:Team}){return team.logo_url?<img className="team-logo" src={team.logo_url} alt=""/>:<span className="team-fallback">{initials(team.short_name||team.name)}</span>}
-function rate(runs:number,balls:number,bpo=6){return balls?((runs*bpo)/balls).toFixed(2):'0.00'}
-
-function Scorebar({data}:{data:Scorecard}){
-  const innings=data.innings.at(-1);
-  if(!innings)return null;
-  const striker=innings.batting.filter(x=>!x.dismissed).sort((a,b)=>b.balls-a.balls)[0];
-  const partner=innings.batting.filter(x=>!x.dismissed&&x.player_id!==striker?.player_id).sort((a,b)=>b.balls-a.balls)[0];
-  const bowler=innings.bowling.at(-1);
-  const target=innings.target_runs;
-  const maxBalls=data.match.overs_per_innings*data.match.balls_per_over;
-  const need=target?Math.max(target-innings.runs,0):null;
-  const ballsLeft=Math.max(maxBalls-innings.legal_balls,0);
-  const crr=rate(innings.runs,innings.legal_balls,data.match.balls_per_over);
-  const rrr=need!==null&&ballsLeft?((need*data.match.balls_per_over)/ballsLeft).toFixed(2):null;
-  return <div className="scorebar-shell">
-    <div className="scorebrand"><span className="ips-glyph">IPS</span><small>{data.match.tournament_name}</small></div>
-    <div className="team-score"><TeamMark team={innings.batting_team}/><div><small>{innings.batting_team.short_name||innings.batting_team.name}</small><strong>{innings.runs}<i>/</i>{innings.wickets}</strong></div></div>
-    <div className="overs"><strong>{innings.overs}</strong><span>OVERS</span></div>
-    <div className="players">
-      <div className="player-line active"><span>●</span><b>{striker?.name||'BATTER'}</b><strong>{striker?.runs??0}<small>{striker?.balls??0}</small></strong></div>
-      <div className="player-line"><span>○</span><b>{partner?.name||'NON-STRIKER'}</b><strong>{partner?.runs??0}<small>{partner?.balls??0}</small></strong></div>
-    </div>
-    <div className="bowler"><small>BOWLER</small><b>{bowler?.name||'—'}</b><strong>{bowler?bowler.wickets+'/'+bowler.runs:'0/0'} <i>{bowler?.overs||'0.0'}</i></strong></div>
-    <div className="equation">{need!==null?<><small>NEED</small><strong>{need} <i>FROM {ballsLeft}</i></strong><span>RRR {rrr}</span></>:<><small>CURRENT RR</small><strong>{crr}</strong><span>{data.match.stage}</span></>}</div>
-    <div className="scorebar-ticker"><span>CRR <b>{crr}</b></span>{target&&<span>TARGET <b>{target}</b></span>}<em>{data.match.code}</em></div>
-  </div>;
+function getPath(root:any,path:string,scope?:J){
+  if(path==='item')return scope?.item;
+  const source=path.startsWith('item.')?scope?.item:root;
+  const clean=path.startsWith('item.')?path.slice(5):path;
+  return clean.split('.').filter(Boolean).reduce((v,k)=>v==null?undefined:v[k],source);
 }
-
-function HeroEvent({state,data}:{state:BroadcastState;data:Scorecard}){
-  if(!state.visible||state.active_graphic==='NONE')return null;
-  const p=state.payload||{};
-  const innings=data.innings.at(-1);
-  const g=state.active_graphic;
-  const title=p.title||g.replaceAll('_',' ');
-  const value=p.value||((g==='TARGET'&&innings?.target_runs)||'');
-  const subtitle=p.subtitle||p.player||p.team||'';
-  const eventClass=['FOUR','SIX','WICKET','HAT_TRICK','CHAMPIONS','RESULT'].includes(g)?'major':'';
-  if(g==='BATTING_SCORECARD'||g==='BOWLING_SCORECARD'||g==='SCORECARD'){
-    return <div className={'graphic-layer fullscreen '+eventClass}>
-      <div className="fs-frame scorecard-frame">
-        <header><div><span>{data.match.tournament_name}</span><h2>{g.replaceAll('_',' ')}</h2></div><b>{innings?.batting_team.name}</b></header>
-        <div className="tv-table">
-          {(g==='BOWLING_SCORECARD'?innings?.bowling:innings?.batting)?.slice(0,11).map((x:any)=><div key={x.player_id}><strong>{x.name}</strong><span>{g==='BOWLING_SCORECARD'?x.overs+'  '+x.runs+'-'+x.wickets:x.runs+'  '+x.balls+'  '+x.fours+'x4  '+x.sixes+'x6'}</span></div>)}
-        </div>
-        <footer>{innings?.runs}/{innings?.wickets} · {innings?.overs} OVERS</footer>
-      </div>
-    </div>
-  }
-  if(g==='MATCH_INTRO'||g==='VS'){
-    return <div className="graphic-layer fullscreen major"><div className="versus">
-      <div><TeamMark team={data.match.home_team}/><strong>{data.match.home_team.name}</strong></div>
-      <section><span>{data.match.tournament_name}</span><b>VS</b><small>{data.match.stage} · MATCH {data.match.number}</small></section>
-      <div><TeamMark team={data.match.away_team}/><strong>{data.match.away_team.name}</strong></div>
-    </div></div>
-  }
-  if(g==='PLAYER_INTRO'||g==='BATTER_INTRO'||g==='BOWLER_INTRO'||g==='PLAYER_STATS'||g==='PLAYER_OF_MATCH'){
-    return <div className={'graphic-layer '+(state.mode==='FULLSCREEN'?'fullscreen':'lowerthird')}>
-      <div className="player-card"><div className="portrait">{p.portrait?<img src={p.portrait} alt=""/>:<span>{initials(p.player||subtitle||'IPS')}</span>}</div><div className="player-copy"><small>{p.kicker||g.replaceAll('_',' ')}</small><h2>{p.player||subtitle||'PLAYER NAME'}</h2><p>{p.detail||p.team||''}</p><div className="stat-row">{p.stat1&&<b>{p.stat1}</b>}{p.stat2&&<b>{p.stat2}</b>}{p.stat3&&<b>{p.stat3}</b>}</div></div></div>
-    </div>
-  }
-  return <div className={'graphic-layer '+(state.mode==='FULLSCREEN'?'fullscreen':'compact')+' '+eventClass}>
-    <div className="event-card"><span className="event-kicker">{p.kicker||data.match.tournament_name}</span><strong className="event-value">{value}</strong><h1>{title}</h1><p>{subtitle}</p><i>IPS</i></div>
-  </div>;
+function formatValue(value:any,format?:string){
+  if(value==null)return '';
+  if(format==='INTEGER')return String(Math.round(Number(value)||0));
+  if(format==='DECIMAL_1')return Number(value||0).toFixed(1);
+  if(format==='DECIMAL_2')return Number(value||0).toFixed(2);
+  if(format==='UPPER')return String(value).toUpperCase();
+  return String(value);
 }
-
-export function BroadcastOverlay({matchId,preview=false}:{matchId?:string;preview?:boolean}){
-  const [data,setData]=useState<Scorecard>(demo);
-  const [state,setState]=useState<BroadcastState>(preview?{...initialBroadcast,visible:true,active_graphic:'SIX',mode:'FULLSCREEN',payload:{title:'SIX',value:'6',subtitle:'A. SILVA'}}:initialBroadcast);
-  const timer=useRef<ReturnType<typeof setTimeout>|null>(null);
+function bindElement(element:J,data:J,scope?:J){
+  const next=JSON.parse(JSON.stringify(element));
+  for(const b of element.bindings||[]){
+    const raw=getPath(data,b.path,scope);
+    const picked=(raw===undefined||raw===null||raw==='')?b.fallback:raw;
+    const final=String(b.prefix||'')+formatValue(picked,b.format)+String(b.suffix||'');
+    const parts=String(b.property||'').split('.');
+    let cursor=next;
+    for(let i=0;i<parts.length-1;i++){cursor[parts[i]]??={};cursor=cursor[parts[i]]}
+    if(parts.length)cursor[parts[parts.length-1]]=final;
+  }
+  return next;
+}
+function fillCss(fill:any){
+  if(!fill)return 'transparent';
+  if(fill.type==='SOLID')return fill.color||'transparent';
+  const stops=(fill.stops||[]).map((s:any)=>String(s.color)+' '+String(Math.round((s.offset??0)*100))+'%').join(',');
+  if(fill.type==='LINEAR_GRADIENT')return 'linear-gradient('+String(fill.angle??90)+'deg,'+stops+')';
+  if(fill.type==='RADIAL_GRADIENT')return 'radial-gradient(circle,'+stops+')';
+  return fill.color||'transparent';
+}
+function fromTransform(preset?:string){
+  if(preset==='SLIDE_LEFT')return 'translateX(-90px)';
+  if(preset==='SLIDE_RIGHT')return 'translateX(90px)';
+  if(preset==='SLIDE_UP')return 'translateY(70px)';
+  if(preset==='SCALE_POP'||preset==='IMPACT'||preset==='BALL_IMPACT')return 'scale(.75)';
+  return 'none';
+}
+function baseStyle(e:J):CSSProperties{
+  const t=e.transform||{},s=e.style||{},typ=e.text?.typography||{};
+  const radius=s.corners?String(s.corners.tl??0)+'px '+String(s.corners.tr??0)+'px '+String(s.corners.br??0)+'px '+String(s.corners.bl??0)+'px':undefined;
+  const style:any={
+    position:'absolute',left:t.x??0,top:t.y??0,width:t.width??0,height:t.height??0,zIndex:e.zIndex??1,
+    transform:'rotate('+String(t.rotation??0)+'deg)',background:fillCss(s.fill),borderRadius:radius,
+    border:s.stroke?String(s.stroke.width??1)+'px solid '+String(s.stroke.color??'white'):undefined,
+    boxShadow:s.glow?'0 0 '+String(s.glow)+'px currentColor':undefined,opacity:s.opacity??1,overflow:'hidden'
+  };
+  if(e.type==='TEXT'){
+    Object.assign(style,{color:s.fill?.type==='SOLID'?s.fill.color:undefined,display:'flex',
+      alignItems:typ.verticalAlign==='TOP'?'flex-start':typ.verticalAlign==='BOTTOM'?'flex-end':'center',
+      justifyContent:typ.align==='CENTER'?'center':typ.align==='RIGHT'?'flex-end':'flex-start',
+      padding:typ.padding??0,fontFamily:typ.fontFamily||undefined,fontWeight:typ.fontWeight||undefined,
+      fontSize:typ.fontSize||undefined,lineHeight:typ.lineHeight||undefined,letterSpacing:typ.letterSpacing||undefined,
+      textAlign:String(typ.align||'LEFT').toLowerCase(),textTransform:typ.case==='UPPER'?'uppercase':typ.case==='LOWER'?'lowercase':undefined,
+      whiteSpace:typ.wrap==='WRAP'?'normal':'nowrap',textOverflow:typ.wrap==='SHRINK'?'ellipsis':undefined});
+  }
+  return style;
+}
+function effectStyle(kind?:string):CSSProperties{
+  if(kind==='IMPACT_FLASH')return {background:'radial-gradient(circle,rgba(255,255,255,.9),rgba(255,255,255,0) 58%)',mixBlendMode:'screen'};
+  if(kind==='ENERGY_RINGS')return {border:'18px solid rgba(255,255,255,.16)',borderRadius:'50%',boxShadow:'0 0 0 70px rgba(255,255,255,.05),0 0 0 150px rgba(255,255,255,.025)'};
+  if(kind==='BALL_STREAK'||kind==='SPEED_STREAKS')return {background:'linear-gradient(110deg,transparent 15%,rgba(255,255,255,.4) 48%,transparent 52%)',filter:'blur(2px)'};
+  if(kind==='STUMPS')return {background:'repeating-linear-gradient(90deg,transparent 0 32%,rgba(255,255,255,.75) 33% 37%,transparent 38% 65%)'};
+  if(kind==='SHARDS')return {background:'conic-gradient(from 20deg,transparent,rgba(255,255,255,.16),transparent,rgba(255,255,255,.08),transparent)'};
+  if(kind==='LIGHT_SWEEP')return {background:'linear-gradient(110deg,transparent 35%,rgba(255,255,255,.25) 48%,transparent 60%)',mixBlendMode:'screen'};
+  if(kind==='PARTICLE_DEPTH')return {backgroundImage:'radial-gradient(circle,rgba(255,255,255,.55) 0 1px,transparent 2px)',backgroundSize:'44px 44px',opacity:.45};
+  return {};
+}
+function PrismElement({raw,data,scope}:{raw:J;data:J;scope?:J}){
+  const e=bindElement(raw,data,scope);
+  if(e.type==='REPEATER'){
+    const items=(getPath(data,e.repeat?.path,scope)||[]).slice(0,e.repeat?.limit??99);
+    const gap=e.repeat?.gap??0,iw=e.repeat?.itemWidth??e.transform?.width??0,ih=e.repeat?.itemHeight??50;
+    return <div style={baseStyle(e)}>{items.map((item:any,i:number)=><div key={item.id||i} style={{position:'absolute',left:e.repeat?.direction==='HORIZONTAL'?i*(iw+gap):0,top:e.repeat?.direction==='HORIZONTAL'?0:i*(ih+gap),width:iw,height:ih}}>
+      {(e.repeat?.template||[]).map((child:any,j:number)=><PrismElement key={child.id||j} raw={child} data={data} scope={{item,index:i}}/>)}
+    </div>)}</div>;
+  }
+  const a=e.animation||{};
+  const css:any={...baseStyle(e),animation:'prism-enter '+String(a.durationMs??350)+'ms cubic-bezier(.16,.84,.25,1) '+String(a.delayMs??0)+'ms both','--prism-from':fromTransform(a.enterPreset)};
+  if(e.type==='TEXT')return <div style={css}>{e.text?.value??''}</div>;
+  if(e.type==='IMAGE')return e.asset?.url?<img src={e.asset.url} alt="" style={{...css,objectFit:String(e.asset.fit||'CONTAIN').toLowerCase(),objectPosition:e.asset.objectPosition||'50% 50%'}}/>:<div style={css}/>;
+  if(e.type==='EFFECT'||e.type==='PARTICLES')return <div style={{...css,...effectStyle(e.effect?.kind)}}/>;
+  return <div style={css}/>;
+}
+function Variant({variantKey,manifest,data,instance}:{variantKey:string;manifest:J;data:J;instance?:J}){
+  const meta=manifest?.variants?.[variantKey],doc=meta?.document;
+  if(!doc)return null;
+  const merged={...data,trigger:instance?.payload||{}};
+  const elements=[...(doc.elements||[])].sort((a:any,b:any)=>(a.zIndex??0)-(b.zIndex??0));
+  return <div className="prism-canvas">{elements.map((e:any,i:number)=><PrismElement key={e.id||i} raw={e} data={merged}/>)}</div>;
+}
+export function BroadcastOverlay({matchId}:{matchId?:string}){
+  const [snapshot,setSnapshot]=useState<Snapshot|null>(null);
+  const [error,setError]=useState('');
   const supabase=useMemo(()=>matchId?createBroadcastClient():null,[matchId]);
-
   const refresh=useCallback(async()=>{
     if(!supabase||!matchId)return;
-    const [{data:score,error:scoreError},{data:control,error:controlError}]=await Promise.all([
-      supabase.rpc('ips_public_match_scorecard',{p_match_id:matchId}),
-      supabase.from('match_broadcast_state').select('*').eq('match_id',matchId).maybeSingle()
-    ]);
-    if(!scoreError&&score)setData(score as Scorecard);
-    if(!controlError&&control)setState(control as BroadcastState);
+    const result=await supabase.rpc('ips_broadcast_program_snapshot',{p_match_id:matchId});
+    if(result.error){setError(result.error.message);return}
+    setSnapshot(result.data as Snapshot);setError('');
   },[supabase,matchId]);
-
-  useEffect(()=>{refresh()},[refresh]);
+  useEffect(()=>{void refresh()},[refresh]);
   useEffect(()=>{
     if(!supabase||!matchId)return;
-    const channel=supabase.channel('ips-broadcast-'+matchId)
-      .on('postgres_changes',{event:'*',schema:'public',table:'match_live_state',filter:'match_id=eq.'+matchId},refresh)
-      .on('postgres_changes',{event:'*',schema:'public',table:'match_broadcast_state',filter:'match_id=eq.'+matchId},refresh)
+    const ch=supabase.channel('prism-'+matchId)
+      .on('postgres_changes',{event:'*',schema:'public',table:'broadcast_realtime_signals',filter:'match_id=eq.'+matchId},()=>void refresh())
+      .on('postgres_changes',{event:'*',schema:'public',table:'match_live_state',filter:'match_id=eq.'+matchId},()=>void refresh())
       .subscribe();
-    return()=>{void supabase.removeChannel(channel)};
+    return()=>{void supabase.removeChannel(ch)};
   },[supabase,matchId,refresh]);
 
-  useEffect(()=>{
-    if(timer.current)clearTimeout(timer.current);
-    if(state.visible&&state.duration_ms>0&&state.active_graphic!=='NONE'&&!['SCORECARD','BATTING_SCORECARD','BOWLING_SCORECARD','MATCH_INTRO','VS'].includes(state.active_graphic)){
-      timer.current=setTimeout(()=>setState(s=>({...s,visible:false})),state.duration_ms);
-    }
-    return()=>{if(timer.current)clearTimeout(timer.current)};
-  },[state.sequence_no,state.visible,state.duration_ms,state.active_graphic]);
-
-  return <main className="broadcast-stage">
-    <div className="broadcast-bug"><b>IPS</b><span>LIVE</span></div>
-    <HeroEvent state={state} data={data}/>
-    <Scorebar data={data}/>
-    {preview&&<div className="preview-label">DIRECTOR PREVIEW · DEMO DATA</div>}
-  </main>;
+  if(!matchId)return <main className="prism-empty"><b>IPS PRISM</b><span>Add ?match=&lt;match-id&gt; to the overlay URL.</span></main>;
+  if(error)return <main className="prism-empty"><b>OVERLAY OFFLINE</b><span>{error}</span></main>;
+  if(!snapshot)return <main className="prism-empty"><b>IPS PRISM</b><span>Connecting to broadcast state…</span></main>;
+  if(snapshot.session?.clean_feed)return <main className="prism-output"/>;
+  const now=Date.now();
+  const layers=(snapshot.program?.active_layers||[]).filter((x:J)=>!x.expiresAt||Date.parse(x.expiresAt)>now).sort((a:J,b:J)=>(a.priority??0)-(b.priority??0));
+  const hideScorebar=layers.some((x:J)=>snapshot.release?.manifest?.variants?.[x.variantKey]?.conflictBehavior==='HIDE_SCOREBAR');
+  const visible=hideScorebar?layers.filter((x:J)=>x.replacementGroup!=='scorebar'):layers;
+  return <main className="prism-output">{visible.map((layer:J)=><Variant key={layer.instanceId||layer.variantKey} variantKey={layer.variantKey} manifest={snapshot.release?.manifest||{}} data={snapshot.data||{}} instance={layer}/>)}</main>;
 }
