@@ -207,9 +207,11 @@ function Scorebar({data,payload,startedAt,now}:{data:J;payload:J;startedAt?:stri
           <div className="tv-bowler-copy">
             <span>BOWLER</span>
             <b>{cur.bowler?.name||'—'}</b>
-            <small>{cur.bowler?.overs||'0.0'} OV</small>
           </div>
-          <strong className="tv-bowler-figures">{cur.bowler?.wickets??0}/{cur.bowler?.runs??0}</strong>
+          <div className="tv-bowler-figure-stack">
+            <small>{cur.bowler?.overs||'0.0'} OV</small>
+            <strong className="tv-bowler-figures">{cur.bowler?.wickets??0}/{cur.bowler?.runs??0}</strong>
+          </div>
         </div>
         <div className="tv-bowler-over">
           <em>THIS OVER</em>
