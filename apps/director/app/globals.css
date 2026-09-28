@@ -57,3 +57,9 @@ button,input,select{font:inherit}button{cursor:pointer}
 
 @media(max-width:1000px){.sponsor-workspace{grid-template-columns:1fr}.live-config-strip{grid-template-columns:1fr 1fr}.sponsor-live-state{border-left:0;padding-left:0}}
 @media(max-width:720px){.live-config-strip{grid-template-columns:1fr}.sponsor-controls{grid-template-columns:1fr}.sponsor-preview{grid-template-columns:1fr}.sponsor-preview>div{grid-row:auto;width:100%}.sponsor-action-grid{grid-template-columns:1fr}}
+
+
+/* Manual auto-hide override for temporary graphics */
+.duration-control{height:29px;display:flex;align-items:center;gap:6px;padding:0 7px;border:1px solid #263c46;border-radius:6px;background:#07151c;color:#6f8790}
+.duration-control span{font-size:5px;font-weight:950;letter-spacing:.11em;white-space:nowrap}
+.duration-control select{height:22px;border:0;background:#0b1b23;color:#c7d4d9;font-size:6px;font-weight:900;outline:0;border-radius:4px;padding:0 5px}
