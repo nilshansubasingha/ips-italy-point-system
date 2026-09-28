@@ -7,7 +7,7 @@ import {createClient} from '@/lib/supabase/client';
 type SlotState={slot:number;deviceId:string;label:string;status:'IDLE'|'LIVE'|'ERROR';error?:string};
 type Chunk={blob:Blob;at:number};
 type BufferState={header:Blob|null;chunks:Chunk[];mime:string;startedAt:number};
-type ReplayAngle={slot:number;label:string;url:string;mime:string};
+type ReplayAngle={slot:number;label:string;url:string;mime:string;blob:Blob;publicUrl?:string};
 type ReplayClip={id:string;kind:'FOUR'|'SIX'|'WICKET'|'MANUAL';source:'SCORER'|'MANUAL';title:string;createdAt:number;durationSec:number;angles:ReplayAngle[]};
 
 const SLOT_COUNT=4;
@@ -35,6 +35,9 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
   const [notice,setNotice]=useState('Enable cameras, assign angles, then start the rolling buffers.');
   const [scorerLink,setScorerLink]=useState<'CONNECTING'|'LIVE'|'UNAVAILABLE'>('CONNECTING');
   const [programPeer,setProgramPeer]=useState<'WAITING'|'CONNECTED'|'NO LIVE CAMERA'>('WAITING');
+  const [readyClipId,setReadyClipId]=useState<string|null>(null);
+  const [replayTakeBusy,setReplayTakeBusy]=useState(false);
+  const [replayTakeError,setReplayTakeError]=useState<string|null>(null);
 
   const streamsRef=useRef<(MediaStream|null)[]>(Array(SLOT_COUNT).fill(null));
   const recordersRef=useRef<(MediaRecorder|null)[]>(Array(SLOT_COUNT).fill(null));
@@ -116,14 +119,16 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
       const recent=buf.chunks.filter(c=>c.at>=cutoff&&c.blob!==buf.header).map(c=>c.blob);
       if(!recent.length)continue;
       const blob=new Blob([buf.header,...recent],{type:buf.mime||'video/webm'});
-      angles.push({slot:i,label:slots[i]?.label||'CAM '+(i+1),url:URL.createObjectURL(blob),mime:blob.type});
+      angles.push({slot:i,label:slots[i]?.label||'CAM '+(i+1),url:URL.createObjectURL(blob),mime:blob.type,blob});
     }
     if(!angles.length){setNotice('Replay marker received, but no rolling camera buffer is armed.');return;}
     const clip:ReplayClip={id:crypto.randomUUID(),kind,source,title,createdAt:now,durationSec:preRollSec,angles};
     setClips(prev=>[clip,...prev].slice(0,24));
     setSelectedClipId(clip.id);
     setSelectedAngle(angles[0].slot);
-    setNotice(kind+' replay captured from '+angles.length+' angle'+(angles.length===1?'':'s')+'.');
+    setReadyClipId(clip.id);
+    setReplayTakeError(null);
+    setNotice('REPLAY READY · '+kind+' · '+angles.length+' angle'+(angles.length===1?'':'s')+'.');
   },[slots]);
 
   const markEvent=useCallback((kind:ReplayClip['kind'],source:ReplayClip['source']='MANUAL',subtitle?:string)=>{
@@ -184,16 +189,67 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
 
   const selectedClip=clips.find(c=>c.id===selectedClipId)??clips[0]??null;
   const selectedReplayAngle=selectedClip?.angles.find(a=>a.slot===selectedAngle)??selectedClip?.angles[0]??null;
+  const readyClip=clips.find(c=>c.id===readyClipId)??null;
 
-  const takeReplay=()=>{
-    if(!selectedClip||!selectedReplayAngle){setNotice('Choose a saved replay clip first.');return;}
-    setProgramMode('REPLAY');
-    channelRef.current?.postMessage({type:'REPLAY',clipId:selectedClip.id,url:selectedReplayAngle.url,speed,title:selectedClip.title,kind:selectedClip.kind,angle:selectedReplayAngle.label});
-    setNotice('REPLAY ON AIR · '+selectedReplayAngle.label+' · '+speed+'×');
+  const ensureReplayUrl=async(clip:ReplayClip,angle:ReplayAngle)=>{
+    if(angle.publicUrl)return angle.publicUrl;
+    const isMp4=angle.mime.startsWith('video/mp4');
+    const ext=isMp4?'mp4':'webm';
+    const contentType=isMp4?'video/mp4':'video/webm';
+    const storagePath=matchId+'/'+clip.id+'/cam-'+(angle.slot+1)+'.'+ext;
+    const {error:uploadError}=await supabase.storage.from('ips-replay').upload(storagePath,angle.blob,{contentType,upsert:true,cacheControl:'3600'});
+    if(uploadError)throw uploadError;
+    const {data:publicData}=supabase.storage.from('ips-replay').getPublicUrl(storagePath);
+    const publicUrl=publicData.publicUrl;
+    setClips(prev=>prev.map(c=>c.id===clip.id?{...c,angles:c.angles.map(a=>a.slot===angle.slot?{...a,publicUrl}:a)}:c));
+    return publicUrl;
   };
-  const returnLive=()=>{
+
+  const takeReplay=async()=>{
+    if(!selectedClip||!selectedReplayAngle){setNotice('Choose a saved replay clip first.');return;}
+    setReplayTakeBusy(true);
+    setReplayTakeError(null);
+    try{
+      setNotice('Preparing replay for PRISM overlay…');
+      const videoUrl=await ensureReplayUrl(selectedClip,selectedReplayAngle);
+      const stingMs=1100;
+      const durationMs=Math.min(120000,Math.max(2500,Math.round(stingMs+(selectedClip.durationSec*1000/Math.max(speed,.25))+800)));
+      const {error:commandError}=await supabase.rpc('ips_broadcast_program_command',{
+        p_match_id:matchId,
+        p_command:{
+          type:'TAKE',
+          variantKey:'replay.fullscreen',
+          durationMs,
+          payload:{replay:{
+            videoUrl,
+            speed,
+            title:selectedClip.title,
+            kind:selectedClip.kind,
+            angle:selectedReplayAngle.label,
+            clipId:selectedClip.id,
+            durationSec:selectedClip.durationSec,
+            stingMs
+          }}
+        }
+      });
+      if(commandError)throw commandError;
+      setProgramMode('REPLAY');
+      setReadyClipId(null);
+      channelRef.current?.postMessage({type:'REPLAY',clipId:selectedClip.id,url:selectedReplayAngle.url,speed,title:selectedClip.title,kind:selectedClip.kind,angle:selectedReplayAngle.label});
+      setNotice('REPLAY ON AIR · '+selectedReplayAngle.label+' · '+speed+'×');
+      window.setTimeout(()=>setProgramMode('LIVE'),durationMs);
+    }catch(e:any){
+      const message=e?.message||'Replay could not be taken to air.';
+      setReplayTakeError(message);
+      setNotice('Replay take failed: '+message);
+    }finally{
+      setReplayTakeBusy(false);
+    }
+  };
+  const returnLive=async()=>{
     setProgramMode('LIVE');
     channelRef.current?.postMessage({type:'LIVE'});
+    await supabase.rpc('ips_broadcast_program_command',{p_match_id:matchId,p_command:{type:'CLEAR_TEMPORARY'}}).catch(()=>{});
     setNotice('Returned to LIVE.');
   };
   const openProgram=()=>{
@@ -260,7 +316,7 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
 
         <section className="replay-panel take-panel">
           <header><span>PROGRAM CONTROL</span><b>{programMode}</b></header>
-          <button className="take-replay" disabled={!selectedReplayAngle} onClick={takeReplay}>TAKE REPLAY</button>
+          <button className="take-replay" disabled={!selectedReplayAngle||replayTakeBusy} onClick={()=>void takeReplay()}>{replayTakeBusy?'PREPARING…':'TAKE REPLAY'}</button>
           <button className="return-live" onClick={returnLive}>RETURN LIVE</button>
           <button className="abort-live" onClick={returnLive}>ABORT TO LIVE</button>
           <label><input type="checkbox" checked={autoReturn} onChange={e=>setAutoReturn(e.target.checked)}/> AUTO RETURN WHEN CLIP ENDS</label>
@@ -272,5 +328,19 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
         </section>
       </aside>
     </section>
+
+    {readyClip&&<div className="replay-ready-backdrop">
+      <section className="replay-ready-card">
+        <header><div><span>SCORER EVENT</span><h2>REPLAY READY</h2></div><b className={'ready-kind '+readyClip.kind.toLowerCase()}>{readyClip.kind}</b></header>
+        <div className="ready-summary"><strong>{readyClip.title}</strong><span>{readyClip.angles.length} ANGLE{readyClip.angles.length===1?'':'S'} · {readyClip.durationSec}s BUFFER</span></div>
+        <div className="ready-angle-row">{readyClip.angles.map(a=><button key={a.slot} className={selectedAngle===a.slot?'active':''} onClick={()=>{setSelectedClipId(readyClip.id);setSelectedAngle(a.slot);}}>CAM {a.slot+1}</button>)}</div>
+        <div className="ready-speed-row"><span>SPEED</span>{[1,.75,.5,.25].map(v=><button key={v} className={speed===v?'active':''} onClick={()=>setSpeed(v)}>{v}×</button>)}</div>
+        {replayTakeError&&<p className="replay-ready-error">{replayTakeError}</p>}
+        <div className="ready-actions">
+          <button className="dismiss" onClick={()=>setReadyClipId(null)}>KEEP FOR LATER</button>
+          <button className="take" disabled={replayTakeBusy} onClick={()=>{setSelectedClipId(readyClip.id);void takeReplay();}}>{replayTakeBusy?'PREPARING…':'TAKE REPLAY'}</button>
+        </div>
+      </section>
+    </div>}
   </main>;
 }
