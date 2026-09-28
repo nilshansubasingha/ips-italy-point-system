@@ -47,6 +47,7 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
   const pcRef=useRef<RTCPeerConnection|null>(null);
   const seenEventsRef=useRef(new Set<string>());
   const clipsRef=useRef<ReplayClip[]>([]);
+  const previewVideoRef=useRef<HTMLVideoElement|null>(null);
 
   useEffect(()=>{clipsRef.current=clips;},[clips]);
 
@@ -123,7 +124,13 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
     }
     if(!angles.length){setNotice('Replay marker received, but no rolling camera buffer is armed.');return;}
     const clip:ReplayClip={id:crypto.randomUUID(),kind,source,title,createdAt:now,durationSec:preRollSec,angles};
-    setClips(prev=>[clip,...prev].slice(0,24));
+    setClips(prev=>{
+      const next=[clip,...prev];
+      for(const old of next.slice(24)){
+        for(const angle of old.angles){try{URL.revokeObjectURL(angle.url);}catch{}}
+      }
+      return next.slice(0,24);
+    });
     setSelectedClipId(clip.id);
     setSelectedAngle(angles[0].slot);
     setReadyClipId(clip.id);
@@ -190,6 +197,65 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
   const selectedClip=clips.find(c=>c.id===selectedClipId)??clips[0]??null;
   const selectedReplayAngle=selectedClip?.angles.find(a=>a.slot===selectedAngle)??selectedClip?.angles[0]??null;
   const readyClip=clips.find(c=>c.id===readyClipId)??null;
+
+  useEffect(()=>{
+    const video=previewVideoRef.current;
+    if(!video)return;
+    video.defaultPlaybackRate=speed;
+    video.playbackRate=speed;
+  },[speed,selectedReplayAngle?.url]);
+
+  const replayStoragePath=(clip:ReplayClip,angle:ReplayAngle)=>{
+    const ext=angle.mime.startsWith('video/mp4')?'mp4':'webm';
+    return matchId+'/'+clip.id+'/cam-'+(angle.slot+1)+'.'+ext;
+  };
+
+  const releaseClipMemory=(clip:ReplayClip)=>{
+    for(const angle of clip.angles){
+      try{URL.revokeObjectURL(angle.url);}catch{}
+    }
+  };
+
+  const deleteClip=async(clip:ReplayClip)=>{
+    if(programMode==='REPLAY'){
+      setNotice('Return LIVE before deleting replay clips.');
+      return;
+    }
+    const remotePaths=clip.angles.filter(a=>a.publicUrl).map(a=>replayStoragePath(clip,a));
+    if(remotePaths.length){
+      const {error}=await supabase.storage.from('ips-replay').remove(remotePaths);
+      if(error)setNotice('Replay deleted locally; storage cleanup failed: '+error.message);
+    }
+    releaseClipMemory(clip);
+    const remaining=clips.filter(c=>c.id!==clip.id);
+    setClips(remaining);
+    if(selectedClipId===clip.id){
+      setSelectedClipId(remaining[0]?.id??null);
+      setSelectedAngle(remaining[0]?.angles[0]?.slot??0);
+    }
+    if(readyClipId===clip.id)setReadyClipId(null);
+    setNotice('Replay clip deleted and memory released.');
+  };
+
+  const clearAllClips=async()=>{
+    if(programMode==='REPLAY'){
+      setNotice('Return LIVE before clearing replay clips.');
+      return;
+    }
+    const current=[...clipsRef.current];
+    if(!current.length)return;
+    const remotePaths=current.flatMap(c=>c.angles.filter(a=>a.publicUrl).map(a=>replayStoragePath(c,a)));
+    if(remotePaths.length){
+      const {error}=await supabase.storage.from('ips-replay').remove(remotePaths);
+      if(error)setNotice('Local clips cleared; some stored replay files could not be removed: '+error.message);
+    }
+    for(const clip of current)releaseClipMemory(clip);
+    setClips([]);
+    setSelectedClipId(null);
+    setSelectedAngle(0);
+    setReadyClipId(null);
+    setNotice('All replay clips cleared and browser memory released.');
+  };
 
   const ensureReplayUrl=async(clip:ReplayClip,angle:ReplayAngle)=>{
     if(angle.publicUrl)return angle.publicUrl;
@@ -301,19 +367,22 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
         </section>
 
         <section className="replay-panel clips-panel">
-          <header><div><span>SAVED THIS SESSION</span><h2>Replay timeline</h2></div><b>{clips.length} CLIPS</b></header>
-          <div className="clip-list">{clips.length?clips.map(c=><button className={selectedClip?.id===c.id?'active':''} key={c.id} onClick={()=>{setSelectedClipId(c.id);setSelectedAngle(c.angles[0]?.slot??0);}}>
-            <em>{c.kind}</em><div><strong>{c.title}</strong><span>{formatClock(c.createdAt)} · {c.angles.length} angles · {c.source}</span></div><b>{c.durationSec}s</b>
-          </button>):<p>No replay clips yet. FOUR, SIX and WICKET from the scorer will appear here automatically while this dashboard is open.</p>}</div>
+          <header><div><span>SAVED THIS SESSION</span><h2>Replay timeline</h2></div><div className="clips-head-actions"><b>{clips.length} CLIPS</b><button disabled={!clips.length||programMode==='REPLAY'} onClick={()=>void clearAllClips()}>CLEAR ALL</button></div></header>
+          <div className="clip-list">{clips.length?clips.map(c=><div className={'clip-row '+(selectedClip?.id===c.id?'active':'')} key={c.id}>
+            <button className="clip-select" onClick={()=>{setSelectedClipId(c.id);setSelectedAngle(c.angles[0]?.slot??0);}}>
+              <em>{c.kind}</em><div><strong>{c.title}</strong><span>{formatClock(c.createdAt)} · {c.angles.length} angles · {c.source}</span></div><b>{c.durationSec}s</b>
+            </button>
+            <button className="clip-delete" disabled={programMode==='REPLAY'} onClick={()=>void deleteClip(c)}>DELETE</button>
+          </div>):<p>No replay clips yet. FOUR, SIX and WICKET from the scorer will appear here automatically while this dashboard is open.</p>}</div>
         </section>
       </div>
 
       <aside className="replay-operation">
         <section className="replay-panel preview-panel">
           <header><div><span>REPLAY PREVIEW</span><h2>{selectedClip?.kind||'No clip selected'}</h2></div>{selectedReplayAngle&&<b>{selectedReplayAngle.label}</b>}</header>
-          <div className="replay-preview">{selectedReplayAngle?<video key={selectedReplayAngle.url} src={selectedReplayAngle.url} controls playsInline/>:<div>Capture an event to preview replay.</div>}</div>
+          <div className="replay-preview">{selectedReplayAngle?<video ref={previewVideoRef} key={selectedReplayAngle.url} src={selectedReplayAngle.url} controls playsInline onLoadedMetadata={e=>{e.currentTarget.defaultPlaybackRate=speed;e.currentTarget.playbackRate=speed;}}/>:<div>Capture an event to preview replay.</div>}</div>
           {selectedClip&&<div className="angle-tabs">{selectedClip.angles.map(a=><button className={a.slot===selectedReplayAngle?.slot?'active':''} key={a.slot} onClick={()=>setSelectedAngle(a.slot)}>CAM {a.slot+1}</button>)}</div>}
-          <div className="speed-row"><span>SPEED</span>{[1,.75,.5,.25].map(v=><button className={speed===v?'active':''} key={v} onClick={()=>setSpeed(v)}>{v}×</button>)}</div>
+          <div className="speed-row"><span>SPEED</span>{[1,.75,.5,.25].map(v=><button className={speed===v?'active':''} key={v} onClick={()=>{setSpeed(v);if(previewVideoRef.current){previewVideoRef.current.defaultPlaybackRate=v;previewVideoRef.current.playbackRate=v;}}}>{v}×</button>)}</div>
         </section>
 
         <section className="replay-panel take-panel">
@@ -336,7 +405,7 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
         <header><div><span>SCORER EVENT</span><h2>REPLAY READY</h2></div><b className={'ready-kind '+readyClip.kind.toLowerCase()}>{readyClip.kind}</b></header>
         <div className="ready-summary"><strong>{readyClip.title}</strong><span>{readyClip.angles.length} ANGLE{readyClip.angles.length===1?'':'S'} · {readyClip.durationSec}s BUFFER</span></div>
         <div className="ready-angle-row">{readyClip.angles.map(a=><button key={a.slot} className={selectedAngle===a.slot?'active':''} onClick={()=>{setSelectedClipId(readyClip.id);setSelectedAngle(a.slot);}}>CAM {a.slot+1}</button>)}</div>
-        <div className="ready-speed-row"><span>SPEED</span>{[1,.75,.5,.25].map(v=><button key={v} className={speed===v?'active':''} onClick={()=>setSpeed(v)}>{v}×</button>)}</div>
+        <div className="ready-speed-row"><span>SPEED</span>{[1,.75,.5,.25].map(v=><button key={v} className={speed===v?'active':''} onClick={()=>{setSpeed(v);if(previewVideoRef.current){previewVideoRef.current.defaultPlaybackRate=v;previewVideoRef.current.playbackRate=v;}}}>{v}×</button>)}</div>
         {replayTakeError&&<p className="replay-ready-error">{replayTakeError}</p>}
         <div className="ready-actions">
           <button className="dismiss" onClick={()=>setReadyClipId(null)}>KEEP FOR LATER</button>
