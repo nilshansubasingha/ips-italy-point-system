@@ -4,14 +4,22 @@ import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import Link from 'next/link';
 import {createClient} from '@/lib/supabase/client';
 
-type SlotState={slot:number;deviceId:string;label:string;status:'IDLE'|'LIVE'|'ERROR';error?:string};
+type SlotState={slot:number;deviceId:string;label:string;status:'IDLE'|'LIVE'|'ERROR';error?:string;source?:'LOCAL'|'REMOTE';connectionId?:string};
 type Chunk={blob:Blob;at:number};
 type BufferState={header:Blob|null;chunks:Chunk[];mime:string;startedAt:number};
 type ReplayAngle={slot:number;label:string;url:string;mime:string;blob:Blob;publicUrl?:string};
 type ReplayClip={id:string;kind:'FOUR'|'SIX'|'WICKET'|'MANUAL';source:'SCORER'|'MANUAL';title:string;createdAt:number;durationSec:number;angles:ReplayAngle[]};
+type CameraSession={id:string;match_id:string;pin:string;realtime_key:string;expires_at:string;active:boolean};
+type RemoteCamera={connectionId:string;channelNo:number;label:string;quality?:string;lastSeen:number;status:'READY'|'LIVE'|'ERROR'};
 
 const SLOT_COUNT=4;
 const BUFFER_MS=45000;
+const REMOTE_RTC_CONFIG:RTCConfiguration={
+  iceServers:[
+    {urls:'stun:stun.l.google.com:19302'},
+    {urls:'stun:stun1.l.google.com:19302'}
+  ]
+};
 
 function supportedMime(){
   if(typeof MediaRecorder==='undefined')return '';
@@ -38,6 +46,9 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
   const [readyClipId,setReadyClipId]=useState<string|null>(null);
   const [replayTakeBusy,setReplayTakeBusy]=useState(false);
   const [replayTakeError,setReplayTakeError]=useState<string|null>(null);
+  const [cameraSession,setCameraSession]=useState<CameraSession|null>(null);
+  const [remoteLink,setRemoteLink]=useState<'CONNECTING'|'READY'|'ERROR'>('CONNECTING');
+  const [remoteCameras,setRemoteCameras]=useState<(RemoteCamera|null)[]>(()=>Array(SLOT_COUNT).fill(null));
 
   const streamsRef=useRef<(MediaStream|null)[]>(Array(SLOT_COUNT).fill(null));
   const recordersRef=useRef<(MediaRecorder|null)[]>(Array(SLOT_COUNT).fill(null));
@@ -48,8 +59,13 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
   const seenEventsRef=useRef(new Set<string>());
   const clipsRef=useRef<ReplayClip[]>([]);
   const previewVideoRef=useRef<HTMLVideoElement|null>(null);
+  const remoteChannelRef=useRef<any>(null);
+  const remotePeersRef=useRef<Map<string,RTCPeerConnection>>(new Map());
+  const remoteCamerasRef=useRef<(RemoteCamera|null)[]>(Array(SLOT_COUNT).fill(null));
+  const viewerIdRef=useRef(typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():'viewer-'+Date.now());
 
   useEffect(()=>{clipsRef.current=clips;},[clips]);
+  useEffect(()=>{remoteCamerasRef.current=remoteCameras;},[remoteCameras]);
 
   const enumerate=useCallback(async()=>{
     if(!navigator.mediaDevices?.enumerateDevices)return;
@@ -77,7 +93,7 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
     streamsRef.current[index]=null;
     const video=videoRefs.current[index];if(video)video.srcObject=null;
     buffersRef.current[index]={header:null,chunks:[],mime:'',startedAt:0};
-    setSlots(prev=>prev.map((s,i)=>i===index?{...s,status:'IDLE',error:undefined}:s));
+    setSlots(prev=>prev.map((s,i)=>i===index?{...s,status:'IDLE',error:undefined,source:undefined,connectionId:undefined}:s));
   },[]);
 
   const startSlot=useCallback(async(index:number)=>{
@@ -103,12 +119,61 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
       recorder.start(500);
       recordersRef.current[index]=recorder;
       const label=stream.getVideoTracks()[0]?.label||slots[index]?.label||'CAM '+(index+1);
-      setSlots(prev=>prev.map((s,i)=>i===index?{...s,status:'LIVE',label,error:undefined}:s));
+      setSlots(prev=>prev.map((s,i)=>i===index?{...s,status:'LIVE',label,error:undefined,source:'LOCAL',connectionId:undefined}:s));
       setNotice('CAM '+(index+1)+' rolling buffer is live.');
     }catch(e:any){
       setSlots(prev=>prev.map((s,i)=>i===index?{...s,status:'ERROR',error:e?.message||'Camera unavailable'}:s));
     }
   },[slots,stopSlot]);
+
+  const attachRemoteStream=useCallback(async(index:number,stream:MediaStream,label:string,connectionId:string)=>{
+    const previousRecorder=recordersRef.current[index];
+    if(previousRecorder&&previousRecorder.state!=='inactive'){try{previousRecorder.stop();}catch{}}
+    recordersRef.current[index]=null;
+
+    const previousStream=streamsRef.current[index];
+    if(previousStream&&previousStream!==stream){
+      previousStream.getTracks().forEach(t=>{try{t.stop();}catch{}});
+    }
+    streamsRef.current[index]=stream;
+
+    const video=videoRefs.current[index];
+    if(video){
+      video.srcObject=stream;
+      await video.play().catch(()=>{});
+    }
+
+    try{
+      const mime=supportedMime();
+      const recorder=new MediaRecorder(stream,mime?{mimeType:mime,videoBitsPerSecond:5000000}:undefined);
+      const buffer:BufferState={header:null,chunks:[],mime:recorder.mimeType||mime||'video/webm',startedAt:Date.now()};
+      buffersRef.current[index]=buffer;
+      recorder.ondataavailable=e=>{
+        if(!e.data?.size)return;
+        const now=Date.now();
+        if(!buffer.header)buffer.header=e.data;
+        buffer.chunks.push({blob:e.data,at:now});
+        const cutoff=now-BUFFER_MS;
+        buffer.chunks=buffer.chunks.filter((c,j)=>j===0||c.at>=cutoff);
+      };
+      recorder.onerror=()=>setSlots(prev=>prev.map((slot,i)=>i===index?{...slot,status:'ERROR',error:'Remote recorder error'}:slot));
+      recorder.start(500);
+      recordersRef.current[index]=recorder;
+      setSlots(prev=>prev.map((slot,i)=>i===index?{
+        ...slot,
+        deviceId:'',
+        label,
+        status:'LIVE',
+        error:undefined,
+        source:'REMOTE',
+        connectionId
+      }:slot));
+      setRemoteCameras(prev=>prev.map((cam,i)=>i===index&&cam?{...cam,status:'LIVE'}:cam));
+      setNotice('REMOTE CAM '+(index+1)+' is live and recording into the central 45s buffer.');
+    }catch(e:any){
+      setSlots(prev=>prev.map((slot,i)=>i===index?{...slot,status:'ERROR',error:e?.message||'Remote recorder unavailable',source:'REMOTE',connectionId}:slot));
+    }
+  },[]);
 
   const buildClip=useCallback((kind:ReplayClip['kind'],source:ReplayClip['source'],title:string,preRollSec:number)=>{
     const now=Date.now();
@@ -193,6 +258,145 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
   },[matchId,autoReturn,createProgramOffer,closePeer]);
 
   useEffect(()=>{if(channelRef.current)void createProgramOffer();},[programCamera,createProgramOffer]);
+
+  const loadCameraSession=useCallback(async(rotate=false)=>{
+    setRemoteLink('CONNECTING');
+    const {data,error}=await supabase.rpc('ips_camera_session_get_or_create',{p_match_id:matchId,p_rotate:rotate});
+    if(error){
+      setRemoteLink('ERROR');
+      setNotice('Remote camera session failed: '+error.message);
+      return;
+    }
+    setCameraSession(data as CameraSession);
+  },[supabase,matchId]);
+
+  useEffect(()=>{void loadCameraSession(false);},[loadCameraSession]);
+
+  useEffect(()=>{
+    const session=cameraSession;
+    if(!session?.realtime_key)return;
+    const viewerId=viewerIdRef.current;
+    let alive=true;
+    const channel=supabase.channel('ips-camera-'+session.realtime_key)
+      .on('broadcast',{event:'camera-ready'},({payload}:any)=>{
+        if(!alive)return;
+        const p=payload||{};
+        const channelNo=Number(p.channelNo);
+        if(!p.connectionId||channelNo<1||channelNo>SLOT_COUNT)return;
+        const index=channelNo-1;
+        const existing=remoteCamerasRef.current[index];
+        if(existing&&existing.connectionId!==p.connectionId){
+          const oldPeer=remotePeersRef.current.get(existing.connectionId);
+          if(oldPeer){try{oldPeer.close();}catch{}remotePeersRef.current.delete(existing.connectionId);}
+          if(slots[index]?.source==='REMOTE'&&slots[index]?.connectionId===existing.connectionId)stopSlot(index);
+        }
+        const info:RemoteCamera={
+          connectionId:p.connectionId,
+          channelNo,
+          label:p.label||('CAM '+channelNo),
+          quality:p.quality,
+          lastSeen:Date.now(),
+          status:existing?.connectionId===p.connectionId&&existing.status==='LIVE'?'LIVE':'READY'
+        };
+        setRemoteCameras(prev=>prev.map((cam,i)=>i===index?info:cam));
+        void channel.send({type:'broadcast',event:'control-ready',payload:{viewerId,connectionId:p.connectionId,channelNo}});
+      })
+      .on('broadcast',{event:'offer'},async({payload}:any)=>{
+        const p=payload||{};
+        if(p.viewerId!==viewerId||!p.connectionId||!p.sdp)return;
+        const channelNo=Number(p.channelNo);
+        if(channelNo<1||channelNo>SLOT_COUNT)return;
+        const index=channelNo-1;
+
+        const current=remotePeersRef.current.get(p.connectionId);
+        if(current){try{current.close();}catch{}}
+        const pc=new RTCPeerConnection(REMOTE_RTC_CONFIG);
+        remotePeersRef.current.set(p.connectionId,pc);
+
+        pc.ontrack=e=>{
+          const stream=e.streams?.[0]??new MediaStream([e.track]);
+          void attachRemoteStream(index,stream,p.label||('CAM '+channelNo),p.connectionId);
+        };
+        pc.onicecandidate=e=>{
+          if(e.candidate)void channel.send({type:'broadcast',event:'control-ice',payload:{
+            viewerId,
+            connectionId:p.connectionId,
+            channelNo,
+            candidate:e.candidate.toJSON()
+          }});
+        };
+        pc.onconnectionstatechange=()=>{
+          if(pc.connectionState==='connected'){
+            setRemoteCameras(prev=>prev.map((cam,i)=>i===index&&cam?.connectionId===p.connectionId?{...cam,status:'LIVE',lastSeen:Date.now()}:cam));
+          }
+          if(pc.connectionState==='failed'){
+            setRemoteCameras(prev=>prev.map((cam,i)=>i===index&&cam?.connectionId===p.connectionId?{...cam,status:'ERROR'}:cam));
+          }
+        };
+        await pc.setRemoteDescription(p.sdp).catch(()=>{});
+        const answer=await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        await channel.send({type:'broadcast',event:'answer',payload:{
+          viewerId,
+          connectionId:p.connectionId,
+          channelNo,
+          sdp:answer
+        }});
+      })
+      .on('broadcast',{event:'camera-ice'},async({payload}:any)=>{
+        const p=payload||{};
+        if(p.viewerId!==viewerId||!p.connectionId||!p.candidate)return;
+        const pc=remotePeersRef.current.get(p.connectionId);
+        if(pc)await pc.addIceCandidate(p.candidate).catch(()=>{});
+      })
+      .on('broadcast',{event:'camera-offline'},({payload}:any)=>{
+        const p=payload||{};
+        const channelNo=Number(p.channelNo);
+        if(channelNo<1||channelNo>SLOT_COUNT)return;
+        const index=channelNo-1;
+        const pc=remotePeersRef.current.get(p.connectionId);
+        if(pc){try{pc.close();}catch{}remotePeersRef.current.delete(p.connectionId);}
+        if(slots[index]?.source==='REMOTE'&&slots[index]?.connectionId===p.connectionId)stopSlot(index);
+        setRemoteCameras(prev=>prev.map((cam,i)=>i===index&&cam?.connectionId===p.connectionId?null:cam));
+      })
+      .subscribe((status:string)=>{
+        if(status==='SUBSCRIBED'){
+          setRemoteLink('READY');
+          void channel.send({type:'broadcast',event:'control-ready',payload:{viewerId}});
+        }
+        if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){
+          setRemoteLink('ERROR');
+        }
+      });
+
+    remoteChannelRef.current=channel;
+    const hello=window.setInterval(()=>void channel.send({type:'broadcast',event:'control-ready',payload:{viewerId}}),4000);
+    const stale=window.setInterval(()=>{
+      const now=Date.now();
+      remoteCamerasRef.current.forEach((cam,index)=>{
+        if(!cam||now-cam.lastSeen<11000)return;
+        const pc=remotePeersRef.current.get(cam.connectionId);
+        if(pc){try{pc.close();}catch{}remotePeersRef.current.delete(cam.connectionId);}
+        if(slots[index]?.source==='REMOTE'&&slots[index]?.connectionId===cam.connectionId)stopSlot(index);
+        setRemoteCameras(prev=>prev.map((value,i)=>i===index?null:value));
+      });
+    },3000);
+
+    return()=>{
+      alive=false;
+      window.clearInterval(hello);
+      window.clearInterval(stale);
+      for(const pc of remotePeersRef.current.values()){try{pc.close();}catch{}}
+      remotePeersRef.current.clear();
+      remoteChannelRef.current=null;
+      void supabase.removeChannel(channel);
+    };
+  },[cameraSession?.realtime_key,supabase,attachRemoteStream,stopSlot,slots]);
+
+  const openCameraPublisher=()=>{
+    const base=window.location.pathname.startsWith('/replay')?'/replay':'';
+    window.open(base+'/camera','_blank','noopener,noreferrer');
+  };
 
   const selectedClip=clips.find(c=>c.id===selectedClipId)??clips[0]??null;
   const selectedReplayAngle=selectedClip?.angles.find(a=>a.slot===selectedAngle)??selectedClip?.angles[0]??null;
@@ -337,19 +541,24 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
       <div className="head-links"><button onClick={openProgram}>OPEN IPS PROGRAM ↗</button><Link href="/director">DIRECTOR</Link></div>
     </header>
 
-    <div className="status-strip"><span>SCORER MARKERS <b className={scorerLink==='LIVE'?'good':''}>{scorerLink}</b></span><span>PROGRAM LINK <b className={programPeer==='CONNECTED'?'good':''}>{programPeer}</b></span><span>BUFFER <b>45s LOCAL</b></span><span>{notice}</span></div>
+    <div className="status-strip"><span>SCORER MARKERS <b className={scorerLink==='LIVE'?'good':''}>{scorerLink}</b></span><span>REMOTE CAMERAS <b className={remoteLink==='READY'?'good':''}>{remoteLink}</b></span><span>PROGRAM LINK <b className={programPeer==='CONNECTED'?'good':''}>{programPeer}</b></span><span>BUFFER <b>45s CENTRAL</b></span><span>{notice}</span></div>
 
     <section className="replay-grid">
       <div className="camera-column">
         <section className="replay-panel camera-panel">
-          <header><div><span>LOCAL CAMERA INGEST</span><h2>Rolling multi-camera buffer</h2></div><div className="panel-actions"><button onClick={enablePermissions}>ENABLE CAMERAS</button><button className="primary" onClick={startAll}>START ALL</button></div></header>
+          <header><div><span>CENTRAL CAMERA INGEST</span><h2>Remote phones + local fallback</h2></div><div className="panel-actions"><button onClick={openCameraPublisher}>OPEN CAMERA PAGE ↗</button><button onClick={enablePermissions}>LOCAL CAMERAS</button><button className="primary" onClick={startAll}>START LOCAL</button></div></header>
+          <div className="remote-camera-session">
+            <div><span>CAMERA PIN</span><strong>{cameraSession?.pin||'—— ——'}</strong><small>{cameraSession?'Valid until '+new Date(cameraSession.expires_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'Creating secure camera session…'}</small></div>
+            <div><span>CONNECTED</span><strong>{remoteCameras.filter(Boolean).length}/4</strong><small>Phones only need this PIN + channel number.</small></div>
+            <button disabled={!cameraSession} onClick={()=>void loadCameraSession(true)}>ROTATE PIN</button>
+          </div>
           <div className="camera-grid">{slots.map((slot,i)=><article className={'camera-card '+slot.status.toLowerCase()} key={i}>
             <div className="camera-video"><video ref={el=>{videoRefs.current[i]=el;}} autoPlay muted playsInline/><span>CAM {i+1}</span><b>{slot.status}</b></div>
             <div className="camera-controls">
-              <select value={slot.deviceId} onChange={e=>setSlots(prev=>prev.map((s,j)=>j===i?{...s,deviceId:e.target.value,label:devices.find(d=>d.deviceId===e.target.value)?.label||s.label}:s))}>
-                <option value="">Choose camera…</option>{devices.map((d,j)=><option key={d.deviceId} value={d.deviceId}>{d.label||'Camera '+(j+1)}</option>)}
-              </select>
-              <button onClick={()=>slot.status==='LIVE'?stopSlot(i):void startSlot(i)}>{slot.status==='LIVE'?'STOP':'ARM'}</button>
+              {slot.source==='REMOTE'?<div className="remote-source-label"><b>REMOTE PHONE</b><span>{remoteCameras[i]?.quality||'WEBRTC'} · {remoteCameras[i]?.label||slot.label}</span></div>:<select value={slot.deviceId} onChange={e=>setSlots(prev=>prev.map((s,j)=>j===i?{...s,deviceId:e.target.value,label:devices.find(d=>d.deviceId===e.target.value)?.label||s.label}:s))}>
+                <option value="">Choose local camera…</option>{devices.map((d,j)=><option key={d.deviceId} value={d.deviceId}>{d.label||'Camera '+(j+1)}</option>)}
+              </select>}
+              <button disabled={slot.source==='REMOTE'} onClick={()=>slot.status==='LIVE'?stopSlot(i):void startSlot(i)}>{slot.source==='REMOTE'?'REMOTE':slot.status==='LIVE'?'STOP':'ARM LOCAL'}</button>
               <button className={programCamera===i?'program-cam':''} onClick={()=>setProgramCamera(i)}>PROGRAM LIVE</button>
             </div>
             {slot.error&&<small className="camera-error">{slot.error}</small>}
