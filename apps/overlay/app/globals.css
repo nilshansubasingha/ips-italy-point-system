@@ -8,38 +8,44 @@ body{font-family:Inter,Arial,sans-serif}
 .tv-logo{display:grid;place-items:center;flex:0 0 auto;width:60px;height:60px;background:#fff;color:#111;border:2px solid rgba(255,255,255,.78);clip-path:polygon(12% 0,100% 0,100% 88%,88% 100%,0 100%,0 12%)}
 .tv-logo img{width:100%;height:100%;object-fit:contain;padding:5px}.tv-logo b{font-size:16px;font-weight:1000}
 
-/* MASTER SCOREBAR — existing PRISM language, reorganised horizontally */
-.tv-scorebar{position:absolute;left:76px;right:76px;bottom:54px;height:108px;display:grid;grid-template-columns:430px 235px minmax(260px,1fr) minmax(260px,1fr) 390px;background:linear-gradient(90deg,#091014 0,#111820 46%,#080d11 100%);filter:drop-shadow(0 14px 30px rgba(0,0,0,.44));animation:tv-rise .36s cubic-bezier(.16,.9,.25,1) both;overflow:visible}
+/* MASTER SCOREBAR — existing PRISM identity, rebalanced horizontally */
+.tv-scorebar{position:absolute;left:76px;right:76px;bottom:54px;height:108px;display:grid;grid-template-columns:300px minmax(245px,1fr) minmax(245px,1fr) 230px 320px;background:linear-gradient(90deg,#091014 0,#111820 46%,#080d11 100%);filter:drop-shadow(0 14px 30px rgba(0,0,0,.44));animation:tv-rise .36s cubic-bezier(.16,.9,.25,1) both;overflow:visible}
 .tv-scorebar-accent{position:absolute;left:0;top:0;width:8px;height:100%;background:var(--accent);z-index:10}
-.tv-score-main{min-width:0;height:108px;display:flex;align-items:center;padding:15px 26px 15px 28px;background:linear-gradient(112deg,#070a0d 0,#10161a 76%,#1a2329 100%);border-right:1px solid rgba(255,255,255,.07);position:relative}
-.tv-score-main:after{content:'';position:absolute;right:-22px;top:0;width:42px;height:100%;background:linear-gradient(102deg,#192228 0,#11181d 62%,transparent 64%);z-index:1}
-.tv-score-main .tv-logo{width:68px;height:68px;position:relative;z-index:2}
-.tv-team-score{display:flex;flex-direction:column;min-width:0;margin-left:15px;position:relative;z-index:2}
-.tv-team-score span{font-size:14px;font-weight:950;letter-spacing:.025em;text-transform:uppercase;color:#d1d8dc;max-width:295px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tv-team-score strong{font-size:43px;line-height:.94;font-weight:1000;letter-spacing:-.055em;margin-top:5px}
 
-/* Central rotating match information */
-.tv-match-info{min-width:0;height:108px;display:grid;place-items:center;padding:12px 18px 12px 28px;border-right:1px solid rgba(255,255,255,.07);background:linear-gradient(90deg,#11181d,#10161b)}
-.tv-match-info-inner{width:100%;min-width:0;animation:tv-info-in .42s cubic-bezier(.18,.82,.22,1) both}
-.tv-match-info span{display:block;font-size:8px;font-weight:950;letter-spacing:.15em;color:#728690;text-transform:uppercase}
-.tv-match-info strong{display:block;margin-top:5px;font-size:25px;line-height:1;font-weight:1000;letter-spacing:-.025em;color:#f5f8f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tv-match-info small{display:block;margin-top:4px;font-size:8px;color:#8c9ca4;font-weight:850;letter-spacing:.045em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tv-match-info img{display:block;max-width:132px;max-height:38px;object-fit:contain;margin-top:7px;object-position:left center}
+/* Compact batting team block */
+.tv-team-block{min-width:0;height:108px;display:grid;grid-template-columns:64px minmax(0,1fr);align-items:center;gap:14px;padding:12px 17px 12px 20px;background:linear-gradient(112deg,#070a0d 0,#10161a 76%,#1a2329 100%);border-right:1px solid rgba(255,255,255,.07);position:relative}
+.tv-team-block:after{content:'';position:absolute;right:-16px;top:0;width:28px;height:100%;background:linear-gradient(102deg,#192228 0,#11181d 64%,transparent 66%);z-index:1}
+.tv-team-logo-small{width:56px!important;height:56px!important;position:relative;z-index:2}
+.tv-team-copy{min-width:0;display:flex;flex-direction:column;justify-content:center;position:relative;z-index:2}
+.tv-team-name{font-size:12px;font-weight:950;letter-spacing:.025em;text-transform:uppercase;color:#d1d8dc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tv-team-score-big{font-size:38px;line-height:.9;font-weight:1000;letter-spacing:-.05em;margin-top:4px}
+.tv-team-overs{margin-top:6px;font-size:9px;font-weight:950;letter-spacing:.08em;color:#9fb0b8}
 
 /* Batter blocks */
-.tv-batter{height:108px;min-width:0;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;padding:13px 20px 11px;border-right:1px solid rgba(255,255,255,.07);position:relative;background:linear-gradient(90deg,#11181d,#0d1317)}
-.tv-batter.with-photo{grid-template-columns:auto minmax(0,1fr) auto}
+.tv-batter{height:108px;min-width:0;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;padding:13px 16px 11px;border-right:1px solid rgba(255,255,255,.07);position:relative;background:linear-gradient(90deg,#11181d,#0d1317)}
+.tv-batter.with-photo{grid-template-columns:auto minmax(0,1fr) auto;gap:10px}
 .tv-striker:before{content:'';position:absolute;left:0;top:0;width:5px;height:100%;background:var(--accent)}
-.tv-player-thumb{width:44px;height:44px;border-radius:9px;overflow:hidden;background:#233038;display:grid;place-items:center;margin-right:10px;border:1px solid rgba(255,255,255,.14)}
+.tv-player-thumb{width:44px;height:44px;border-radius:9px;overflow:hidden;background:#233038;display:grid;place-items:center;border:1px solid rgba(255,255,255,.14);margin-right:0}
 .tv-player-thumb img{width:100%;height:100%;object-fit:cover}.tv-player-thumb b{font-size:12px;color:#fff}
-.tv-person-copy{min-width:0}.tv-person-copy span{display:block;font-size:8px;font-weight:950;letter-spacing:.14em;color:#758992}.tv-person-copy b{display:block;font-size:19px;font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:5px}
-.tv-batter>strong{font-size:28px;font-weight:1000;text-align:right;margin-left:11px}.tv-batter>strong i{display:block;font-size:8px;font-style:normal;color:#82949c;font-weight:850;margin-top:5px;letter-spacing:.05em}
+.tv-person-copy{min-width:0}.tv-person-copy span{display:block;font-size:8px;font-weight:950;letter-spacing:.14em;color:#758992}.tv-person-copy b{display:block;font-size:17px;font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:5px}
+.tv-batter>strong{font-size:26px;font-weight:1000;text-align:right;margin-left:10px}.tv-batter>strong i{display:block;font-size:8px;font-style:normal;color:#82949c;font-weight:850;margin-top:5px;letter-spacing:.05em}
 
-/* Bowler block with current over inside the same box */
-.tv-bowler{height:108px;min-width:0;padding:9px 18px 7px;background:linear-gradient(90deg,#0c1216,#070b0e);display:grid;grid-template-rows:1fr 30px}
-.tv-bowler-primary{min-width:0;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center}
-.tv-bowler-primary .tv-person-copy small{display:block;margin-top:4px;font-size:9px;color:#bec9ce;font-weight:950;letter-spacing:.07em}
-.tv-bowler-primary>strong{font-size:25px;font-weight:1000;text-align:right;margin-left:12px}.tv-bowler-primary>strong i{display:block;font-size:8px;font-style:normal;color:#82949c;font-weight:850;margin-top:5px;letter-spacing:.04em}
+/* Compact rotating match information after both batters */
+.tv-match-info{min-width:0;height:108px;display:grid;place-items:center;padding:12px 14px;border-right:1px solid rgba(255,255,255,.07);background:linear-gradient(90deg,#11181d,#10161b)}
+.tv-match-info-inner{width:100%;min-width:0;animation:tv-info-in .42s cubic-bezier(.18,.82,.22,1) both}
+.tv-match-info span{display:block;font-size:8px;font-weight:950;letter-spacing:.15em;color:#728690;text-transform:uppercase}
+.tv-match-info strong{display:block;margin-top:5px;font-size:22px;line-height:1;font-weight:1000;letter-spacing:-.02em;color:#f5f8f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tv-match-info small{display:block;margin-top:4px;font-size:8px;color:#8c9ca4;font-weight:850;letter-spacing:.045em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tv-match-info img{display:block;max-width:112px;max-height:34px;object-fit:contain;margin-top:7px;object-position:left center}
+
+/* Bowler figures first, then identity; current over remains inside same box */
+.tv-bowler-rearranged{height:108px;min-width:0;padding:9px 15px 7px;background:linear-gradient(90deg,#0c1216,#070b0e);display:grid;grid-template-rows:1fr 30px}
+.tv-bowler-top{min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:11px;align-items:center}
+.tv-bowler-figures{font-size:27px;font-weight:1000;line-height:1;white-space:nowrap}
+.tv-bowler-copy{min-width:0}
+.tv-bowler-copy span{display:block;font-size:8px;font-weight:950;letter-spacing:.14em;color:#758992}
+.tv-bowler-copy b{display:block;margin-top:4px;font-size:18px;font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tv-bowler-copy small{display:block;margin-top:4px;font-size:9px;color:#bec9ce;font-weight:950;letter-spacing:.07em}
 .tv-bowler-over{display:flex;align-items:center;gap:7px;min-width:0;border-top:1px solid rgba(255,255,255,.09);padding-top:5px}
 .tv-bowler-over>em{font-size:7px;font-style:normal;font-weight:950;letter-spacing:.12em;color:#687c85;white-space:nowrap}
 .tv-bowler-over>div{display:flex;gap:4px;min-width:0;overflow:hidden}
@@ -48,7 +54,7 @@ body{font-family:Inter,Arial,sans-serif}
 .tv-bowler-over>b{margin-left:auto;background:#fff;color:#111;padding:3px 6px;font-size:7px;letter-spacing:.09em;white-space:nowrap}.tv-bowler-over small{font-size:9px;color:#64747b}
 
 /* Small top match identifier card */
-.tv-match-card{position:absolute;top:72px;z-index:30;min-width:340px;max-width:620px;height:62px;padding:0 16px;background:linear-gradient(105deg,rgba(6,11,15,.96),rgba(17,25,30,.96));border:1px solid rgba(255,255,255,.14);box-shadow:0 12px 32px rgba(0,0,0,.3);clip-path:polygon(0 0,96% 0,100% 24%,100% 100%,4% 100%,0 76%)}
+.tv-match-card{position:absolute;top:72px;z-index:30;min-width:320px;max-width:420px;height:58px;padding:0 16px;background:linear-gradient(105deg,rgba(6,11,15,.96),rgba(17,25,30,.96));border:1px solid rgba(255,255,255,.14);box-shadow:0 12px 32px rgba(0,0,0,.3);clip-path:polygon(0 0,96% 0,100% 24%,100% 100%,4% 100%,0 76%)}
 .tv-match-card.top-left{left:96px}.tv-match-card.top-center{left:50%;transform:translateX(-50%)}.tv-match-card.top-right{right:96px}
 .tv-match-card:after{content:'';position:absolute;left:0;right:0;bottom:0;height:4px;background:var(--accent)}
 .tv-match-card-inner{height:100%;display:flex;align-items:center;justify-content:center;gap:12px;animation:tv-info-in .42s cubic-bezier(.18,.82,.22,1) both}
@@ -71,9 +77,9 @@ body{font-family:Inter,Arial,sans-serif}
 .tv-impact.full .tv-impact-copy{position:absolute;left:170px;top:215px;width:780px}.tv-impact-copy span{display:block;font-size:13px;font-weight:900;letter-spacing:.18em;text-transform:uppercase;color:#aeb8be}.tv-impact-copy strong{display:block;font-size:130px;line-height:.88;font-weight:1000;letter-spacing:-.06em;text-transform:uppercase}.tv-impact-copy b{display:block;margin-top:18px;font-size:30px;text-transform:uppercase}.tv-impact-copy small{display:block;margin-top:8px;font-size:14px;color:#aab4ba}.tv-impact-rule{position:absolute;left:0;bottom:0;width:100%;height:10px;background:var(--accent)}.tv-impact.kind-wicket .tv-impact-rule{background:#fff}
 
 /* Side-slide player lower thirds */
-.tv-player-feature{position:absolute;bottom:204px;width:760px;height:174px;display:grid;grid-template-columns:164px 1fr 58px;background:linear-gradient(110deg,#070b0e 0,#141a1e 66%,#080c0e 100%);filter:drop-shadow(0 15px 32px rgba(0,0,0,.46));overflow:hidden}
-.tv-player-feature.batter{left:76px;clip-path:polygon(0 0,95% 0,100% 18%,100% 100%,4% 100%,0 80%);animation:tv-left-in .44s cubic-bezier(.14,.88,.2,1) both}
-.tv-player-feature.bowler{right:76px;grid-template-columns:58px 1fr 164px;clip-path:polygon(5% 0,100% 0,100% 80%,96% 100%,0 100%,0 18%);animation:tv-right-in .44s cubic-bezier(.14,.88,.2,1) both}
+.tv-player-feature{position:absolute;bottom:184px;width:720px;height:174px;display:grid;grid-template-columns:164px 1fr 58px;background:linear-gradient(110deg,#070b0e 0,#141a1e 66%,#080c0e 100%);filter:drop-shadow(0 15px 32px rgba(0,0,0,.46));overflow:hidden}
+.tv-player-feature.batter{left:120px;clip-path:polygon(0 0,95% 0,100% 18%,100% 100%,4% 100%,0 80%);animation:tv-left-in .44s cubic-bezier(.14,.88,.2,1) both}
+.tv-player-feature.bowler{right:120px;grid-template-columns:58px 1fr 164px;clip-path:polygon(5% 0,100% 0,100% 80%,96% 100%,0 100%,0 18%);animation:tv-right-in .44s cubic-bezier(.14,.88,.2,1) both}
 .tv-player-feature:after{content:'';position:absolute;left:0;bottom:0;right:0;height:6px;background:var(--accent)}
 .tv-player-feature.bowler .tv-player-photo{grid-column:3}.tv-player-feature.bowler .tv-player-data{grid-column:2;grid-row:1;text-align:right}.tv-player-feature.bowler .tv-player-edge{grid-column:1;grid-row:1}
 .tv-player-photo{position:relative;overflow:hidden;background:linear-gradient(160deg,var(--accent2),#050708);display:grid;place-items:center}.tv-player-photo img{width:100%;height:100%;object-fit:cover}.tv-player-photo span{font-size:48px;font-weight:1000;color:#fff}
@@ -109,5 +115,5 @@ body{font-family:Inter,Arial,sans-serif}
 @keyframes tv-sweep{from{transform:translateX(-55%) rotate(-8deg)}to{transform:translateX(55%) rotate(-8deg)}}
 @keyframes tv-score-event-in{0%{opacity:0;transform:translateY(35px) scaleX(.96)}55%{opacity:1;transform:translateY(0) scaleX(1.01)}100%{transform:none}}
 @keyframes tv-score-sweep{from{transform:translateX(-60%) rotate(-7deg)}to{transform:translateX(60%) rotate(-7deg)}}
-@media(max-width:1500px){.tv-scorebar{grid-template-columns:390px 205px minmax(240px,1fr) minmax(240px,1fr) 360px}.tv-team-score span{max-width:250px}.tv-person-copy b{font-size:17px}.tv-match-info strong{font-size:22px}}
+@media(max-width:1500px){.tv-scorebar{grid-template-columns:270px minmax(220px,1fr) minmax(220px,1fr) 205px 300px}.tv-team-name{font-size:11px}.tv-team-score-big{font-size:35px}.tv-person-copy b{font-size:16px}.tv-match-info strong{font-size:20px}.tv-bowler-copy b{font-size:17px}}
 @media(max-aspect-ratio:16/9){.tv-output{transform-origin:top left}}
