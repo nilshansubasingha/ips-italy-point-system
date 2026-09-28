@@ -75,8 +75,9 @@ type ExtraKind='WIDE'|'NO_BALL'|'BYE'|'LEG_BYE';
 type Sheet=
   |{kind:'extra';extra:ExtraKind}
   |{kind:'wicket'}
-  |{kind:'runout'}
-  |{kind:'next-batter';wicketKind:WicketKind;dismissedPlayerId:string|null}
+  |{kind:'runout-runs'}
+  |{kind:'runout';runs:number}
+  |{kind:'next-batter';wicketKind:WicketKind;dismissedPlayerId:string|null;runoutRuns?:number}
   |{kind:'bowler'}
   |{kind:'undo-confirm'}
   |{kind:'reset-confirm'}
@@ -441,7 +442,7 @@ export function ControllerMatch({
 
   function chooseWicketKind(kind:WicketKind){
     if(kind==='RUN_OUT'){
-      setSheet({kind:'runout'});
+      setSheet({kind:'runout-runs'});
       return;
     }
     if(wicketWillEndInnings()){
@@ -451,16 +452,25 @@ export function ControllerMatch({
     setSheet({kind:'next-batter',wicketKind:kind,dismissedPlayerId:scoring.striker_id});
   }
 
-  function chooseRunOut(playerId:string){
-    if(wicketWillEndInnings()){
-      recordDelivery({wicketKind:'RUN_OUT',dismissedPlayerId:playerId});
-      return;
-    }
-    setSheet({kind:'next-batter',wicketKind:'RUN_OUT',dismissedPlayerId:playerId});
+  function chooseRunOutRuns(runs:number){
+    setSheet({kind:'runout',runs});
   }
 
-  function chooseNextBatter(playerId:string,wicketKind:WicketKind,dismissedPlayerId:string|null){
-    recordDelivery({wicketKind,dismissedPlayerId,incomingBatterId:playerId});
+  function chooseRunOut(playerId:string,runs:number){
+    if(wicketWillEndInnings()){
+      recordDelivery({runsOffBat:runs,wicketKind:'RUN_OUT',dismissedPlayerId:playerId});
+      return;
+    }
+    setSheet({kind:'next-batter',wicketKind:'RUN_OUT',dismissedPlayerId:playerId,runoutRuns:runs});
+  }
+
+  function chooseNextBatter(playerId:string,wicketKind:WicketKind,dismissedPlayerId:string|null,runoutRuns=0){
+    recordDelivery({
+      runsOffBat:wicketKind==='RUN_OUT'?runoutRuns:0,
+      wicketKind,
+      dismissedPlayerId,
+      incomingBatterId:playerId
+    });
   }
 
   const scoringLocked=!ready||pending||!scoring.started||scoring.innings_complete||scoring.match_complete||scoring.awaiting_bowler;
@@ -733,9 +743,18 @@ export function ControllerMatch({
       </div>
     </ChoiceSheet>}
 
-    {sheet?.kind==='runout'&&<ChoiceSheet title="Who was run out?" kicker="RUN OUT" onClose={()=>setSheet({kind:'wicket'})}>
+    {sheet?.kind==='runout-runs'&&<ChoiceSheet title="How many runs were completed?" kicker="RUN OUT" onClose={()=>setSheet({kind:'wicket'})}>
+      <p className="p6-sheet-copy">Choose the completed runs on the run-out delivery. The wicket and runs will be recorded together on this ball.</p>
+      <div className="choices two p6-runout-runs">
+        {[0,1,2,3,4].map(value=><button type="button" disabled={pending} key={value} onClick={()=>chooseRunOutRuns(value)}>
+          <strong>+{value}</strong><span>{value===0?'NO RUN':value+' RUN'+(value===1?'':'S')}</span>
+        </button>)}
+      </div>
+    </ChoiceSheet>}
+
+    {sheet?.kind==='runout'&&<ChoiceSheet title="Who was run out?" kicker={"RUN OUT · +"+sheet.runs} onClose={()=>setSheet({kind:'runout-runs'})}>
       <div className="p6-current-batter-choice">
-        {[striker,nonStriker].filter(Boolean).map((player,index)=><button type="button" disabled={pending} key={player!.player_id} onClick={()=>chooseRunOut(player!.player_id)}>
+        {[striker,nonStriker].filter(Boolean).map((player,index)=><button type="button" disabled={pending} key={player!.player_id} onClick={()=>chooseRunOut(player!.player_id,sheet.runs)}>
           <span>{index===0?'STRIKER':'NON-STRIKER'}</span><strong>{player!.name}</strong><small>{player!.runs} ({player!.balls})</small>
         </button>)}
       </div>
@@ -748,7 +767,7 @@ export function ControllerMatch({
           type="button"
           key={player.player_id}
           disabled={!player.available||pending}
-          onClick={()=>chooseNextBatter(player.player_id,sheet.wicketKind,sheet.dismissedPlayerId)}
+          onClick={()=>chooseNextBatter(player.player_id,sheet.wicketKind,sheet.dismissedPlayerId,sheet.runoutRuns??0)}
         ><div><span>{player.ips_code}</span><strong>{player.name}</strong></div><b>{player.available?'BAT →':player.reason}</b></button>)}
       </div>
     </ChoiceSheet>}
