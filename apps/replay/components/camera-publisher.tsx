@@ -29,6 +29,39 @@ const QUALITY:any={
   '1080p':{width:1920,height:1080,frameRate:30}
 };
 
+async function openPhoneCamera(facing:'environment'|'user',quality:'540p'|'720p'|'1080p'){
+  if(!navigator.mediaDevices?.getUserMedia)throw new Error('This browser does not support camera capture.');
+  const q=QUALITY[quality];
+  const attempts:MediaStreamConstraints[]=[
+    {
+      video:{
+        facingMode:{ideal:facing},
+        width:{ideal:q.width},
+        height:{ideal:q.height},
+        frameRate:{ideal:q.frameRate,max:30}
+      },
+      audio:false
+    },
+    {video:{facingMode:{ideal:facing}},audio:false},
+    {video:true,audio:false}
+  ];
+  let lastError:any=null;
+  for(const constraints of attempts){
+    try{
+      const stream=await navigator.mediaDevices.getUserMedia(constraints);
+      const track=stream.getVideoTracks()[0];
+      if(!track){
+        stream.getTracks().forEach(t=>t.stop());
+        throw new Error('No video track was returned by the phone.');
+      }
+      track.enabled=true;
+      try{track.contentHint='motion';}catch{}
+      return stream;
+    }catch(e){lastError=e;}
+  }
+  throw lastError??new Error('Camera could not be opened.');
+}
+
 export function CameraPublisher(){
   const supabase=useMemo(()=>createClient(),[]);
   const [pin,setPin]=useState('');
@@ -138,21 +171,8 @@ export function CameraPublisher(){
       const info=data as JoinInfo;
       if(!info?.realtime_key)throw new Error('Camera session could not be resolved.');
 
-      const q=QUALITY[quality];
-      const stream=await navigator.mediaDevices.getUserMedia({
-        video:{
-          facingMode:{ideal:facing},
-          width:{ideal:q.width},
-          height:{ideal:q.height},
-          frameRate:{ideal:q.frameRate,max:30}
-        },
-        audio:false
-      });
+      const stream=await openPhoneCamera(facing,quality);
       streamRef.current=stream;
-      if(videoRef.current){
-        videoRef.current.srcObject=stream;
-        await videoRef.current.play().catch(()=>{});
-      }
       joinRef.current=info;
       setJoin(info);
 
@@ -203,6 +223,19 @@ export function CameraPublisher(){
     }
   };
 
+  useEffect(()=>{
+    const video=videoRef.current;
+    const stream=streamRef.current;
+    if(!join||!video||!stream)return;
+    video.srcObject=stream;
+    video.muted=true;
+    video.playsInline=true;
+    const play=()=>{void video.play().catch(()=>{});};
+    play();
+    video.addEventListener('loadedmetadata',play);
+    return()=>video.removeEventListener('loadedmetadata',play);
+  },[join]);
+
   useEffect(()=>()=>{void stopTransmission();},[]);
 
   return <main className="camera-publisher-shell">
@@ -233,7 +266,7 @@ export function CameraPublisher(){
         <div><span>CHANNEL</span><strong>CAM {join.channel_no}</strong><small>{viewerState}</small></div>
       </div>
 
-      <div className="camera-phone-preview"><video ref={videoRef} autoPlay muted playsInline/><div><b>CAM {join.channel_no}</b><span>{quality} · {facing==='environment'?'BACK':'FRONT'}</span></div></div>
+      <div className="camera-phone-preview"><video ref={videoRef} autoPlay muted playsInline disablePictureInPicture/><div><b>CAM {join.channel_no}</b><span>{quality} · {facing==='environment'?'BACK':'FRONT'}</span></div></div>
       <p className="camera-message">{message}</p>
       <button className="camera-stop-button" onClick={()=>void stopTransmission()}>STOP TRANSMISSION</button>
       <p className="camera-keep-open">Keep this page visible and keep the phone awake while transmitting.</p>
