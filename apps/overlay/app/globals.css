@@ -13,12 +13,12 @@ body{font-family:Inter,Arial,sans-serif}
 .tv-scorebar-accent{position:absolute;left:0;top:0;width:8px;height:100%;background:var(--accent);z-index:10}
 
 /* Compact batting team block */
-.tv-team-block{min-width:0;height:108px;display:grid;grid-template-columns:64px minmax(0,1fr);align-items:center;gap:14px;padding:12px 17px 12px 20px;background:linear-gradient(112deg,#070a0d 0,#10161a 76%,#1a2329 100%);border-right:1px solid rgba(255,255,255,.07);position:relative}
+.tv-team-block{min-width:0;height:108px;display:grid;grid-template-columns:64px minmax(0,1fr);align-items:center;gap:14px;padding:12px 27px 12px 20px;background:linear-gradient(112deg,#070a0d 0,#10161a 76%,#1a2329 100%);border-right:1px solid rgba(255,255,255,.07);position:relative}
 .tv-team-block:after{content:'';position:absolute;right:-16px;top:0;width:28px;height:100%;background:linear-gradient(102deg,#192228 0,#11181d 64%,transparent 66%);z-index:1}
 .tv-team-logo-small{width:56px!important;height:56px!important;position:relative;z-index:2}
 .tv-team-copy{min-width:0;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:6px;position:relative;z-index:2}
 .tv-team-name{font-size:12px;font-weight:950;letter-spacing:.025em;text-transform:uppercase;color:#d1d8dc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tv-team-score-stack{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;min-width:70px;transform:translateX(-5px)}
+.tv-team-score-stack{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;min-width:70px;transform:translateX(-8px);margin-right:4px}
 .tv-team-score-big{font-size:38px;line-height:.9;font-weight:1000;letter-spacing:-.05em;margin:0}
 .tv-team-overs{margin-top:6px;font-size:9px;font-weight:950;letter-spacing:.08em;color:#9fb0b8;white-space:nowrap}
 
@@ -60,7 +60,7 @@ body{font-family:Inter,Arial,sans-serif}
 .tv-match-card:after{content:'';position:absolute;left:0;right:0;bottom:0;height:4px;background:var(--accent)}
 .tv-match-card-inner{height:100%;display:flex;align-items:center;justify-content:flex-start;gap:10px;animation:tv-info-in .42s cubic-bezier(.18,.82,.22,1) both;white-space:nowrap}
 .tv-match-card-team{display:flex;align-items:center;gap:8px;min-width:0}.tv-match-card-team.away{justify-content:flex-start}.tv-match-card-team b{font-size:15px;font-weight:1000;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:245px}.tv-match-card-team .tv-logo{width:30px;height:30px;border-radius:6px}.tv-match-card-team .tv-logo b{font-size:8px}.tv-match-card-team .tv-logo img{padding:0}
-.tv-match-card i{font-size:9px;font-style:normal;font-weight:1000;color:#6f858f;letter-spacing:.12em}.tv-match-card span{font-size:8px;font-weight:950;letter-spacing:.16em;color:#748a93}.tv-match-card strong{font-size:22px;font-weight:1000;text-transform:uppercase;white-space:nowrap}.tv-match-card-custom{max-width:620px;overflow:hidden;text-overflow:ellipsis}
+.tv-match-card i{font-size:9px;font-style:normal;font-weight:1000;color:#6f858f;letter-spacing:.12em}.tv-match-card span{font-size:18px;font-weight:1000;letter-spacing:.06em;color:#c7d2d7;line-height:1}.tv-match-card strong{font-size:18px;font-weight:1000;text-transform:uppercase;white-space:nowrap;line-height:1}.tv-match-card-custom{max-width:620px;overflow:hidden;text-overflow:ellipsis}
 
 /* FOUR / SIX / WICKET replaces the scorebar footprint */
 .tv-scorebar-event{position:absolute;left:76px;right:76px;bottom:54px;height:108px;overflow:hidden;background:linear-gradient(100deg,#091014 0,#131b20 56%,#070b0e 100%);filter:drop-shadow(0 16px 32px rgba(0,0,0,.5));animation:tv-score-event-in .42s cubic-bezier(.1,.92,.2,1) both}
