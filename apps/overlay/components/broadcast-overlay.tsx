@@ -1,6 +1,6 @@
 'use client';
 
-import {CSSProperties,ReactNode,useCallback,useEffect,useMemo,useState} from 'react';
+import {CSSProperties,ReactNode,useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {createBroadcastClient} from '@/lib/supabase';
 
 type J=Record<string,any>;
@@ -293,6 +293,7 @@ function BroadcastSkin({variantKey,data,payload,startedAt,now}:{variantKey:strin
 
 export function BroadcastOverlay({matchId}:{matchId?:string}){
   const [snapshot,setSnapshot]=useState<Snapshot|null>(null),[error,setError]=useState(''),[now,setNow]=useState(()=>Date.now());
+  const exposureRef=useRef<Map<string,SponsorExposure>>(new Map());
   const supabase=useMemo(()=>matchId?createBroadcastClient():null,[matchId]);
   const refresh=useCallback(async()=>{
     if(!supabase||!matchId)return;
@@ -340,6 +341,17 @@ export function BroadcastOverlay({matchId}:{matchId?:string}){
   const exposureSignature=exposureState.map((x:SponsorExposure)=>x.key).join('|');
   useEffect(()=>{
     if(!supabase||!matchId)return;
+    const next=new Map(exposureState.map(x=>[x.key,x]));
+    for(const previous of exposureRef.current.values()){
+      if(!next.has(previous.key)&&previous.end==null){
+        const ended=Date.now();
+        void supabase.rpc('ips_broadcast_log_sponsor_exposure',{
+          p_match_id:matchId,p_sponsor_id:previous.sponsor.id,p_scene_key:previous.scene,
+          p_started_at:new Date(previous.start).toISOString(),p_ended_at:new Date(ended).toISOString(),
+          p_duration_ms:Math.max(0,ended-previous.start),p_metadata:{placement:previous.placement,source:'overlay',closed:'program-change'},p_exposure_key:previous.key
+        });
+      }
+    }
     for(const x of exposureState){
       void supabase.rpc('ips_broadcast_log_sponsor_exposure',{
         p_match_id:matchId,p_sponsor_id:x.sponsor.id,p_scene_key:x.scene,
@@ -347,6 +359,7 @@ export function BroadcastOverlay({matchId}:{matchId?:string}){
         p_duration_ms:x.duration,p_metadata:{placement:x.placement,source:'overlay'},p_exposure_key:x.key
       });
     }
+    exposureRef.current=next;
   },[supabase,matchId,exposureSignature]);
 
   if(!matchId)return <main className="tv-empty"><b>IPS BROADCAST</b><span>Open this output from the Director so the current match is attached automatically.</span></main>;
