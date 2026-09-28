@@ -16,9 +16,9 @@ body{font-family:Inter,Arial,sans-serif}
 .tv-team-block{min-width:0;height:108px;display:grid;grid-template-columns:64px minmax(0,1fr);align-items:center;gap:14px;padding:12px 17px 12px 20px;background:linear-gradient(112deg,#070a0d 0,#10161a 76%,#1a2329 100%);border-right:1px solid rgba(255,255,255,.07);position:relative}
 .tv-team-block:after{content:'';position:absolute;right:-16px;top:0;width:28px;height:100%;background:linear-gradient(102deg,#192228 0,#11181d 64%,transparent 66%);z-index:1}
 .tv-team-logo-small{width:56px!important;height:56px!important;position:relative;z-index:2}
-.tv-team-copy{min-width:0;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:12px;position:relative;z-index:2}
+.tv-team-copy{min-width:0;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:6px;position:relative;z-index:2}
 .tv-team-name{font-size:12px;font-weight:950;letter-spacing:.025em;text-transform:uppercase;color:#d1d8dc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tv-team-score-stack{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;min-width:74px}
+.tv-team-score-stack{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;min-width:70px;transform:translateX(-5px)}
 .tv-team-score-big{font-size:38px;line-height:.9;font-weight:1000;letter-spacing:-.05em;margin:0}
 .tv-team-overs{margin-top:6px;font-size:9px;font-weight:950;letter-spacing:.08em;color:#9fb0b8;white-space:nowrap}
 
