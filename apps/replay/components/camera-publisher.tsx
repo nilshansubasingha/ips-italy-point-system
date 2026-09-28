@@ -29,6 +29,22 @@ const QUALITY:any={
   '1080p':{width:1920,height:1080,frameRate:30}
 };
 
+async function waitForIceGathering(pc:RTCPeerConnection){
+  if(pc.iceGatheringState==='complete')return;
+  await new Promise<void>(resolve=>{
+    const done=()=>{
+      if(pc.iceGatheringState!=='complete')return;
+      pc.removeEventListener('icegatheringstatechange',done);
+      resolve();
+    };
+    pc.addEventListener('icegatheringstatechange',done);
+    window.setTimeout(()=>{
+      pc.removeEventListener('icegatheringstatechange',done);
+      resolve();
+    },2500);
+  });
+}
+
 async function openPhoneCamera(facing:'environment'|'user',quality:'540p'|'720p'|'1080p'){
   if(!navigator.mediaDevices?.getUserMedia)throw new Error('This browser does not support camera capture.');
   const q=QUALITY[quality];
@@ -99,12 +115,21 @@ export function CameraPublisher(){
     const stream=streamRef.current;
     if(!info||!stream)return;
     const existing=peersRef.current.get(viewerId);
-    if(existing&&['connected','connecting'].includes(existing.connectionState))return;
+    if(existing&&!['failed','closed','disconnected'].includes(existing.connectionState))return;
     closePeer(viewerId);
 
     const pc=new RTCPeerConnection(RTC_CONFIG);
     peersRef.current.set(viewerId,pc);
-    stream.getTracks().forEach(track=>pc.addTrack(track,stream));
+    stream.getTracks().forEach(track=>{
+      pc.addTrack(track,stream);
+      if(track.kind==='video'){
+        track.onended=()=>{
+          setStatus('ERROR');
+          setViewerState('CAMERA TRACK ENDED');
+          setMessage('Phone camera stopped. Tap STOP TRANSMISSION and reconnect.');
+        };
+      }
+    });
     pc.onicecandidate=e=>{
       if(e.candidate)void send('camera-ice',{
         viewerId,
@@ -124,13 +149,22 @@ export function CameraPublisher(){
     };
     const offer=await pc.createOffer();
     await pc.setLocalDescription(offer);
+    await waitForIceGathering(pc);
+    const localOffer=pc.localDescription??offer;
     await send('offer',{
       viewerId,
       connectionId:info.connection_id,
       channelNo:info.channel_no,
       label:info.label,
-      sdp:offer
+      sdp:localOffer
     });
+    window.setTimeout(()=>{
+      const current=peersRef.current.get(viewerId);
+      if(current===pc&&pc.connectionState==='new'&&pc.signalingState!=='stable'){
+        closePeer(viewerId);
+        setViewerState('RETRYING CONNECTION');
+      }
+    },8000);
   };
 
   const stopTransmission=async()=>{
