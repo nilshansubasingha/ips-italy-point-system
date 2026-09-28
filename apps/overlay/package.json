@@ -14,7 +14,9 @@
     "@ips/domain": "*",
     "next": "15.5.18",
     "react": "19.0.0",
-    "react-dom": "19.0.0"
+    "react-dom": "19.0.0",
+    "@ips/broadcast": "*",
+    "@supabase/supabase-js": "^2.49.4"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
