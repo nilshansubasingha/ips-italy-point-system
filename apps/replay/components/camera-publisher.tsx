@@ -47,6 +47,7 @@ export function CameraPublisher(){
   const peersRef=useRef<Map<string,RTCPeerConnection>>(new Map());
   const heartbeatRef=useRef<number|null>(null);
   const wakeLockRef=useRef<any>(null);
+  const joinRef=useRef<JoinInfo|null>(null);
 
   const send=async(event:string,payload:any)=>{
     const ch=realtimeRef.current;
@@ -61,7 +62,7 @@ export function CameraPublisher(){
   };
 
   const createOffer=async(viewerId:string)=>{
-    const info=join;
+    const info=joinRef.current;
     const stream=streamRef.current;
     if(!info||!stream)return;
     const existing=peersRef.current.get(viewerId);
@@ -88,7 +89,7 @@ export function CameraPublisher(){
         setViewerState('WAITING FOR REPLAY CONTROL');
       }
     };
-    const offer=await pc.createOffer({offerToReceiveAudio:false,offerToReceiveVideo:false});
+    const offer=await pc.createOffer();
     await pc.setLocalDescription(offer);
     await send('offer',{
       viewerId,
@@ -113,6 +114,7 @@ export function CameraPublisher(){
     if(videoRef.current)videoRef.current.srcObject=null;
     try{await wakeLockRef.current?.release?.();}catch{}
     wakeLockRef.current=null;
+    joinRef.current=null;
     setJoin(null);
     setStatus('IDLE');
     setViewerState('WAITING FOR REPLAY CONTROL');
@@ -151,6 +153,7 @@ export function CameraPublisher(){
         videoRef.current.srcObject=stream;
         await videoRef.current.play().catch(()=>{});
       }
+      joinRef.current=info;
       setJoin(info);
 
       const room='ips-camera-'+info.realtime_key;
