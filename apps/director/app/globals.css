@@ -126,3 +126,13 @@ button,input,select{font:inherit}button{cursor:pointer}
 .match-info-item-picks label{min-height:25px!important;display:flex!important;grid-template-columns:none!important;align-items:center!important;gap:6px!important;padding:4px 7px!important;border:1px solid #29414d!important;border-radius:6px!important;background:#091820!important}
 .match-info-item-picks label input{width:14px!important;height:14px!important;accent-color:var(--green)}
 .match-info-item-picks label b{font-size:5px;color:#9fb1b8;font-weight:950;letter-spacing:.05em}
+
+
+/* Match Identifier multi-select controls */
+.match-card-item-picks{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:8px;border:1px solid #1e343e;border-radius:7px;background:#07151c}
+.match-card-item-picks>span{width:100%;font-size:5px;letter-spacing:.11em;color:#66808a;font-weight:950}
+.match-card-item-picks label{min-height:25px!important;display:flex!important;grid-template-columns:none!important;align-items:center!important;gap:6px!important;padding:4px 7px!important;border:1px solid #29414d!important;border-radius:6px!important;background:#091820!important}
+.match-card-item-picks label input{width:14px!important;height:14px!important;accent-color:var(--green)}
+.match-card-item-picks label b{font-size:5px;color:#9fb1b8;font-weight:950;letter-spacing:.05em}
+.match-card-custom-field{grid-column:1/-1!important;grid-template-columns:120px 1fr!important}
+.match-card-custom-field input{width:100%}
