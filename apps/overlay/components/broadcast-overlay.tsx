@@ -314,8 +314,10 @@ function Scorecard({type,data,payload,startedAt,now}:{type:'batting'|'bowling';d
 }
 function LowerThird({type,data,payload,startedAt,now}:{type:'partnership'|'need';data:J;payload:J;startedAt?:string;now:number}){
   const p=data.current?.partnership||{};
-  if(type==='partnership')return <section className="tv-lower-info">
-    <span>PARTNERSHIP</span><strong>{p.runs??0}<i>{p.balls??0} BALLS</i></strong><b>{data.current?.striker?.name||'—'} + {data.current?.non_striker?.name||'—'}</b>
+  if(type==='partnership')return <section className="tv-partnership-linear">
+    <span>PARTNERSHIP</span>
+    <strong>{p.runs??0}</strong>
+    <b>{p.balls??0} BALLS</b>
     <SponsorTag payload={payload} kind="lower-third" startedAt={startedAt} now={now}/>
   </section>;
   const need=data.innings?.runs_required;
