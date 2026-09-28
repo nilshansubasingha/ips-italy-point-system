@@ -16,7 +16,9 @@ export function LoginForm({nextPath}:{nextPath?:string}){
     const {error}=await supabase.auth.signInWithPassword({email,password});
     setBusy(false);
     if(error){setError(error.message);return;}
-    window.location.assign(nextPath||'/replay');
+    const base=window.location.pathname.startsWith('/replay')?'/replay':'';
+    const target=nextPath&&nextPath!=='/'?base+nextPath:base+'/';
+    window.location.assign(target);
   }
 
   return <form className="login-form" onSubmit={submit}>
