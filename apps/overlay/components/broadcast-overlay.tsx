@@ -104,7 +104,9 @@ function infoItems(data:J,payload:J,startedAt:string|undefined,now:number):InfoI
     const {sponsor}=resolveSponsor(payload,startedAt,now);
     if(sponsor)items.push({key:'SPONSOR',label:sponsor.message,value:sponsor.name,sponsor});
   }
-  return items.filter(x=>x.value!==''&&x.value!=='null');
+  const selected=Array.isArray(payload?.scorebar?.matchInfo?.items)?payload.scorebar.matchInfo.items.map((x:any)=>String(x).toUpperCase()):[];
+  const filtered=items.filter(x=>x.value!==''&&x.value!=='null');
+  return selected.length?filtered.filter(x=>selected.includes(x.key)):filtered;
 }
 function pickInfo(items:InfoItem[],payload:J,startedAt:string|undefined,now:number){
   if(!items.length)return null;
@@ -177,8 +179,10 @@ function Scorebar({data,payload,startedAt,now}:{data:J;payload:J;startedAt?:stri
         <Logo team={batting} className="tv-team-logo-small"/>
         <div className="tv-team-copy">
           <span className="tv-team-name">{teamName(batting)}</span>
-          <strong className="tv-team-score-big">{scoreText(data)}</strong>
-          <small className="tv-team-overs">{inn.overs||'0.0'} OV</small>
+          <div className="tv-team-score-stack">
+            <strong className="tv-team-score-big">{scoreText(data)}</strong>
+            <small className="tv-team-overs">{inn.overs||'0.0'} OV</small>
+          </div>
         </div>
       </div>
 
@@ -198,12 +202,12 @@ function Scorebar({data,payload,startedAt,now}:{data:J;payload:J;startedAt?:stri
 
       <div className="tv-bowler tv-bowler-rearranged">
         <div className="tv-bowler-top">
-          <strong className="tv-bowler-figures">{cur.bowler?.wickets??0}/{cur.bowler?.runs??0}</strong>
           <div className="tv-bowler-copy">
             <span>BOWLER</span>
             <b>{cur.bowler?.name||'—'}</b>
             <small>{cur.bowler?.overs||'0.0'} OV</small>
           </div>
+          <strong className="tv-bowler-figures">{cur.bowler?.wickets??0}/{cur.bowler?.runs??0}</strong>
         </div>
         <div className="tv-bowler-over">
           <em>THIS OVER</em>
