@@ -6,8 +6,7 @@ export const dynamic='force-dynamic';
 
 export default async function LoginPage({searchParams}:{searchParams:Promise<{next?:string}>}){
   const params=await searchParams;
-  const base=process.env.PRISM_PREVIEW_GATEWAY==='1'?'/replay':'';
-  const next=params?.next&&params.next.startsWith(base+'/')?params.next:base+'/';
+  const next=params?.next&&params.next.startsWith('/')&&!params.next.startsWith('//')?params.next:'/';
   const supabase=await createClient();
   const {data:{user}}=await supabase.auth.getUser();
   if(user)redirect(next);
