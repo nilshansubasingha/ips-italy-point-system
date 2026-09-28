@@ -340,6 +340,7 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
         {replayTakeError&&<p className="replay-ready-error">{replayTakeError}</p>}
         <div className="ready-actions">
           <button className="dismiss" onClick={()=>setReadyClipId(null)}>KEEP FOR LATER</button>
+          <button className="manual" onClick={()=>{setReadyClipId(null);setSelectedClipId(readyClip.id);setNotice('Manual replay setup: choose angle/speed or create a new manual marker.');}}>MANUAL SET</button>
           <button className="take" disabled={replayTakeBusy} onClick={()=>{
             setSelectedClipId(readyClip.id);
             const modalAngle=readyClip.angles.find(a=>a.slot===selectedAngle)??readyClip.angles[0];
