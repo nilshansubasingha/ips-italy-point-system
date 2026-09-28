@@ -7,6 +7,7 @@ type J=Record<string,any>;
 type Snapshot={match_id:string;session:J;program:J;release:J;data:J;signal:J};
 type SponsorBrand={id:string;name:string;logoUrl:string;message:string;placement:string};
 type InfoItem={key:string;label:string;value:string;sub?:string;sponsor?:SponsorBrand};
+type SponsorExposure={key:string;sponsor:SponsorBrand;scene:string;start:number;end:number|null;duration:number|null;placement:string};
 
 function initials(name?:string|null){
   return String(name||'IPS').split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]?.toUpperCase()).join('');
@@ -316,7 +317,7 @@ export function BroadcastOverlay({matchId}:{matchId?:string}){
   const hideScorebar=layers.some((x:J)=>manifest?.[x.variantKey]?.conflictBehavior==='HIDE_SCOREBAR');
   const visible=hideScorebar?layers.filter((x:J)=>x.replacementGroup!=='scorebar'):layers;
 
-  const exposureState=useMemo(()=>{
+  const exposureState=useMemo<SponsorExposure[]>(()=>{
     return visible.flatMap((layer:J)=>{
       const p=layer.payload||{};
       const started=Date.parse(layer.startedAt||'');
@@ -336,7 +337,7 @@ export function BroadcastOverlay({matchId}:{matchId?:string}){
       return [{key:layer.instanceId+':'+sponsor.id,sponsor,scene:layer.variantKey,start:Number.isFinite(started)?started:now,end,duration:end&&Number.isFinite(started)?Math.max(0,end-started):null,placement:sponsor.placement}];
     });
   },[visible,now]);
-  const exposureSignature=exposureState.map(x=>x.key).join('|');
+  const exposureSignature=exposureState.map((x:SponsorExposure)=>x.key).join('|');
   useEffect(()=>{
     if(!supabase||!matchId)return;
     for(const x of exposureState){
