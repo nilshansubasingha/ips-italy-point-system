@@ -9,7 +9,10 @@ export default async function ReplayMatch({params}:{params:Promise<{id:string}>}
   const {id:identifier}=await params;
   const supabase=await createClient();
   const {data:{user}}=await supabase.auth.getUser();
-  if(!user)redirect('/director/auth/login');
+  if(!user){
+    const base=process.env.PRISM_PREVIEW_GATEWAY==='1'?'/replay':'';
+    redirect(base+'/auth/login?next='+encodeURIComponent(base+'/matches/'+identifier));
+  }
 
   const isUuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(identifier);
   let matchId=identifier;
