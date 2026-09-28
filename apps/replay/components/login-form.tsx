@@ -1,10 +1,8 @@
 'use client';
 import {FormEvent,useState} from 'react';
-import {useRouter} from 'next/navigation';
 import {createClient} from '@/lib/supabase/client';
 
 export function LoginForm({nextPath}:{nextPath?:string}){
-  const router=useRouter();
   const [email,setEmail]=useState('');
   const [password,setPassword]=useState('');
   const [error,setError]=useState<string|null>(null);
