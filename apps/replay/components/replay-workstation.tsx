@@ -27,6 +27,22 @@ function recorderMimeCandidates(){
   return choices.filter(mime=>!mime||MediaRecorder.isTypeSupported(mime));
 }
 
+async function waitForIceGathering(pc:RTCPeerConnection){
+  if(pc.iceGatheringState==='complete')return;
+  await new Promise<void>(resolve=>{
+    const done=()=>{
+      if(pc.iceGatheringState!=='complete')return;
+      pc.removeEventListener('icegatheringstatechange',done);
+      resolve();
+    };
+    pc.addEventListener('icegatheringstatechange',done);
+    window.setTimeout(()=>{
+      pc.removeEventListener('icegatheringstatechange',done);
+      resolve();
+    },2500);
+  });
+}
+
 async function waitForVideoReady(stream:MediaStream,video?:HTMLVideoElement|null){
   const track=stream.getVideoTracks()[0];
   if(!track)throw new Error('No live video track is available for recording.');
@@ -201,30 +217,43 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
     const video=videoRefs.current[index];
     if(video){
       video.srcObject=stream;
+      video.muted=true;
+      video.playsInline=true;
       await video.play().catch(()=>{});
     }
+
+    setSlots(prev=>prev.map((slot,i)=>i===index?{
+      ...slot,
+      deviceId:'',
+      label,
+      status:'LIVE',
+      error:undefined,
+      source:'REMOTE',
+      connectionId
+    }:slot));
+    setRemoteCameras(prev=>prev.map((cam,i)=>i===index&&cam?{...cam,status:'LIVE'}:cam));
+    setNotice('REMOTE CAM '+(index+1)+' video is live. Arming central replay buffer…');
 
     try{
       await waitForVideoReady(stream,video);
       const buffer:BufferState={header:null,chunks:[],mime:'',startedAt:Date.now()};
       buffersRef.current[index]=buffer;
       const recorder=startRollingRecorder(stream,buffer,message=>{
-        setSlots(prev=>prev.map((slot,i)=>i===index?{...slot,status:'ERROR',error:message,source:'REMOTE',connectionId}:slot));
+        setSlots(prev=>prev.map((slot,i)=>i===index?{...slot,status:'LIVE',error:'BUFFER: '+message,source:'REMOTE',connectionId}:slot));
       });
       recordersRef.current[index]=recorder;
+      setSlots(prev=>prev.map((slot,i)=>i===index?{...slot,status:'LIVE',error:undefined,source:'REMOTE',connectionId}:slot));
+      setNotice('REMOTE CAM '+(index+1)+' is live and recording into the central 45s buffer.');
+    }catch(e:any){
+      buffersRef.current[index]={header:null,chunks:[],mime:'',startedAt:0};
       setSlots(prev=>prev.map((slot,i)=>i===index?{
         ...slot,
-        deviceId:'',
-        label,
         status:'LIVE',
-        error:undefined,
+        error:'BUFFER UNAVAILABLE: '+(e?.message||'MediaRecorder could not start'),
         source:'REMOTE',
         connectionId
       }:slot));
-      setRemoteCameras(prev=>prev.map((cam,i)=>i===index&&cam?{...cam,status:'LIVE'}:cam));
-      setNotice('REMOTE CAM '+(index+1)+' is live and recording into the central 45s buffer.');
-    }catch(e:any){
-      setSlots(prev=>prev.map((slot,i)=>i===index?{...slot,status:'ERROR',error:e?.message||'Remote recorder unavailable',source:'REMOTE',connectionId}:slot));
+      setNotice('REMOTE CAM '+(index+1)+' video is live, but its replay buffer is not armed.');
     }
   },[]);
 
@@ -362,6 +391,7 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
         const index=channelNo-1;
 
         const current=remotePeersRef.current.get(p.connectionId);
+        if(current&&!['failed','closed','disconnected'].includes(current.connectionState))return;
         if(current){try{current.close();}catch{}}
         const pc=new RTCPeerConnection(REMOTE_RTC_CONFIG);
         remotePeersRef.current.set(p.connectionId,pc);
@@ -389,11 +419,13 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
         await pc.setRemoteDescription(p.sdp).catch(()=>{});
         const answer=await pc.createAnswer();
         await pc.setLocalDescription(answer);
+        await waitForIceGathering(pc);
+        const localAnswer=pc.localDescription??answer;
         await channel.send({type:'broadcast',event:'answer',payload:{
           viewerId,
           connectionId:p.connectionId,
           channelNo,
-          sdp:answer
+          sdp:localAnswer
         }});
       })
       .on('broadcast',{event:'camera-ice'},async({payload}:any)=>{
