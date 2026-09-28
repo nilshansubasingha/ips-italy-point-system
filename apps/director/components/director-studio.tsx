@@ -66,7 +66,8 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
   const [matchInfoPin,setMatchInfoPin]=useState('AUTO');
   const [matchInfoItems,setMatchInfoItems]=useState<string[]>(['CRR','OVERS','LAST_WICKET','PARTNERSHIP','TARGET','NEED','RRR']);
   const [matchCardShow,setMatchCardShow]=useState(true);
-  const [matchCardMode,setMatchCardMode]=useState('AUTO');
+  const [matchCardItems,setMatchCardItems]=useState<string[]>(['TEAMS','MATCH_NUMBER','MATCH_STAGE']);
+  const [matchCardCustomText,setMatchCardCustomText]=useState('');
   const [matchCardInterval,setMatchCardInterval]=useState(5000);
   const [matchCardLogos,setMatchCardLogos]=useState(true);
   const [matchCardPlacement,setMatchCardPlacement]=useState('TOP_LEFT');
@@ -191,10 +192,11 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
   const scorebarSettings=()=>({
     showBatterPhotos,
     matchInfo:{autoRotate:matchInfoAuto,intervalMs:matchInfoInterval,pin:matchInfoPin,items:matchInfoItems},
-    matchCard:{show:matchCardShow,mode:matchCardMode,intervalMs:matchCardInterval,showTeamLogos:matchCardLogos,placement:matchCardPlacement},
+    matchCard:{show:matchCardShow,items:matchCardItems,customText:matchCardCustomText,intervalMs:matchCardInterval,showTeamLogos:matchCardLogos,placement:matchCardPlacement},
     includeSponsorInRotation:includeSponsorInScorebar
   });
   const toggleMatchInfoItem=(key:string)=>setMatchInfoItems(items=>items.includes(key)?items.filter(x=>x!==key):[...items,key]);
+  const toggleMatchCardItem=(key:string)=>setMatchCardItems(items=>items.includes(key)?items.filter(x=>x!==key):[...items,key]);
   const applyScorebar=()=>command({type:'TAKE',variantKey:'scorebar.default',persistent:true,payload:payloadFor({scorebar:scorebarSettings()},'scorebar')});
   const applySponsoredScorebar=()=>{setSponsorEnabled(true);command({type:'TAKE',variantKey:'scorebar.default',persistent:true,payload:{scorebar:scorebarSettings(),...sponsorPayload('scorebar',true)}});};
 
@@ -391,13 +393,19 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
               </div>
             </details>
             <details>
-              <summary><div><span>MATCH IDENTIFIER CARD</span><b>{matchCardShow?matchCardMode.replace('_',' ')+' · '+matchCardPlacement.replace('_',' '):'HIDDEN'}</b></div><i>Configure</i></summary>
+              <summary><div><span>MATCH IDENTIFIER CARD</span><b>{matchCardShow?matchCardItems.length+' selected · '+matchCardPlacement.replace('_',' '):'HIDDEN'}</b></div><i>Configure</i></summary>
               <div className="compact-config-grid">
                 <label><span>SHOW CARD</span><input type="checkbox" checked={matchCardShow} onChange={e=>setMatchCardShow(e.target.checked)}/></label>
-                <label><span>MODE</span><select value={matchCardMode} onChange={e=>setMatchCardMode(e.target.value)}><option>AUTO</option><option>TEAMS</option><option value="MATCH_NUMBER">MATCH NUMBER</option><option value="MATCH_STAGE">MATCH STAGE</option></select></label>
                 <label><span>ROTATION</span><select value={matchCardInterval} onChange={e=>setMatchCardInterval(Number(e.target.value))}><option value={3000}>3 sec</option><option value={5000}>5 sec</option><option value={7000}>7 sec</option><option value={10000}>10 sec</option></select></label>
                 <label><span>TEAM LOGOS</span><input type="checkbox" checked={matchCardLogos} onChange={e=>setMatchCardLogos(e.target.checked)}/></label>
                 <label><span>PLACEMENT</span><select value={matchCardPlacement} onChange={e=>setMatchCardPlacement(e.target.value)}><option>TOP_LEFT</option><option>TOP_CENTER</option><option>TOP_RIGHT</option></select></label>
+                <div className="match-card-item-picks">
+                  <span>SHOW / ROTATE</span>
+                  {[
+                    ['TEAMS','TEAMS'],['MATCH_NUMBER','MATCH NUMBER'],['MATCH_STAGE','MATCH STAGE'],['CUSTOM','CUSTOM TEXT']
+                  ].map(([key,label])=><label key={key}><input type="checkbox" checked={matchCardItems.includes(key)} onChange={()=>toggleMatchCardItem(key)}/><b>{label}</b></label>)}
+                </div>
+                {matchCardItems.includes('CUSTOM')&&<label className="match-card-custom-field"><span>CUSTOM TEXT</span><input type="text" maxLength={48} placeholder="e.g. CITY CHAMPIONSHIP" value={matchCardCustomText} onChange={e=>setMatchCardCustomText(e.target.value)}/></label>}
               </div>
             </details>
           </section>
