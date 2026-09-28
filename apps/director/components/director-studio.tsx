@@ -121,23 +121,48 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
   const match=snap.data?.match??{};
   const innings=snap.data?.innings??{};
   const selectedSponsor=useMemo(()=>sponsors.find(s=>s.id===sponsorId)??null,[sponsors,sponsorId]);
+  const selectedPlaylist=useMemo(()=>sponsorPlaylists.find(p=>p.id===sponsorPlaylistId)??null,[sponsorPlaylists,sponsorPlaylistId]);
+  const activeSponsors=useMemo(()=>sponsors.filter(s=>s.status==='ACTIVE'),[sponsors]);
+
+  const loadSponsorState=useCallback(async()=>{
+    const {data,error}=await supabase.rpc('ips_broadcast_sponsor_state',{p_match_id:matchId});
+    if(error){setError(error.message);return;}
+    const nextSponsors=(data?.sponsors??[]) as Sponsor[];
+    const nextPlaylists=(data?.playlists??[]) as SponsorPlaylist[];
+    setSponsors(nextSponsors);setSponsorPlaylists(nextPlaylists);
+    setSponsorId(current=>current&&nextSponsors.some(x=>x.id===current)?current:(nextSponsors.find(x=>x.status==='ACTIVE')?.id??nextSponsors[0]?.id??''));
+    setSponsorPlaylistId(current=>current&&nextPlaylists.some(x=>x.id===current)?current:(nextPlaylists[0]?.id??''));
+  },[supabase,matchId]);
+
+  useEffect(()=>{void loadSponsorState();},[loadSponsorState]);
 
   useEffect(()=>{
-    const tournamentId=match.tournament?.id||match.tournament_id;
-    if(!tournamentId){setSponsors([]);setSponsorId('');return;}
-    let alive=true;
-    void supabase.from('broadcast_sponsors').select('id,name,logo_url,message,metadata').eq('tournament_id',tournamentId).eq('status','ACTIVE').order('name').then(({data})=>{
-      if(!alive)return;
-      const list=(data??[]) as Sponsor[];
-      setSponsors(list);
-      setSponsorId(current=>current&&list.some(x=>x.id===current)?current:(list[0]?.id??''));
-    });
-    return()=>{alive=false;};
-  },[supabase,match.tournament?.id,match.tournament_id]);
+    if(!sponsorFile){setSponsorFilePreview('');return;}
+    const url=URL.createObjectURL(sponsorFile);setSponsorFilePreview(url);
+    return()=>URL.revokeObjectURL(url);
+  },[sponsorFile]);
 
-  const sponsorPayload=(placement=sponsorPlacement)=>selectedSponsor&&sponsorEnabled?{
-    sponsor:{id:selectedSponsor.id,name:selectedSponsor.name,logo_url:selectedSponsor.logo_url,message:selectedSponsor.message||'SPONSORED BY',placement}
-  }:{};
+  useEffect(()=>{
+    const p=sponsorPlaylists.find(x=>x.id===sponsorPlaylistId);
+    if(!p)return;
+    setPlaylistName(p.name);setPlaylistInterval(p.rotation_interval_ms);setPlaylistSponsorIds(p.items.map(i=>i.sponsor_id));
+  },[sponsorPlaylistId,sponsorPlaylists]);
+
+  const sponsorPayload=(placement=sponsorPlacement)=>{
+    if(!sponsorEnabled)return {};
+    if(sponsorRotationEnabled&&selectedPlaylist?.items?.length){
+      return {
+        sponsor:{placement},
+        sponsorPlaylist:{
+          id:selectedPlaylist.id,name:selectedPlaylist.name,rotation_interval_ms:selectedPlaylist.rotation_interval_ms,
+          sponsors:selectedPlaylist.items.filter(i=>i.sponsor?.status==='ACTIVE').sort((a,b)=>a.position-b.position).map(i=>i.sponsor)
+        }
+      };
+    }
+    return selectedSponsor&&selectedSponsor.status==='ACTIVE'?{
+      sponsor:{id:selectedSponsor.id,name:selectedSponsor.name,logo_url:selectedSponsor.logo_url,message:selectedSponsor.message||'SPONSORED BY',placement}
+    }:{};
+  };
   const payloadFor=(extra:Record<string,unknown>={},placement=sponsorPlacement)=>({...extra,...sponsorPayload(placement)});
 
   const command=(payload:Record<string,unknown>)=>{
@@ -154,11 +179,14 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
   const preview=(key:string,extra:Record<string,unknown>={})=>{setSelected(key);command({type:'PREVIEW',variantKey:key,payload:payloadFor(extra)});};
   const queueAdd=(key:string,extra:Record<string,unknown>={})=>command({type:'QUEUE_ADD',variantKey:key,payload:payloadFor(extra)});
   const queueRemove=(id:string)=>command({type:'QUEUE_REMOVE',queueId:id});
-  const applyScorebar=()=>command({type:'TAKE',variantKey:'scorebar.default',persistent:true,payload:payloadFor({scorebar:{showBatterPhotos}},'scorebar')});
-  const applySponsoredScorebar=()=>{
-    if(!selectedSponsor)return;
-    command({type:'TAKE',variantKey:'scorebar.default',persistent:true,payload:{scorebar:{showBatterPhotos},sponsor:{id:selectedSponsor.id,name:selectedSponsor.name,logo_url:selectedSponsor.logo_url,message:selectedSponsor.message||'SPONSORED BY',placement:'scorebar'}}});
-  };
+  const scorebarSettings=()=>({
+    showBatterPhotos,
+    matchInfo:{autoRotate:matchInfoAuto,intervalMs:matchInfoInterval,pin:matchInfoPin},
+    matchCard:{show:matchCardShow,mode:matchCardMode,intervalMs:matchCardInterval,showTeamLogos:matchCardLogos,placement:matchCardPlacement},
+    includeSponsorInRotation:includeSponsorInScorebar
+  });
+  const applyScorebar=()=>command({type:'TAKE',variantKey:'scorebar.default',persistent:true,payload:payloadFor({scorebar:scorebarSettings()},'scorebar')});
+  const applySponsoredScorebar=()=>{setSponsorEnabled(true);command({type:'TAKE',variantKey:'scorebar.default',persistent:true,payload:{scorebar:scorebarSettings(),...sponsorPayload('scorebar')}});};
 
   const loadRelease=()=>{
     if(!releaseChoice||releaseChoice===snap.release?.id)return;
