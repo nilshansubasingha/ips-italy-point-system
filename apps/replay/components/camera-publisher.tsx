@@ -1,7 +1,15 @@
 'use client';
 
-import {useEffect,useMemo,useRef,useState} from 'react';
-import {createClient} from '@/lib/supabase/client';
+import {useEffect,useRef,useState} from 'react';
+import {
+  ConnectionState,
+  LocalVideoTrack,
+  Room,
+  RoomEvent,
+  Track,
+  VideoPresets,
+  createLocalVideoTrack
+} from 'livekit-client';
 
 type JoinInfo={
   session_id:string;
@@ -9,77 +17,27 @@ type JoinInfo={
   match_code?:string;
   home_name:string;
   away_name:string;
-  realtime_key:string;
   connection_id:string;
   channel_no:number;
   label:string;
   expires_at:string;
 };
 
-const RTC_CONFIG:RTCConfiguration={
-  iceServers:[
-    {urls:'stun:stun.l.google.com:19302'},
-    {urls:'stun:stun1.l.google.com:19302'}
-  ]
+type TokenResponse={
+  token:string;
+  url:string;
+  room:string;
+  join:JoinInfo;
+  error?:string;
 };
 
-const QUALITY:any={
-  '540p':{width:960,height:540,frameRate:30},
-  '720p':{width:1280,height:720,frameRate:30},
-  '1080p':{width:1920,height:1080,frameRate:30}
-};
-
-async function waitForIceGathering(pc:RTCPeerConnection){
-  if(pc.iceGatheringState==='complete')return;
-  await new Promise<void>(resolve=>{
-    const done=()=>{
-      if(pc.iceGatheringState!=='complete')return;
-      pc.removeEventListener('icegatheringstatechange',done);
-      resolve();
-    };
-    pc.addEventListener('icegatheringstatechange',done);
-    window.setTimeout(()=>{
-      pc.removeEventListener('icegatheringstatechange',done);
-      resolve();
-    },2500);
-  });
-}
-
-async function openPhoneCamera(facing:'environment'|'user',quality:'540p'|'720p'|'1080p'){
-  if(!navigator.mediaDevices?.getUserMedia)throw new Error('This browser does not support camera capture.');
-  const q=QUALITY[quality];
-  const attempts:MediaStreamConstraints[]=[
-    {
-      video:{
-        facingMode:{ideal:facing},
-        width:{ideal:q.width},
-        height:{ideal:q.height},
-        frameRate:{ideal:q.frameRate,max:30}
-      },
-      audio:false
-    },
-    {video:{facingMode:{ideal:facing}},audio:false},
-    {video:true,audio:false}
-  ];
-  let lastError:any=null;
-  for(const constraints of attempts){
-    try{
-      const stream=await navigator.mediaDevices.getUserMedia(constraints);
-      const track=stream.getVideoTracks()[0];
-      if(!track){
-        stream.getTracks().forEach(t=>t.stop());
-        throw new Error('No video track was returned by the phone.');
-      }
-      track.enabled=true;
-      try{track.contentHint='motion';}catch{}
-      return stream;
-    }catch(e){lastError=e;}
-  }
-  throw lastError??new Error('Camera could not be opened.');
-}
+const QUALITY_PRESET={
+  '540p':VideoPresets.h540,
+  '720p':VideoPresets.h720,
+  '1080p':VideoPresets.h1080
+} as const;
 
 export function CameraPublisher(){
-  const supabase=useMemo(()=>createClient(),[]);
   const [pin,setPin]=useState('');
   const [channelNo,setChannelNo]=useState(1);
   const [label,setLabel]=useState('');
@@ -88,189 +46,155 @@ export function CameraPublisher(){
   const [join,setJoin]=useState<JoinInfo|null>(null);
   const [status,setStatus]=useState<'IDLE'|'JOINING'|'READY'|'LIVE'|'ERROR'>('IDLE');
   const [message,setMessage]=useState('Enter the six-digit Replay PIN.');
-  const [viewerState,setViewerState]=useState('WAITING FOR REPLAY CONTROL');
+  const [viewerState,setViewerState]=useState('NOT CONNECTED');
 
   const videoRef=useRef<HTMLVideoElement|null>(null);
-  const streamRef=useRef<MediaStream|null>(null);
-  const realtimeRef=useRef<any>(null);
-  const peersRef=useRef<Map<string,RTCPeerConnection>>(new Map());
-  const heartbeatRef=useRef<number|null>(null);
+  const roomRef=useRef<Room|null>(null);
+  const trackRef=useRef<LocalVideoTrack|null>(null);
   const wakeLockRef=useRef<any>(null);
-  const joinRef=useRef<JoinInfo|null>(null);
+  const intentionalStopRef=useRef(false);
 
-  const send=async(event:string,payload:any)=>{
-    const ch=realtimeRef.current;
-    if(!ch)return;
-    await ch.send({type:'broadcast',event,payload}).catch(()=>{});
-  };
-
-  const closePeer=(viewerId:string)=>{
-    const pc=peersRef.current.get(viewerId);
-    if(pc){try{pc.close();}catch{}}
-    peersRef.current.delete(viewerId);
-  };
-
-  const createOffer=async(viewerId:string)=>{
-    const info=joinRef.current;
-    const stream=streamRef.current;
-    if(!info||!stream)return;
-    const existing=peersRef.current.get(viewerId);
-    if(existing&&!['failed','closed','disconnected'].includes(existing.connectionState))return;
-    closePeer(viewerId);
-
-    const pc=new RTCPeerConnection(RTC_CONFIG);
-    peersRef.current.set(viewerId,pc);
-    stream.getTracks().forEach(track=>{
-      pc.addTrack(track,stream);
-      if(track.kind==='video'){
-        track.onended=()=>{
-          setStatus('ERROR');
-          setViewerState('CAMERA TRACK ENDED');
-          setMessage('Phone camera stopped. Tap STOP TRANSMISSION and reconnect.');
-        };
-      }
-    });
-    pc.onicecandidate=e=>{
-      if(e.candidate)void send('camera-ice',{
-        viewerId,
-        connectionId:info.connection_id,
-        channelNo:info.channel_no,
-        candidate:e.candidate.toJSON()
-      });
-    };
-    pc.onconnectionstatechange=()=>{
-      if(pc.connectionState==='connected'){
-        setStatus('LIVE');
-        setViewerState('CONNECTED TO REPLAY CONTROL');
-      }
-      if(['failed','closed','disconnected'].includes(pc.connectionState)){
-        setViewerState('WAITING FOR REPLAY CONTROL');
-      }
-    };
-    const offer=await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    await waitForIceGathering(pc);
-    const localOffer=pc.localDescription??offer;
-    await send('offer',{
-      viewerId,
-      connectionId:info.connection_id,
-      channelNo:info.channel_no,
-      label:info.label,
-      sdp:localOffer
-    });
-    window.setTimeout(()=>{
-      const current=peersRef.current.get(viewerId);
-      if(current===pc&&pc.connectionState==='new'&&pc.signalingState!=='stable'){
-        closePeer(viewerId);
-        setViewerState('RETRYING CONNECTION');
-      }
-    },8000);
+  const attachPreview=()=>{
+    const track=trackRef.current;
+    const video=videoRef.current;
+    if(!track||!video)return;
+    try{
+      track.detach();
+      track.attach(video);
+      video.muted=true;
+      video.playsInline=true;
+      void video.play().catch(()=>{});
+    }catch{}
   };
 
   const stopTransmission=async()=>{
-    if(join)await send('camera-offline',{connectionId:join.connection_id,channelNo:join.channel_no});
-    if(heartbeatRef.current)window.clearInterval(heartbeatRef.current);
-    heartbeatRef.current=null;
-    for(const viewerId of [...peersRef.current.keys()])closePeer(viewerId);
-    if(realtimeRef.current){
-      await supabase.removeChannel(realtimeRef.current).catch(()=>{});
-      realtimeRef.current=null;
-    }
-    streamRef.current?.getTracks().forEach(t=>t.stop());
-    streamRef.current=null;
+    intentionalStopRef.current=true;
+    const room=roomRef.current;
+    roomRef.current=null;
+    const track=trackRef.current;
+    trackRef.current=null;
+
+    try{
+      if(room&&track)await room.localParticipant.unpublishTrack(track);
+    }catch{}
+    try{track?.detach();}catch{}
+    try{track?.stop();}catch{}
+    try{room?.disconnect();}catch{}
     if(videoRef.current)videoRef.current.srcObject=null;
     try{await wakeLockRef.current?.release?.();}catch{}
     wakeLockRef.current=null;
-    joinRef.current=null;
+
     setJoin(null);
     setStatus('IDLE');
-    setViewerState('WAITING FOR REPLAY CONTROL');
-    setMessage('Transmission stopped. Enter a PIN to connect again.');
+    setViewerState('NOT CONNECTED');
+    setMessage('Transmission stopped. Enter the PIN to connect again.');
+    window.setTimeout(()=>{intentionalStopRef.current=false;},0);
   };
 
   const startTransmission=async()=>{
-    if(pin.replace(/\D/g,'').length!==6){
+    const cleanPin=pin.replace(/\D/g,'');
+    if(cleanPin.length!==6){
       setMessage('Enter the six-digit camera PIN.');
       return;
     }
+
     setStatus('JOINING');
-    setMessage('Joining camera session…');
+    setViewerState('CONNECTING TO IPS MEDIA SERVER');
+    setMessage('Validating PIN and opening camera…');
+
     try{
-      const {data,error}=await supabase.rpc('ips_camera_join',{
-        p_pin:pin.replace(/\D/g,''),
-        p_channel_no:channelNo,
-        p_label:label||('CAM '+channelNo)
+      const base=window.location.pathname.startsWith('/replay')?'/replay':'';
+      const response=await fetch(base+'/api/camera-token',{
+        method:'POST',
+        headers:{'content-type':'application/json'},
+        body:JSON.stringify({
+          role:'publisher',
+          pin:cleanPin,
+          channelNo,
+          label:label||('CAM '+channelNo)
+        })
       });
-      if(error)throw error;
-      const info=data as JoinInfo;
-      if(!info?.realtime_key)throw new Error('Camera session could not be resolved.');
+      const auth=await response.json() as TokenResponse;
+      if(!response.ok||!auth?.token||!auth?.url||!auth?.join){
+        throw new Error(auth?.error||'Could not join the IPS camera session.');
+      }
 
-      const stream=await openPhoneCamera(facing,quality);
-      streamRef.current=stream;
-      joinRef.current=info;
-      setJoin(info);
+      const preset=QUALITY_PRESET[quality];
+      const track=await createLocalVideoTrack({
+        facingMode:facing,
+        resolution:preset.resolution
+      });
+      trackRef.current=track;
+      setJoin(auth.join);
 
-      const room='ips-camera-'+info.realtime_key;
-      const realtime=supabase.channel(room)
-        .on('broadcast',{event:'control-ready'},({payload}:any)=>{
-          if(payload?.connectionId&&payload.connectionId!==info.connection_id)return;
-          if(payload?.viewerId)void createOffer(payload.viewerId);
-        })
-        .on('broadcast',{event:'answer'},async({payload}:any)=>{
-          if(payload?.connectionId!==info.connection_id||!payload?.viewerId)return;
-          const pc=peersRef.current.get(payload.viewerId);
-          if(pc&&payload.sdp)await pc.setRemoteDescription(payload.sdp).catch(()=>{});
-        })
-        .on('broadcast',{event:'control-ice'},async({payload}:any)=>{
-          if(payload?.connectionId!==info.connection_id||!payload?.viewerId)return;
-          const pc=peersRef.current.get(payload.viewerId);
-          if(pc&&payload.candidate)await pc.addIceCandidate(payload.candidate).catch(()=>{});
-        })
-        .subscribe(async(state:string)=>{
-          if(state==='SUBSCRIBED'){
-            setStatus('READY');
-            setMessage('Camera is transmitting. Keep this page open.');
-            const ready=()=>void send('camera-ready',{
-              connectionId:info.connection_id,
-              channelNo:info.channel_no,
-              label:info.label,
-              quality,
-              facing,
-              at:Date.now()
-            });
-            ready();
-            heartbeatRef.current=window.setInterval(ready,3000);
-          }
-          if(state==='CHANNEL_ERROR'||state==='TIMED_OUT'){
-            setStatus('ERROR');
-            setMessage('Realtime connection failed. Check network and reconnect.');
-          }
-        });
-      realtimeRef.current=realtime;
+      const room=new Room({
+        adaptiveStream:false,
+        dynacast:false,
+        disconnectOnPageLeave:true
+      });
+      roomRef.current=room;
+
+      room.on(RoomEvent.ConnectionStateChanged,(state:ConnectionState)=>{
+        if(state===ConnectionState.Connected){
+          setStatus('LIVE');
+          setViewerState('CONNECTED TO IPS MEDIA SERVER');
+          setMessage('Camera is live. Replay Control can now monitor and record this channel.');
+        }else if(state===ConnectionState.Reconnecting){
+          setStatus('READY');
+          setViewerState('RECONNECTING');
+          setMessage('Network changed. IPS is reconnecting the camera automatically…');
+        }else if(state===ConnectionState.Disconnected&&!intentionalStopRef.current){
+          setStatus('ERROR');
+          setViewerState('MEDIA SERVER DISCONNECTED');
+          setMessage('Camera lost the media server connection. Stop and reconnect if it does not recover.');
+        }
+      });
+
+      room.on(RoomEvent.MediaDevicesError,(error:Error)=>{
+        setStatus('ERROR');
+        setMessage(error?.message||'Phone camera error.');
+      });
+
+      setStatus('READY');
+      setMessage('Connecting camera to IPS media server…');
+      await room.connect(auth.url,auth.token,{
+        autoSubscribe:false
+      });
+
+      await room.localParticipant.publishTrack(track,{
+        name:'CAM '+channelNo,
+        source:Track.Source.Camera,
+        simulcast:false
+      });
+
+      setStatus('LIVE');
+      setViewerState('CONNECTED TO IPS MEDIA SERVER');
+      setMessage('Camera is live. Keep this page visible during transmission.');
 
       try{wakeLockRef.current=await (navigator as any).wakeLock?.request?.('screen');}catch{}
+      window.setTimeout(attachPreview,0);
     }catch(e:any){
-      streamRef.current?.getTracks().forEach(t=>t.stop());
-      streamRef.current=null;
+      try{trackRef.current?.detach();}catch{}
+      try{trackRef.current?.stop();}catch{}
+      trackRef.current=null;
+      try{roomRef.current?.disconnect();}catch{}
+      roomRef.current=null;
+      setJoin(null);
       setStatus('ERROR');
+      setViewerState('CONNECTION FAILED');
       setMessage(e?.message||'Camera connection failed.');
     }
   };
 
   useEffect(()=>{
-    const video=videoRef.current;
-    const stream=streamRef.current;
-    if(!join||!video||!stream)return;
-    video.srcObject=stream;
-    video.muted=true;
-    video.playsInline=true;
-    const play=()=>{void video.play().catch(()=>{});};
-    play();
-    video.addEventListener('loadedmetadata',play);
-    return()=>video.removeEventListener('loadedmetadata',play);
+    if(join)attachPreview();
   },[join]);
 
-  useEffect(()=>()=>{void stopTransmission();},[]);
+  useEffect(()=>()=>{
+    intentionalStopRef.current=true;
+    try{trackRef.current?.stop();}catch{}
+    try{roomRef.current?.disconnect();}catch{}
+  },[]);
 
   return <main className="camera-publisher-shell">
     <header className="camera-publisher-top">
@@ -279,9 +203,9 @@ export function CameraPublisher(){
     </header>
 
     {!join?<section className="camera-join-card">
-      <p className="eyebrow">REMOTE CAMERA CONTRIBUTION</p>
+      <p className="eyebrow">CENTRAL CAMERA CONTRIBUTION</p>
       <h1>Join Replay Camera</h1>
-      <p className="camera-join-copy">Enter the PIN shown in the Replay workstation. No account is required on this camera phone.</p>
+      <p className="camera-join-copy">Enter the PIN shown in Replay Control. The phone publishes directly to the IPS media server; no camera operator is needed at the Replay workstation.</p>
 
       <label className="camera-pin-field"><span>CAMERA PIN</span><input inputMode="numeric" pattern="[0-9]*" maxLength={6} value={pin} onChange={e=>setPin(e.target.value.replace(/\D/g,'').slice(0,6))} placeholder="000000"/></label>
 
@@ -300,10 +224,10 @@ export function CameraPublisher(){
         <div><span>CHANNEL</span><strong>CAM {join.channel_no}</strong><small>{viewerState}</small></div>
       </div>
 
-      <div className="camera-phone-preview"><video ref={videoRef} autoPlay muted playsInline disablePictureInPicture/><div><b>CAM {join.channel_no}</b><span>{quality} · {facing==='environment'?'BACK':'FRONT'}</span></div></div>
+      <div className="camera-phone-preview"><video ref={videoRef} autoPlay muted playsInline disablePictureInPicture/><div><b>CAM {join.channel_no}</b><span>{quality} · {facing==='environment'?'BACK':'FRONT'} · SFU</span></div></div>
       <p className="camera-message">{message}</p>
       <button className="camera-stop-button" onClick={()=>void stopTransmission()}>STOP TRANSMISSION</button>
-      <p className="camera-keep-open">Keep this page visible and keep the phone awake while transmitting.</p>
+      <p className="camera-keep-open">Keep this page visible and the phone awake. Network recovery is handled by the IPS media server.</p>
     </section>}
   </main>;
 }
