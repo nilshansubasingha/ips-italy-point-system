@@ -3,6 +3,15 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import Link from 'next/link';
 import {createClient} from '@/lib/supabase/client';
+import {
+  ConnectionState,
+  Room,
+  RoomEvent,
+  Track,
+  type RemoteParticipant,
+  type RemoteTrack,
+  type RemoteTrackPublication
+} from 'livekit-client';
 
 type SlotState={slot:number;deviceId:string;label:string;status:'IDLE'|'LIVE'|'ERROR';error?:string;source?:'LOCAL'|'REMOTE';connectionId?:string};
 type Chunk={blob:Blob;at:number};
@@ -14,13 +23,6 @@ type RemoteCamera={connectionId:string;channelNo:number;label:string;quality?:st
 
 const SLOT_COUNT=4;
 const BUFFER_MS=45000;
-const REMOTE_RTC_CONFIG:RTCConfiguration={
-  iceServers:[
-    {urls:'stun:stun.l.google.com:19302'},
-    {urls:'stun:stun1.l.google.com:19302'}
-  ]
-};
-
 function recorderMimeCandidates(){
   if(typeof MediaRecorder==='undefined')return [] as string[];
   const choices=['video/webm;codecs=vp8','video/webm','video/mp4',''];
@@ -138,15 +140,9 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
   const seenEventsRef=useRef(new Set<string>());
   const clipsRef=useRef<ReplayClip[]>([]);
   const previewVideoRef=useRef<HTMLVideoElement|null>(null);
-  const remoteChannelRef=useRef<any>(null);
-  const remotePeersRef=useRef<Map<string,RTCPeerConnection>>(new Map());
-  const remoteCamerasRef=useRef<(RemoteCamera|null)[]>(Array(SLOT_COUNT).fill(null));
-  const slotsRef=useRef<SlotState[]>(slots);
-  const viewerIdRef=useRef(typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():'viewer-'+Date.now());
+  const livekitRoomRef=useRef<Room|null>(null);
 
   useEffect(()=>{clipsRef.current=clips;},[clips]);
-  useEffect(()=>{remoteCamerasRef.current=remoteCameras;},[remoteCameras]);
-  useEffect(()=>{slotsRef.current=slots;},[slots]);
 
   const enumerate=useCallback(async()=>{
     if(!navigator.mediaDevices?.enumerateDevices)return;
@@ -355,128 +351,107 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
   useEffect(()=>{void loadCameraSession(false);},[loadCameraSession]);
 
   useEffect(()=>{
-    const session=cameraSession;
-    if(!session?.realtime_key)return;
-    const viewerId=viewerIdRef.current;
-    let alive=true;
-    const channel=supabase.channel('ips-camera-'+session.realtime_key)
-      .on('broadcast',{event:'camera-ready'},({payload}:any)=>{
-        if(!alive)return;
-        const p=payload||{};
-        const channelNo=Number(p.channelNo);
-        if(!p.connectionId||channelNo<1||channelNo>SLOT_COUNT)return;
-        const index=channelNo-1;
-        const existing=remoteCamerasRef.current[index];
-        if(existing&&existing.connectionId!==p.connectionId){
-          const oldPeer=remotePeersRef.current.get(existing.connectionId);
-          if(oldPeer){try{oldPeer.close();}catch{}remotePeersRef.current.delete(existing.connectionId);}
-          if(slotsRef.current[index]?.source==='REMOTE'&&slotsRef.current[index]?.connectionId===existing.connectionId)stopSlot(index);
-        }
-        const info:RemoteCamera={
-          connectionId:p.connectionId,
+    let cancelled=false;
+    const base=window.location.pathname.startsWith('/replay')?'/replay':'';
+
+    const cameraMeta=(participant:RemoteParticipant)=>{
+      try{
+        const parsed=JSON.parse(participant.metadata||'{}');
+        const channelNo=Number(parsed.channelNo);
+        if(parsed.role!=='camera'||channelNo<1||channelNo>SLOT_COUNT)return null;
+        return {
           channelNo,
-          label:p.label||('CAM '+channelNo),
-          quality:p.quality,
-          lastSeen:Date.now(),
-          status:existing?.connectionId===p.connectionId&&existing?.status==='LIVE'?'LIVE':'READY'
+          label:String(parsed.label||('CAM '+channelNo)),
+          connectionId:String(parsed.connectionId||participant.identity)
         };
-        setRemoteCameras(prev=>prev.map((cam,i)=>i===index?info:cam));
-        void channel.send({type:'broadcast',event:'control-ready',payload:{viewerId,connectionId:p.connectionId,channelNo}});
-      })
-      .on('broadcast',{event:'offer'},async({payload}:any)=>{
-        const p=payload||{};
-        if(p.viewerId!==viewerId||!p.connectionId||!p.sdp)return;
-        const channelNo=Number(p.channelNo);
-        if(channelNo<1||channelNo>SLOT_COUNT)return;
-        const index=channelNo-1;
-
-        const current=remotePeersRef.current.get(p.connectionId);
-        if(current&&!['failed','closed','disconnected'].includes(current.connectionState))return;
-        if(current){try{current.close();}catch{}}
-        const pc=new RTCPeerConnection(REMOTE_RTC_CONFIG);
-        remotePeersRef.current.set(p.connectionId,pc);
-
-        pc.ontrack=e=>{
-          const stream=e.streams?.[0]??new MediaStream([e.track]);
-          void attachRemoteStream(index,stream,p.label||('CAM '+channelNo),p.connectionId);
-        };
-        pc.onicecandidate=e=>{
-          if(e.candidate)void channel.send({type:'broadcast',event:'control-ice',payload:{
-            viewerId,
-            connectionId:p.connectionId,
-            channelNo,
-            candidate:e.candidate.toJSON()
-          }});
-        };
-        pc.onconnectionstatechange=()=>{
-          if(pc.connectionState==='connected'){
-            setRemoteCameras(prev=>prev.map((cam,i)=>i===index&&cam&&cam.connectionId===p.connectionId?{...cam,status:'LIVE',lastSeen:Date.now()}:cam));
-          }
-          if(pc.connectionState==='failed'){
-            setRemoteCameras(prev=>prev.map((cam,i)=>i===index&&cam&&cam.connectionId===p.connectionId?{...cam,status:'ERROR'}:cam));
-          }
-        };
-        await pc.setRemoteDescription(p.sdp).catch(()=>{});
-        const answer=await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        await waitForIceGathering(pc);
-        const localAnswer=pc.localDescription??answer;
-        await channel.send({type:'broadcast',event:'answer',payload:{
-          viewerId,
-          connectionId:p.connectionId,
-          channelNo,
-          sdp:localAnswer
-        }});
-      })
-      .on('broadcast',{event:'camera-ice'},async({payload}:any)=>{
-        const p=payload||{};
-        if(p.viewerId!==viewerId||!p.connectionId||!p.candidate)return;
-        const pc=remotePeersRef.current.get(p.connectionId);
-        if(pc)await pc.addIceCandidate(p.candidate).catch(()=>{});
-      })
-      .on('broadcast',{event:'camera-offline'},({payload}:any)=>{
-        const p=payload||{};
-        const channelNo=Number(p.channelNo);
-        if(channelNo<1||channelNo>SLOT_COUNT)return;
-        const index=channelNo-1;
-        const pc=remotePeersRef.current.get(p.connectionId);
-        if(pc){try{pc.close();}catch{}remotePeersRef.current.delete(p.connectionId);}
-        if(slotsRef.current[index]?.source==='REMOTE'&&slotsRef.current[index]?.connectionId===p.connectionId)stopSlot(index);
-        setRemoteCameras(prev=>prev.map((cam,i)=>i===index&&cam&&cam.connectionId===p.connectionId?null:cam));
-      })
-      .subscribe((status:string)=>{
-        if(status==='SUBSCRIBED'){
-          setRemoteLink('READY');
-          void channel.send({type:'broadcast',event:'control-ready',payload:{viewerId}});
-        }
-        if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'){
-          setRemoteLink('ERROR');
-        }
-      });
-
-    remoteChannelRef.current=channel;
-    const hello=window.setInterval(()=>void channel.send({type:'broadcast',event:'control-ready',payload:{viewerId}}),4000);
-    const stale=window.setInterval(()=>{
-      const now=Date.now();
-      remoteCamerasRef.current.forEach((cam,index)=>{
-        if(!cam||now-cam.lastSeen<11000)return;
-        const pc=remotePeersRef.current.get(cam.connectionId);
-        if(pc){try{pc.close();}catch{}remotePeersRef.current.delete(cam.connectionId);}
-        if(slotsRef.current[index]?.source==='REMOTE'&&slotsRef.current[index]?.connectionId===cam.connectionId)stopSlot(index);
-        setRemoteCameras(prev=>prev.map((value,i)=>i===index?null:value));
-      });
-    },3000);
-
-    return()=>{
-      alive=false;
-      window.clearInterval(hello);
-      window.clearInterval(stale);
-      for(const pc of remotePeersRef.current.values()){try{pc.close();}catch{}}
-      remotePeersRef.current.clear();
-      remoteChannelRef.current=null;
-      void supabase.removeChannel(channel);
+      }catch{return null;}
     };
-  },[cameraSession?.realtime_key,supabase,attachRemoteStream,stopSlot]);
+
+    const disconnectParticipant=(participant:RemoteParticipant)=>{
+      const meta=cameraMeta(participant);
+      if(!meta)return;
+      const index=meta.channelNo-1;
+      setRemoteCameras(prev=>prev.map((cam,i)=>i===index&&cam?.connectionId===meta.connectionId?null:cam));
+      const slot=streamsRef.current[index];
+      const remoteSlot=slot&&slots[index]?.source==='REMOTE';
+      if(remoteSlot)stopSlot(index);
+    };
+
+    async function connect(){
+      setRemoteLink('CONNECTING');
+      try{
+        const response=await fetch(base+'/api/camera-token',{
+          method:'POST',
+          headers:{'content-type':'application/json'},
+          body:JSON.stringify({role:'viewer',matchId})
+        });
+        const auth=await response.json();
+        if(!response.ok||!auth?.token||!auth?.url)throw new Error(auth?.error||'Could not authorize Replay Control with the media server.');
+        if(cancelled)return;
+        if(auth.session)setCameraSession(auth.session as CameraSession);
+
+        const room=new Room({
+          adaptiveStream:true,
+          dynacast:false,
+          disconnectOnPageLeave:true
+        });
+        livekitRoomRef.current=room;
+
+        room.on(RoomEvent.ConnectionStateChanged,(state:ConnectionState)=>{
+          if(cancelled)return;
+          if(state===ConnectionState.Connected)setRemoteLink('READY');
+          else if(state===ConnectionState.Reconnecting)setRemoteLink('CONNECTING');
+          else if(state===ConnectionState.Disconnected)setRemoteLink('ERROR');
+        });
+
+        room.on(RoomEvent.TrackSubscribed,(track:RemoteTrack,_publication:RemoteTrackPublication,participant:RemoteParticipant)=>{
+          if(track.kind!==Track.Kind.Video)return;
+          const meta=cameraMeta(participant);
+          if(!meta)return;
+          const index=meta.channelNo-1;
+          const mediaTrack=track.mediaStreamTrack;
+          const stream=new MediaStream([mediaTrack]);
+          setRemoteCameras(prev=>prev.map((cam,i)=>i===index?{
+            connectionId:meta.connectionId,
+            channelNo:meta.channelNo,
+            label:meta.label,
+            quality:'SFU',
+            lastSeen:Date.now(),
+            status:'LIVE'
+          }:cam));
+          void attachRemoteStream(index,stream,meta.label,meta.connectionId);
+        });
+
+        room.on(RoomEvent.TrackUnsubscribed,(_track:RemoteTrack,_publication:RemoteTrackPublication,participant:RemoteParticipant)=>{
+          disconnectParticipant(participant);
+        });
+        room.on(RoomEvent.ParticipantDisconnected,(participant:RemoteParticipant)=>{
+          disconnectParticipant(participant);
+        });
+
+        await room.connect(auth.url,auth.token,{autoSubscribe:true});
+        if(cancelled){room.disconnect();return;}
+        setRemoteLink('READY');
+        setNotice('IPS media server connected. Remote phones will appear here automatically.');
+      }catch(e:any){
+        if(cancelled)return;
+        setRemoteLink('ERROR');
+        setNotice('IPS media server connection failed: '+(e?.message||'unknown error'));
+      }
+    }
+
+    void connect();
+    return()=>{
+      cancelled=true;
+      const room=livekitRoomRef.current;
+      livekitRoomRef.current=null;
+      try{room?.disconnect();}catch{}
+      for(let i=0;i<SLOT_COUNT;i++){
+        if(streamsRef.current[i]&&slots[i]?.source==='REMOTE')stopSlot(i);
+      }
+      setRemoteCameras(Array(SLOT_COUNT).fill(null));
+    };
+  },[matchId,attachRemoteStream,stopSlot]);
 
   const openCameraPublisher=()=>{
     const base=window.location.pathname.startsWith('/replay')?'/replay':'';
