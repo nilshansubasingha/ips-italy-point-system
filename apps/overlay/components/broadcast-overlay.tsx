@@ -172,25 +172,38 @@ function Scorebar({data,payload,startedAt,now}:{data:J;payload:J;startedAt?:stri
     <MatchIdentifierCard data={data} payload={payload} startedAt={startedAt} now={now}/>
     <section className="tv-scorebar">
       <div className="tv-scorebar-accent"/>
-      <div className="tv-score-main">
-        <Logo team={batting}/>
-        <div className="tv-team-score"><span>{teamName(batting)}</span><strong>{scoreText(data)}</strong></div>
+
+      <div className="tv-team-block">
+        <Logo team={batting} className="tv-team-logo-small"/>
+        <div className="tv-team-copy">
+          <span className="tv-team-name">{teamName(batting)}</span>
+          <strong className="tv-team-score-big">{scoreText(data)}</strong>
+          <small className="tv-team-overs">{inn.overs||'0.0'} OV</small>
+        </div>
       </div>
-      <MatchInfo data={data} payload={payload} startedAt={startedAt} now={now}/>
+
       <div className={'tv-batter tv-striker '+(showPhotos?'with-photo':'')}>
         {showPhotos&&<PlayerThumb player={cur.striker}/>}
         <div className="tv-person-copy"><span>STRIKER</span><b>{cur.striker?.name||'—'}</b></div>
         <strong>{cur.striker?.runs??0}<i>{cur.striker?.balls??0} BALLS</i></strong>
       </div>
+
       <div className={'tv-batter tv-nonstriker '+(showPhotos?'with-photo':'')}>
         {showPhotos&&<PlayerThumb player={cur.non_striker}/>}
         <div className="tv-person-copy"><span>NON-STRIKER</span><b>{cur.non_striker?.name||'—'}</b></div>
         <strong>{cur.non_striker?.runs??0}<i>{cur.non_striker?.balls??0} BALLS</i></strong>
       </div>
-      <div className="tv-bowler">
-        <div className="tv-bowler-primary">
-          <div className="tv-person-copy"><span>BOWLER</span><b>{cur.bowler?.name||'—'}</b><small>{cur.bowler?.overs||'0.0'} OV</small></div>
-          <strong>{cur.bowler?.wickets??0}/{cur.bowler?.runs??0}<i>ECON {Number(cur.bowler?.economy||0).toFixed(2)}</i></strong>
+
+      <MatchInfo data={data} payload={payload} startedAt={startedAt} now={now}/>
+
+      <div className="tv-bowler tv-bowler-rearranged">
+        <div className="tv-bowler-top">
+          <strong className="tv-bowler-figures">{cur.bowler?.wickets??0}/{cur.bowler?.runs??0}</strong>
+          <div className="tv-bowler-copy">
+            <span>BOWLER</span>
+            <b>{cur.bowler?.name||'—'}</b>
+            <small>{cur.bowler?.overs||'0.0'} OV</small>
+          </div>
         </div>
         <div className="tv-bowler-over">
           <em>THIS OVER</em>
@@ -198,6 +211,7 @@ function Scorebar({data,payload,startedAt,now}:{data:J;payload:J;startedAt?:stri
           {inn.free_hit&&<b>FREE HIT</b>}
         </div>
       </div>
+
       {!payload?.scorebar?.includeSponsorInRotation&&<SponsorTag payload={payload} kind="scorebar" startedAt={startedAt} now={now}/>}
     </section>
   </>;
