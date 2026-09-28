@@ -714,7 +714,7 @@ export function ControllerMatch({
     {sheet?.kind==='extra'&&<ChoiceSheet title={sheet.extra==='WIDE'?'Wide':sheet.extra==='NO_BALL'?'No-ball':sheet.extra==='BYE'?'Byes':'Leg byes'} kicker="EXTRAS" onClose={()=>setSheet(null)}>
       <p className="p6-sheet-copy">{sheet.extra==='WIDE'||sheet.extra==='NO_BALL'?'Choose the additional runs. The mandatory one-run extra is handled automatically.':'Choose the completed extra runs.'}</p>
       <div className="choices p6-choice-grid">
-        {(sheet.extra==='WIDE'||sheet.extra==='NO_BALL'?[0,1,2,3,4]:[1,2,3,4]).map(value=><button
+        {(sheet.extra==='WIDE'?[0,1,2,3,4]:sheet.extra==='NO_BALL'?[0,1,2,3,4,6]:[1,2,3,4]).map(value=><button
           type="button"
           disabled={pending}
           key={value}
