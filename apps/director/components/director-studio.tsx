@@ -177,7 +177,7 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
         <small>{match.code} · {match.status}</small>
       </div>
       <div className="top-status"><span className="live-dot"/>PROGRAM CONNECTED <b>R{snap.program?.revision??0}</b></div>
-      <div className="director-nav"><a href={"/replay/matches/"+matchId}>REPLAY</a><Link href="/">← MATCHES</Link></div>
+      <div className="director-nav"><a className="overlay-open" target="_blank" rel="noreferrer" href={OVERLAY_URL+"/?match="+matchId}>OPEN OVERLAY ↗</a><a href={"/replay/matches/"+matchId}>REPLAY</a><Link href="/">← MATCHES</Link></div>
     </header>
 
     <nav className="control-tabs">
