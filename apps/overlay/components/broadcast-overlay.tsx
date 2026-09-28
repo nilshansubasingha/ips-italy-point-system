@@ -212,6 +212,9 @@ function MatchBoard({cue,live,card,context}:{cue:Cue;live:LiveSummary|null;card:
     <header><span>IPS BROADCAST</span><b>{context?.tournament?.name??card?.match?.tournament_name??'ITALY POINT SYSTEM'}</b></header>
     <div className="ips-board-title"><span>{title}</span></div>
     {cue.graphic==='PLAYING_XI'?<div className="ips-lineups"><LineupColumn side={context?.home}/><LineupColumn side={context?.away}/></div>:
+      cue.graphic==='TOSS'?<div className="ips-toss-copy"><span>WON THE TOSS</span><strong>{String(payload.teamName??payload.team_name??home?.name??'TEAM')}</strong><b>{String(payload.subtitle??payload.decision??'DECISION TBC')}</b></div>:
+      (cue.graphic==='PLAYER_OF_MATCH'||cue.graphic==='TOURNAMENT_AWARD')?<div className="ips-award-copy"><span>{title}</span><strong>{String(payload.playerName??payload.player_name??live?.striker_name??'PLAYER')}</strong><b>{String(payload.teamName??payload.team_name??'')}</b><small>{String(payload.subtitle??payload.message??'')}</small></div>:
+      cue.graphic==='INNINGS_BREAK'?<div className="ips-break-copy"><span>INNINGS COMPLETE</span><strong>{live?String(live.runs)+'/'+String(live.wickets):'—'}</strong><b>{live?.overs_text??'0.0'} OV</b>{live?.target_runs&&<small>TARGET {live.target_runs}</small>}</div>:
       cue.graphic==='MATCH_CONDITIONS'?<div className="ips-conditions"><div><span>VENUE</span><b>{context?.venue?.name??'—'}</b></div><div><span>FORMAT</span><b>{context?.tournament?.format_label??'—'}</b></div><div><span>OVERS</span><b>{context?.match?.overs_per_innings??card?.match?.overs_per_innings??'—'}</b></div><div><span>CITY</span><b>{context?.tournament?.city??'—'}</b></div></div>:
       cue.graphic==='TARGET'?<div className="ips-target-number"><strong>{target||'—'}</strong><span>TO WIN</span></div>:
       cue.graphic==='MATCH_RESULT'?<div className="ips-result-copy"><strong>{result||'RESULT'}</strong><span>{live?String(live.runs)+'/'+String(live.wickets)+' · '+live.overs_text+' OV':''}</span></div>:
@@ -270,6 +273,35 @@ function GenericPanel({cue,live}:{cue:Cue;live:LiveSummary|null}){
   </section>;
 }
 
+function UtilityGraphic({cue}:{cue:Cue}){
+  const payload=cue.payload??{};
+  const label=String(payload.label??payload.message??payload.sponsor??cue.graphic.replaceAll('_',' '));
+  if(cue.graphic==='LIVE_ID'){
+    return <div className="ips-live-id"><i/>LIVE</div>;
+  }
+  if(cue.graphic==='CAMERA_ID'){
+    return <div className="ips-camera-id">{label||'CAMERA'}</div>;
+  }
+  if(cue.graphic==='SPONSOR'){
+    return cue.mode==='FULL_SCREEN'
+      ?<section className="ips-sponsor-full"><span>PRESENTED BY</span><strong>{String(payload.sponsor??'SPONSOR')}</strong><b>IPS</b></section>
+      :<div className="ips-sponsor-bug"><span>PRESENTED BY</span><strong>{String(payload.sponsor??'SPONSOR')}</strong></div>;
+  }
+  if(cue.graphic==='REPLAY'){
+    return <section className="ips-replay-sting"><div/><span>IPS</span><strong>REPLAY</strong><b>{String(payload.angle??payload.message??'')}</b></section>;
+  }
+  if(cue.graphic==='TRANSITION'){
+    return <section className="ips-transition-sting"><div/><strong>IPS</strong></section>;
+  }
+  if(cue.graphic==='SOCIAL'){
+    return <div className="ips-social-strip"><span>FOLLOW IPS</span><strong>{String(payload.message??'ITALY POINT SYSTEM')}</strong></div>;
+  }
+  if(cue.graphic==='QR_PROMO'){
+    return <div className="ips-qr-panel"><span>DIGITAL</span><strong>{String(payload.title??'SCAN / VISIT IPS')}</strong><b>{String(payload.message??'')}</b><i>QR</i></div>;
+  }
+  return null;
+}
+
 function CueRenderer({cue,live,card,context}:{cue:Cue;live:LiveSummary|null;card:any;context:any}){
   const def=broadcastGraphic(cue.graphic);
   if(!def)return null;
@@ -277,6 +309,7 @@ function CueRenderer({cue,live,card,context}:{cue:Cue;live:LiveSummary|null;card
   if(def.family==='PLAYER_FEATURE'||def.family==='LOWER_THIRD')return <PlayerFeature cue={cue} live={live} context={context}/>;
   if(def.family==='MATCH_BOARD'||def.family==='RESULT_AWARD'||def.family==='HOLDING')return <MatchBoard cue={cue} live={live} card={card} context={context}/>;
   if(def.family==='SCORECARD')return <ScorecardGraphic cue={cue} live={live} card={card}/>;
+  if(def.family==='UTILITY')return <UtilityGraphic cue={cue}/>;
   return <GenericPanel cue={cue} live={live}/>;
 }
 
