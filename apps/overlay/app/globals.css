@@ -135,3 +135,18 @@ body{font-family:Inter,Arial,sans-serif}
 @media(max-aspect-ratio:16/9){.tv-output{transform-origin:top left}}
 
 .tv-xi footer{bottom:18px;height:44px}
+
+
+/* Replay fullscreen delivery */
+.tv-replay-fullscreen{position:absolute;inset:0;background:#000;overflow:hidden;display:grid;place-items:center}
+.tv-replay-video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
+.tv-replay-sting{position:absolute;inset:0;display:grid;place-content:center;text-align:center;background:radial-gradient(circle at 50% 50%,rgba(25,209,143,.24),transparent 34%),linear-gradient(125deg,#020507,#0b151b 46%,#020405);overflow:hidden;animation:tv-replay-sting-in .28s ease-out both}
+.tv-replay-sting-lines{position:absolute;inset:-35%;background:repeating-linear-gradient(115deg,transparent 0 55px,rgba(255,255,255,.035) 56px 58px);transform:translateX(-18%) rotate(-6deg);animation:tv-replay-lines .95s ease-out both}
+.tv-replay-sting>span{position:relative;font-size:20px;font-weight:1000;letter-spacing:.34em;color:#7b918d}
+.tv-replay-sting>strong{position:relative;margin-top:8px;font-size:150px;line-height:.82;font-weight:1000;letter-spacing:-.07em;color:#fff;text-shadow:0 0 44px rgba(25,209,143,.2)}
+.tv-replay-sting>b{position:relative;margin-top:22px;font-size:18px;letter-spacing:.26em;color:#19d18f}
+.tv-replay-label{position:absolute;left:42px;top:36px;display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:7px;background:rgba(3,8,11,.74);border-left:4px solid #19d18f;backdrop-filter:blur(8px)}
+.tv-replay-label b{font-size:11px;letter-spacing:.16em}.tv-replay-label span{font-size:8px;color:#9dafb6}
+.tv-replay-missing{font-size:24px;font-weight:950;letter-spacing:.08em;color:#fff}
+@keyframes tv-replay-sting-in{from{opacity:0;transform:scale(1.04)}to{opacity:1;transform:none}}
+@keyframes tv-replay-lines{from{opacity:0;transform:translateX(-30%) rotate(-6deg)}to{opacity:1;transform:translateX(5%) rotate(-6deg)}}
