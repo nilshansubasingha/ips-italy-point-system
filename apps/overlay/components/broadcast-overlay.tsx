@@ -134,35 +134,37 @@ function MatchInfo({data,payload,startedAt,now}:{data:J;payload:J;startedAt?:str
   </div></div>;
 }
 
-function matchCardItems(data:J){
+function matchCardItems(data:J,cfg:J){
   const match=data.match||{},home=match.home_team||{},away=match.away_team||{};
-  const items:any[]=[{key:'TEAMS',kind:'teams',home,away}];
-  if(match.number!=null)items.push({key:'MATCH_NUMBER',kind:'text',label:'MATCH',value:String(match.number).padStart(2,'0')});
+  const all:any[]=[{key:'TEAMS',kind:'teams',home,away}];
+  if(match.number!=null)all.push({key:'MATCH_NUMBER',kind:'text',label:'MATCH',value:String(match.number).padStart(2,'0')});
   const stage=prettyStage(match.round||match.stage);
-  if(stage)items.push({key:'MATCH_STAGE',kind:'text',label:match.round?'ROUND':'STAGE',value:stage});
-  return items;
+  if(stage)all.push({key:'MATCH_STAGE',kind:'text',label:'',value:stage});
+  const custom=String(cfg?.customText||'').trim();
+  if(custom)all.push({key:'CUSTOM',kind:'custom',label:'',value:custom});
+
+  const selected=Array.isArray(cfg?.items)?cfg.items.map((x:any)=>String(x).toUpperCase()):['TEAMS','MATCH_NUMBER','MATCH_STAGE'];
+  const filtered=all.filter(item=>selected.includes(item.key));
+  return filtered.length?filtered:[all[0]];
 }
 function MatchIdentifierCard({data,payload,startedAt,now}:{data:J;payload:J;startedAt?:string;now:number}){
   const cfg=payload?.scorebar?.matchCard||{};
   if(cfg.show===false)return null;
-  const items=matchCardItems(data);
-  const mode=String(cfg.mode||'AUTO').toUpperCase();
-  let item=items[0];
-  if(mode!=='AUTO')item=items.find(x=>x.key===mode)||items[0];
-  else{
-    const interval=Math.max(3000,Number(cfg.intervalMs||5000));
-    const start=Date.parse(startedAt||'');
-    const elapsed=Number.isFinite(start)?Math.max(0,now-start):now;
-    item=items[Math.floor(elapsed/interval)%items.length];
-  }
+  const items=matchCardItems(data,cfg);
+  const interval=Math.max(3000,Number(cfg.intervalMs||5000));
+  const start=Date.parse(startedAt||'');
+  const elapsed=Number.isFinite(start)?Math.max(0,now-start):now;
+  const item=items[Math.floor(elapsed/interval)%items.length];
   const placement=String(cfg.placement||'TOP_LEFT').toLowerCase().replace('_','-');
   const logos=cfg.showTeamLogos!==false;
   return <aside className={'tv-match-card '+placement}><div key={item.key+(item.value||'')} className="tv-match-card-inner">
     {item.kind==='teams'?<>
       <div className="tv-match-card-team">{logos&&<Logo team={item.home}/>}<b>{teamName(item.home)}</b></div>
       <i>VS</i>
-      <div className="tv-match-card-team away"><b>{teamName(item.away)}</b>{logos&&<Logo team={item.away}/>}</div>
-    </>:<><span>{item.label}</span><strong>{item.value}</strong></>}
+      <div className="tv-match-card-team away">{logos&&<Logo team={item.away}/>}<b>{teamName(item.away)}</b></div>
+    </>:item.kind==='custom'?<strong className="tv-match-card-custom">{item.value}</strong>:<>
+      {item.label&&<span>{item.label}</span>}<strong>{item.value}</strong>
+    </>}
   </div></aside>;
 }
 
