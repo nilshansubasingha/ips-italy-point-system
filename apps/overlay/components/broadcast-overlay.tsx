@@ -70,10 +70,10 @@ function Logo({url,name}:{url?:string|null;name?:string|null}){
   return <span className="ips-team-logo">{url?<img src={url} alt=""/>:<b>{initials(name)}</b>}</span>;
 }
 
-function Scorebar({live,card,over}:{live:LiveSummary;card:any;over:CurrentOver}){
+function Scorebar({live,card,context,over}:{live:LiveSummary;card:any;context:any;over:CurrentOver}){
   const battingId=live.batting_team_id;
-  const home=card?.match?.home_team;
-  const away=card?.match?.away_team;
+  const home=context?.home?.team??card?.match?.home_team;
+  const away=context?.away?.team??card?.match?.away_team;
   const batting=home?.id===battingId?home:away?.id===battingId?away:null;
   const crr=formatRate(live.runs,live.legal_balls,live.balls_per_over);
   const maxBalls=Number(card?.match?.overs_per_innings??0)*Number(live.balls_per_over||0);
@@ -125,7 +125,7 @@ function Scorebar({live,card,over}:{live:LiveSummary;card:any;over:CurrentOver})
       {live.innings_no===2&&live.target_runs&&<span>TARGET <b>{live.target_runs}</b></span>}
       {need!==null&&!live.innings_complete&&<span className="major">NEED <b>{need} FROM {ballsRemaining}</b></span>}
       {rrr&&<span>RRR <b>{rrr}</b></span>}
-      <em>{card?.match?.tournament_name??'IPS CRICKET'}</em>
+      <em>{context?.tournament?.name??card?.match?.tournament_name??'IPS CRICKET'}</em>
     </div>
   </section>;
 }
@@ -150,15 +150,17 @@ function EventImpact({cue,live}:{cue:Cue;live:LiveSummary|null}){
   </section>;
 }
 
-function PlayerFeature({cue,live}:{cue:Cue;live:LiveSummary|null}){
+function PlayerFeature({cue,live,context}:{cue:Cue;live:LiveSummary|null;context:any}){
   const isBowler=cue.graphic==='BOWLER_INTRO';
   const payload=cue.payload??{};
   const name=String(payload.playerName??payload.player_name??(isBowler?live?.bowler_name:live?.striker_name)??'PLAYER');
   const role=String(payload.role??(isBowler?'BOWLER':cue.graphic==='DISMISSAL'?'DISMISSED BATTER':'BATTER'));
   const primary=isBowler?String(live?.bowler_wickets??0)+'/'+String(live?.bowler_runs??0):String(live?.striker_runs??0);
   const secondary=isBowler?String(live?.bowler_overs??'0.0')+' OV':String(live?.striker_balls??0)+' BALLS';
+  const players=[...(context?.home?.playing_side??[]),...(context?.away?.playing_side??[])];
+  const player=players.find((item:any)=>item.name===name);
   return <section className={'ips-player-feature '+cue.mode.toLowerCase().replace('_','-')}>
-    <div className="ips-player-portrait"><span>{initials(name)}</span></div>
+    <div className="ips-player-portrait">{player?.profile_image_url?<img src={player.profile_image_url} alt=""/>:<span>{initials(name)}</span>}</div>
     <div className="ips-player-copy">
       <span>{role}</span>
       <strong>{name}</strong>
@@ -168,12 +170,25 @@ function PlayerFeature({cue,live}:{cue:Cue;live:LiveSummary|null}){
   </section>;
 }
 
-function MatchBoard({cue,live,card}:{cue:Cue;live:LiveSummary|null;card:any}){
+
+function LineupColumn({side}:{side:any}){
+  const players=Array.isArray(side?.playing_side)?side.playing_side:[];
+  return <div className="ips-lineup-column">
+    <header><Logo url={side?.team?.logo_url} name={side?.team?.name}/><strong>{side?.team?.name??'TEAM'}</strong></header>
+    <div>{players.slice(0,12).map((player:any,index:number)=><p key={player.player_id??index}>
+      <i>{String(index+1).padStart(2,'0')}</i>
+      <b>{player.name}</b>
+      <span>{player.captain?'C ':''}{player.wicketkeeper?'WK':''}</span>
+    </p>)}</div>
+  </div>;
+}
+
+function MatchBoard({cue,live,card,context}:{cue:Cue;live:LiveSummary|null;card:any;context:any}){
   const payload=cue.payload??{};
-  const home=card?.match?.home_team;
-  const away=card?.match?.away_team;
+  const home=context?.home?.team??card?.match?.home_team;
+  const away=context?.away?.team??card?.match?.away_team;
   const titles:Record<string,string>={
-    MATCH_INTRO:card?.match?.tournament_name??'MATCH',
+    MATCH_INTRO:context?.tournament?.name??card?.match?.tournament_name??'MATCH',
     VERSUS:'MATCH UP',
     TOSS:'TOSS',
     PLAYING_XI:'PLAYING XI',
@@ -194,18 +209,20 @@ function MatchBoard({cue,live,card}:{cue:Cue;live:LiveSummary|null;card:any}){
   const target=Number(payload.target??live?.target_runs??0);
   return <section className={'ips-match-board '+cue.graphic.toLowerCase()}>
     <div className="ips-board-noise"/>
-    <header><span>IPS BROADCAST</span><b>{card?.match?.tournament_name??'ITALY POINT SYSTEM'}</b></header>
+    <header><span>IPS BROADCAST</span><b>{context?.tournament?.name??card?.match?.tournament_name??'ITALY POINT SYSTEM'}</b></header>
     <div className="ips-board-title"><span>{title}</span></div>
-    {cue.graphic==='TARGET'?<div className="ips-target-number"><strong>{target||'—'}</strong><span>TO WIN</span></div>:
+    {cue.graphic==='PLAYING_XI'?<div className="ips-lineups"><LineupColumn side={context?.home}/><LineupColumn side={context?.away}/></div>:
+      cue.graphic==='MATCH_CONDITIONS'?<div className="ips-conditions"><div><span>VENUE</span><b>{context?.venue?.name??'—'}</b></div><div><span>FORMAT</span><b>{context?.tournament?.format_label??'—'}</b></div><div><span>OVERS</span><b>{context?.match?.overs_per_innings??card?.match?.overs_per_innings??'—'}</b></div><div><span>CITY</span><b>{context?.tournament?.city??'—'}</b></div></div>:
+      cue.graphic==='TARGET'?<div className="ips-target-number"><strong>{target||'—'}</strong><span>TO WIN</span></div>:
       cue.graphic==='MATCH_RESULT'?<div className="ips-result-copy"><strong>{result||'RESULT'}</strong><span>{live?String(live.runs)+'/'+String(live.wickets)+' · '+live.overs_text+' OV':''}</span></div>:
-      cue.graphic==='CHAMPIONS'?<div className="ips-champion-copy"><strong>{String(payload.teamName??payload.team_name??'CHAMPIONS')}</strong><span>{String(payload.subtitle??card?.match?.tournament_name??'')}</span></div>:
+      cue.graphic==='CHAMPIONS'?<div className="ips-champion-copy"><strong>{String(payload.teamName??payload.team_name??'CHAMPIONS')}</strong><span>{String(payload.subtitle??context?.tournament?.name??card?.match?.tournament_name??'')}</span></div>:
       <div className="ips-versus">
         <div><Logo url={home?.logo_url} name={home?.name}/><strong>{home?.name??'TEAM A'}</strong></div>
         <i>VS</i>
         <div><Logo url={away?.logo_url} name={away?.name}/><strong>{away?.name??'TEAM B'}</strong></div>
       </div>}
     {(cue.graphic==='TOSS'||cue.graphic==='MATCH_CONDITIONS'||cue.graphic==='HOLDING')&&<p>{String(payload.subtitle??payload.decision??payload.message??'')}</p>}
-    <footer><span>{card?.match?.code??''}</span><b>{card?.match?.stage??''}{card?.match?.round_label?' · '+card.match.round_label:''}</b></footer>
+    <footer><span>{context?.match?.code??card?.match?.code??''}</span><b>{context?.match?.stage??card?.match?.stage??''}{(context?.match?.round_label??card?.match?.round_label)?' · '+String(context?.match?.round_label??card?.match?.round_label):''}</b></footer>
   </section>;
 }
 
@@ -253,12 +270,12 @@ function GenericPanel({cue,live}:{cue:Cue;live:LiveSummary|null}){
   </section>;
 }
 
-function CueRenderer({cue,live,card}:{cue:Cue;live:LiveSummary|null;card:any}){
+function CueRenderer({cue,live,card,context}:{cue:Cue;live:LiveSummary|null;card:any;context:any}){
   const def=broadcastGraphic(cue.graphic);
   if(!def)return null;
   if(def.family==='EVENT_IMPACT')return <EventImpact cue={cue} live={live}/>;
-  if(def.family==='PLAYER_FEATURE'||def.family==='LOWER_THIRD')return <PlayerFeature cue={cue} live={live}/>;
-  if(def.family==='MATCH_BOARD'||def.family==='RESULT_AWARD'||def.family==='HOLDING')return <MatchBoard cue={cue} live={live} card={card}/>;
+  if(def.family==='PLAYER_FEATURE'||def.family==='LOWER_THIRD')return <PlayerFeature cue={cue} live={live} context={context}/>;
+  if(def.family==='MATCH_BOARD'||def.family==='RESULT_AWARD'||def.family==='HOLDING')return <MatchBoard cue={cue} live={live} card={card} context={context}/>;
   if(def.family==='SCORECARD')return <ScorecardGraphic cue={cue} live={live} card={card}/>;
   return <GenericPanel cue={cue} live={live}/>;
 }
@@ -266,6 +283,7 @@ function CueRenderer({cue,live,card}:{cue:Cue;live:LiveSummary|null;card:any}){
 export function BroadcastOverlay({matchId,output,debug=false}:{matchId:string;output:BroadcastOutput;debug?:boolean}){
   const [live,setLive]=useState<LiveSummary|null>(null);
   const [card,setCard]=useState<any>(null);
+  const [broadcastContext,setBroadcastContext]=useState<any>(null);
   const [over,setOver]=useState<CurrentOver>({balls:[],free_hit:false});
   const [layers,setLayers]=useState<Record<number,Cue>>({});
   const [error,setError]=useState('');
@@ -278,20 +296,22 @@ export function BroadcastOverlay({matchId,output,debug=false}:{matchId:string;ou
     if(!matchId){setError('Add ?match=<match-id> to the overlay URL.');return;}
     let mounted=true;
     async function refresh(){
-      const [liveRes,cardRes,overRes]=await Promise.all([
+      const [liveRes,cardRes,contextRes,overRes]=await Promise.all([
         supabase.rpc('ips_public_match_live_summaries'),
         supabase.rpc('ips_public_match_scorecard',{p_match_id:matchId}),
+        supabase.rpc('ips_public_broadcast_context',{p_match_id:matchId}),
         supabase.rpc('ips_public_current_over',{p_match_id:matchId})
       ]);
       if(!mounted)return;
       const summary=(Array.isArray(liveRes.data)?liveRes.data:[]).find((row:any)=>row.match_id===matchId)??null;
-      if(liveRes.error||cardRes.error||overRes.error){
-        setError(liveRes.error?.message||cardRes.error?.message||overRes.error?.message||'Overlay data unavailable.');
+      if(liveRes.error||cardRes.error||contextRes.error||overRes.error){
+        setError(liveRes.error?.message||cardRes.error?.message||contextRes.error?.message||overRes.error?.message||'Overlay data unavailable.');
       }else{
         setError('');
       }
       setLive(summary as LiveSummary|null);
       setCard(cardRes.data??null);
+      setBroadcastContext(contextRes.data??null);
       setOver((overRes.data as CurrentOver)??{balls:[],free_hit:false});
     }
     void refresh();
@@ -347,8 +367,8 @@ export function BroadcastOverlay({matchId,output,debug=false}:{matchId:string;ou
   const scorebarVisible=!!live?.started&&!live?.match_complete&&!fullscreen;
 
   return <main className="ips-stage">
-    {scorebarVisible&&live&&<Scorebar live={live} card={card} over={over}/>}
-    {active.map(cue=><div className={'ips-layer layer-'+cue.layer+(exiting[cue.layer]?' out':'')+((cue.payload as any)?.transition==='CUT'?' cut':'')} key={cue.id}><CueRenderer cue={cue} live={live} card={card}/></div>)}
+    {scorebarVisible&&live&&<Scorebar live={live} card={card} context={broadcastContext} over={over}/>}
+    {active.map(cue=><div className={'ips-layer layer-'+cue.layer+(exiting[cue.layer]?' out':'')+((cue.payload as any)?.transition==='CUT'?' cut':'')} key={cue.id}><CueRenderer cue={cue} live={live} card={card} context={broadcastContext}/></div>)}
     {debug&&<div className="ips-debug"><b>{output}</b><span>{matchId||'NO MATCH'}</span><span>{active.map(x=>x.graphic).join(' · ')||'NO CUE'}</span></div>}
     {debug&&error&&<div className="ips-error">{error}</div>}
   </main>;
