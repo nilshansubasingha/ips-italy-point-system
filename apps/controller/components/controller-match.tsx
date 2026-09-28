@@ -446,7 +446,7 @@ export function ControllerMatch({
   return <main className="controller-shell project6-shell">
     <header className="controller-header p6-header">
       <div className="controller-brand"><BrandMark compact/><div className="match-id"><span>IPS MATCH CONTROLLER</span><b>{context.match.code}</b></div></div>
-      <Link className="header-menu back-control" href="/">←</Link>
+      <div className="p6-header-actions"><Link className="director-link" href={"/matches/"+context.match.id+"/director"}>DIRECTOR</Link><Link className="header-menu back-control" href="/">←</Link></div>
     </header>
 
     <section className="p6-engine">
