@@ -62,10 +62,12 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
   const remoteChannelRef=useRef<any>(null);
   const remotePeersRef=useRef<Map<string,RTCPeerConnection>>(new Map());
   const remoteCamerasRef=useRef<(RemoteCamera|null)[]>(Array(SLOT_COUNT).fill(null));
+  const slotsRef=useRef<SlotState[]>(slots);
   const viewerIdRef=useRef(typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():'viewer-'+Date.now());
 
   useEffect(()=>{clipsRef.current=clips;},[clips]);
   useEffect(()=>{remoteCamerasRef.current=remoteCameras;},[remoteCameras]);
+  useEffect(()=>{slotsRef.current=slots;},[slots]);
 
   const enumerate=useCallback(async()=>{
     if(!navigator.mediaDevices?.enumerateDevices)return;
@@ -288,7 +290,7 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
         if(existing&&existing.connectionId!==p.connectionId){
           const oldPeer=remotePeersRef.current.get(existing.connectionId);
           if(oldPeer){try{oldPeer.close();}catch{}remotePeersRef.current.delete(existing.connectionId);}
-          if(slots[index]?.source==='REMOTE'&&slots[index]?.connectionId===existing.connectionId)stopSlot(index);
+          if(slotsRef.current[index]?.source==='REMOTE'&&slotsRef.current[index]?.connectionId===existing.connectionId)stopSlot(index);
         }
         const info:RemoteCamera={
           connectionId:p.connectionId,
@@ -356,7 +358,7 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
         const index=channelNo-1;
         const pc=remotePeersRef.current.get(p.connectionId);
         if(pc){try{pc.close();}catch{}remotePeersRef.current.delete(p.connectionId);}
-        if(slots[index]?.source==='REMOTE'&&slots[index]?.connectionId===p.connectionId)stopSlot(index);
+        if(slotsRef.current[index]?.source==='REMOTE'&&slotsRef.current[index]?.connectionId===p.connectionId)stopSlot(index);
         setRemoteCameras(prev=>prev.map((cam,i)=>i===index&&cam?.connectionId===p.connectionId?null:cam));
       })
       .subscribe((status:string)=>{
@@ -377,7 +379,7 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
         if(!cam||now-cam.lastSeen<11000)return;
         const pc=remotePeersRef.current.get(cam.connectionId);
         if(pc){try{pc.close();}catch{}remotePeersRef.current.delete(cam.connectionId);}
-        if(slots[index]?.source==='REMOTE'&&slots[index]?.connectionId===cam.connectionId)stopSlot(index);
+        if(slotsRef.current[index]?.source==='REMOTE'&&slotsRef.current[index]?.connectionId===cam.connectionId)stopSlot(index);
         setRemoteCameras(prev=>prev.map((value,i)=>i===index?null:value));
       });
     },3000);
@@ -391,7 +393,7 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
       remoteChannelRef.current=null;
       void supabase.removeChannel(channel);
     };
-  },[cameraSession?.realtime_key,supabase,attachRemoteStream,stopSlot,slots]);
+  },[cameraSession?.realtime_key,supabase,attachRemoteStream,stopSlot]);
 
   const openCameraPublisher=()=>{
     const base=window.location.pathname.startsWith('/replay')?'/replay':'';
