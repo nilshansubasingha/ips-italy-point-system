@@ -5,7 +5,7 @@ export const dynamic='force-dynamic';export const revalidate=0;
 export default async function ReplayHome(){
   const supabase=await createClient();
   const {data:{user}}=await supabase.auth.getUser();
-  if(!user)redirect('/director/auth/login');
+  if(!user){const base=process.env.PRISM_PREVIEW_GATEWAY==='1'?'/replay':'';redirect(base+'/auth/login');}
   const {data,error}=await supabase.rpc('ips_broadcast_director_matches');
   if(error)throw new Error(error.message);
   const matches=(data??[]) as any[];
