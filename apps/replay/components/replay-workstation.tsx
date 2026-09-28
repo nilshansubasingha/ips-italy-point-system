@@ -197,7 +197,7 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
     const ext=isMp4?'mp4':'webm';
     const contentType=isMp4?'video/mp4':'video/webm';
     const storagePath=matchId+'/'+clip.id+'/cam-'+(angle.slot+1)+'.'+ext;
-    const {error:uploadError}=await supabase.storage.from('ips-replay').upload(storagePath,angle.blob,{contentType,upsert:true,cacheControl:'3600'});
+    const {error:uploadError}=await supabase.storage.from('ips-replay').upload(storagePath,angle.blob,{contentType,upsert:false,cacheControl:'3600'});
     if(uploadError)throw uploadError;
     const {data:publicData}=supabase.storage.from('ips-replay').getPublicUrl(storagePath);
     const publicUrl=publicData.publicUrl;
