@@ -141,8 +141,10 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
   const clipsRef=useRef<ReplayClip[]>([]);
   const previewVideoRef=useRef<HTMLVideoElement|null>(null);
   const livekitRoomRef=useRef<Room|null>(null);
+  const remoteCamerasRef=useRef<(RemoteCamera|null)[]>(Array(SLOT_COUNT).fill(null));
 
   useEffect(()=>{clipsRef.current=clips;},[clips]);
+  useEffect(()=>{remoteCamerasRef.current=remoteCameras;},[remoteCameras]);
 
   const enumerate=useCallback(async()=>{
     if(!navigator.mediaDevices?.enumerateDevices)return;
@@ -372,9 +374,7 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
       if(!meta)return;
       const index=meta.channelNo-1;
       setRemoteCameras(prev=>prev.map((cam,i)=>i===index&&cam?.connectionId===meta.connectionId?null:cam));
-      const slot=streamsRef.current[index];
-      const remoteSlot=slot&&slots[index]?.source==='REMOTE';
-      if(remoteSlot)stopSlot(index);
+      if(streamsRef.current[index])stopSlot(index);
     };
 
     async function connect(){
@@ -446,9 +446,9 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
       const room=livekitRoomRef.current;
       livekitRoomRef.current=null;
       try{room?.disconnect();}catch{}
-      for(let i=0;i<SLOT_COUNT;i++){
-        if(streamsRef.current[i]&&slots[i]?.source==='REMOTE')stopSlot(i);
-      }
+      remoteCamerasRef.current.forEach((cam,i)=>{
+        if(cam&&streamsRef.current[i])stopSlot(i);
+      });
       setRemoteCameras(Array(SLOT_COUNT).fill(null));
     };
   },[matchId,attachRemoteStream,stopSlot]);
