@@ -2334,3 +2334,5 @@
   .director-fields label.wide{grid-column:auto}
   .director-actions>div:last-child{grid-template-columns:1fr 1fr}
 }
+
+.p6-header-actions{display:flex;align-items:center;gap:7px}
