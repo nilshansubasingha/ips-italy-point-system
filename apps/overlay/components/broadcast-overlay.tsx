@@ -335,6 +335,37 @@ function LowerThird({type,data,payload,startedAt,now}:{type:'partnership'|'need'
   </section>;
 }
 
+function ReplayVideo({url,speed}:{url:string;speed:number}){
+  const ref=useRef<HTMLVideoElement|null>(null);
+  useEffect(()=>{
+    const video=ref.current;
+    if(!video)return;
+    video.playbackRate=Math.max(.25,Number(speed)||1);
+    void video.play().catch(()=>{});
+  },[url,speed]);
+  return <video ref={ref} className="tv-replay-video" src={url} autoPlay muted playsInline preload="auto"/>;
+}
+
+function ReplayFullscreen({payload,startedAt,now}:{payload:J;startedAt?:string;now:number}){
+  const replay=payload?.replay||{};
+  const url=String(replay.videoUrl||'');
+  const speed=Math.max(.25,Number(replay.speed)||1);
+  const stingMs=Math.max(500,Number(replay.stingMs||1100));
+  const started=Date.parse(startedAt||'');
+  const elapsed=Number.isFinite(started)?Math.max(0,now-started):0;
+  const sting=elapsed<stingMs;
+
+  return <section className="tv-replay-fullscreen">
+    {sting?<div className="tv-replay-sting">
+      <div className="tv-replay-sting-lines"/>
+      <span>IPS</span>
+      <strong>REPLAY</strong>
+      <b>{String(replay.kind||'REPLAY')}</b>
+    </div>:url?<ReplayVideo url={url} speed={speed}/>:<div className="tv-replay-missing">REPLAY VIDEO UNAVAILABLE</div>}
+    {!sting&&<aside className="tv-replay-label"><b>REPLAY</b><span>{String(replay.angle||'')}</span></aside>}
+  </section>;
+}
+
 function SponsorFullscreen({payload,startedAt,now}:{payload:J;startedAt?:string;now:number}){
   const {sponsor}=resolveSponsor(payload,startedAt,now);
   return <section className="tv-sponsor-fullscreen"><div className="tv-sponsor-fullscreen-glow"/><div className="tv-sponsor-fullscreen-content">
@@ -349,6 +380,7 @@ function withSponsor(content:ReactNode,payload:J,kind:string,startedAt:string|un
 function BroadcastSkin({variantKey,data,payload,startedAt,now}:{variantKey:string;data:J;payload:J;startedAt?:string;now:number}){
   if(variantKey==='scorebar.default')return <Scorebar data={data} payload={payload} startedAt={startedAt} now={now}/>;
   if(variantKey==='sponsor.fullscreen')return <SponsorFullscreen payload={payload} startedAt={startedAt} now={now}/>;
+  if(variantKey==='replay.fullscreen')return <ReplayFullscreen payload={payload} startedAt={startedAt} now={now}/>;
   if(variantKey==='vs.fullscreen')return <Versus data={data} payload={payload} startedAt={startedAt} now={now}/>;
   if(variantKey==='playing-xi.home')return <PlayingXI side="home" data={data} payload={payload} startedAt={startedAt} now={now}/>;
   if(variantKey==='playing-xi.away')return <PlayingXI side="away" data={data} payload={payload} startedAt={startedAt} now={now}/>;
