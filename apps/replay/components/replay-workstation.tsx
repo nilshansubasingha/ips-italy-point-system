@@ -310,8 +310,8 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
 
       <aside className="replay-operation">
         <section className="replay-panel preview-panel">
-          <header><div><span>REPLAY PREVIEW</span><h2>{selectedClip?.kind||'No clip selected'}</h2></div>{selectedReplayAngle&&<b>{angle.label}</b>}</header>
-          <div className="replay-preview">{selectedReplayAngle?<video key={angle.url} src={angle.url} controls playsInline/>:<div>Capture an event to preview replay.</div>}</div>
+          <header><div><span>REPLAY PREVIEW</span><h2>{selectedClip?.kind||'No clip selected'}</h2></div>{selectedReplayAngle&&<b>{selectedReplayAngle.label}</b>}</header>
+          <div className="replay-preview">{selectedReplayAngle?<video key={selectedReplayAngle.url} src={selectedReplayAngle.url} controls playsInline/>:<div>Capture an event to preview replay.</div>}</div>
           {selectedClip&&<div className="angle-tabs">{selectedClip.angles.map(a=><button className={a.slot===selectedReplayAngle?.slot?'active':''} key={a.slot} onClick={()=>setSelectedAngle(a.slot)}>CAM {a.slot+1}</button>)}</div>}
           <div className="speed-row"><span>SPEED</span>{[1,.75,.5,.25].map(v=><button className={speed===v?'active':''} key={v} onClick={()=>setSpeed(v)}>{v}×</button>)}</div>
         </section>
