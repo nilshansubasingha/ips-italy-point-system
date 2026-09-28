@@ -21,11 +21,74 @@ const REMOTE_RTC_CONFIG:RTCConfiguration={
   ]
 };
 
-function supportedMime(){
-  if(typeof MediaRecorder==='undefined')return '';
-  const choices=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4'];
-  return choices.find(x=>MediaRecorder.isTypeSupported(x))??'';
+function recorderMimeCandidates(){
+  if(typeof MediaRecorder==='undefined')return [] as string[];
+  const choices=['video/webm;codecs=vp8','video/webm','video/mp4',''];
+  return choices.filter(mime=>!mime||MediaRecorder.isTypeSupported(mime));
 }
+
+async function waitForVideoReady(stream:MediaStream,video?:HTMLVideoElement|null){
+  const track=stream.getVideoTracks()[0];
+  if(!track)throw new Error('No live video track is available for recording.');
+  if(track.readyState==='ended')throw new Error('Video track ended before recording started.');
+  if(!track.muted&&(!video||video.readyState>=2))return;
+
+  await new Promise<void>(resolve=>{
+    let finished=false;
+    const done=()=>{
+      if(finished)return;
+      finished=true;
+      track.removeEventListener('unmute',done);
+      video?.removeEventListener('loadeddata',done);
+      resolve();
+    };
+    track.addEventListener('unmute',done,{once:true});
+    video?.addEventListener('loadeddata',done,{once:true});
+    window.setTimeout(done,3500);
+  });
+
+  if(track.readyState==='ended')throw new Error('Video track ended before MediaRecorder could start.');
+}
+
+function startRollingRecorder(
+  stream:MediaStream,
+  buffer:BufferState,
+  onRecorderError:(message:string)=>void
+){
+  if(typeof MediaRecorder==='undefined')throw new Error('MediaRecorder is not supported by this browser.');
+  let lastError:any=null;
+
+  for(const mime of recorderMimeCandidates()){
+    let recorder:MediaRecorder|null=null;
+    try{
+      recorder=new MediaRecorder(stream,mime?{mimeType:mime}:undefined);
+      buffer.mime=recorder.mimeType||mime||'video/webm';
+      recorder.ondataavailable=e=>{
+        if(!e.data?.size)return;
+        const now=Date.now();
+        if(!buffer.header)buffer.header=e.data;
+        buffer.chunks.push({blob:e.data,at:now});
+        const cutoff=now-BUFFER_MS;
+        buffer.chunks=buffer.chunks.filter((c,j)=>j===0||c.at>=cutoff);
+      };
+      recorder.onerror=(event:any)=>{
+        const message=event?.error?.message||event?.name||'MediaRecorder error';
+        onRecorderError(message);
+      };
+      recorder.start(1000);
+      if(recorder.state!=='recording')throw new Error('Recorder did not enter recording state.');
+      return recorder;
+    }catch(e){
+      lastError=e;
+      if(recorder&&recorder.state!=='inactive'){
+        try{recorder.stop();}catch{}
+      }
+    }
+  }
+
+  throw lastError??new Error('No compatible MediaRecorder format could be started.');
+}
+
 function shortTeam(team:any){return team?.short_name||team?.name||'TEAM';}
 function formatClock(ms:number){return new Date(ms).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});}
 
@@ -104,21 +167,17 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
     try{
       const stream=await navigator.mediaDevices.getUserMedia({video:selected?{deviceId:{exact:selected},width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:30}}:{width:{ideal:1920},height:{ideal:1080}},audio:false});
       streamsRef.current[index]=stream;
-      const video=videoRefs.current[index];if(video){video.srcObject=stream;await video.play().catch(()=>{});}
-      const mime=supportedMime();
-      const recorder=new MediaRecorder(stream,mime?{mimeType:mime,videoBitsPerSecond:6000000}:undefined);
-      const buffer:BufferState={header:null,chunks:[],mime:recorder.mimeType||mime||'video/webm',startedAt:Date.now()};
+      const video=videoRefs.current[index];
+      if(video){
+        video.srcObject=stream;
+        await video.play().catch(()=>{});
+      }
+      await waitForVideoReady(stream,video);
+      const buffer:BufferState={header:null,chunks:[],mime:'',startedAt:Date.now()};
       buffersRef.current[index]=buffer;
-      recorder.ondataavailable=e=>{
-        if(!e.data?.size)return;
-        const now=Date.now();
-        if(!buffer.header)buffer.header=e.data;
-        buffer.chunks.push({blob:e.data,at:now});
-        const cutoff=now-BUFFER_MS;
-        buffer.chunks=buffer.chunks.filter((c,j)=>j===0||c.at>=cutoff);
-      };
-      recorder.onerror=()=>setSlots(prev=>prev.map((s,i)=>i===index?{...s,status:'ERROR',error:'Recorder error'}:s));
-      recorder.start(500);
+      const recorder=startRollingRecorder(stream,buffer,message=>{
+        setSlots(prev=>prev.map((slot,i)=>i===index?{...slot,status:'ERROR',error:message}:slot));
+      });
       recordersRef.current[index]=recorder;
       const label=stream.getVideoTracks()[0]?.label||slots[index]?.label||'CAM '+(index+1);
       setSlots(prev=>prev.map((s,i)=>i===index?{...s,status:'LIVE',label,error:undefined,source:'LOCAL',connectionId:undefined}:s));
@@ -146,20 +205,12 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
     }
 
     try{
-      const mime=supportedMime();
-      const recorder=new MediaRecorder(stream,mime?{mimeType:mime,videoBitsPerSecond:5000000}:undefined);
-      const buffer:BufferState={header:null,chunks:[],mime:recorder.mimeType||mime||'video/webm',startedAt:Date.now()};
+      await waitForVideoReady(stream,video);
+      const buffer:BufferState={header:null,chunks:[],mime:'',startedAt:Date.now()};
       buffersRef.current[index]=buffer;
-      recorder.ondataavailable=e=>{
-        if(!e.data?.size)return;
-        const now=Date.now();
-        if(!buffer.header)buffer.header=e.data;
-        buffer.chunks.push({blob:e.data,at:now});
-        const cutoff=now-BUFFER_MS;
-        buffer.chunks=buffer.chunks.filter((c,j)=>j===0||c.at>=cutoff);
-      };
-      recorder.onerror=()=>setSlots(prev=>prev.map((slot,i)=>i===index?{...slot,status:'ERROR',error:'Remote recorder error'}:slot));
-      recorder.start(500);
+      const recorder=startRollingRecorder(stream,buffer,message=>{
+        setSlots(prev=>prev.map((slot,i)=>i===index?{...slot,status:'ERROR',error:message,source:'REMOTE',connectionId}:slot));
+      });
       recordersRef.current[index]=recorder;
       setSlots(prev=>prev.map((slot,i)=>i===index?{
         ...slot,
