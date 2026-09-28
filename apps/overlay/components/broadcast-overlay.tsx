@@ -265,12 +265,37 @@ function Versus({data,payload,startedAt,now}:{data:J;payload:J;startedAt?:string
 }
 function PlayingXI({side,data,payload,startedAt,now}:{side:'home'|'away';data:J;payload:J;startedAt?:string;now:number}){
   const team=data.match?.[side+'_team']||{},players=data.playing_xi?.[side]||[];
-  return <section className="tv-fullboard tv-xi"><div className="tv-board-top"><span>PLAYING XI</span><b>{data.match?.tournament?.name||'IPS CRICKET'}</b></div>
-    <header><Logo team={team}/><div><span>{side.toUpperCase()} TEAM</span><strong>{team.name||'TEAM'}</strong></div></header>
-    <div className="tv-xi-list">{players.slice(0,11).map((p:any,i:number)=><div key={p.id||i}><i>{String(i+1).padStart(2,'0')}</i><b>{p.name}</b><span>{p.role||''}</span></div>)}</div>
-    <footer><span>{data.match?.venue||''}</span><b>{data.match?.code||''}</b></footer><SponsorTag payload={payload} kind="fullscreen" startedAt={startedAt} now={now}/>
+  const pageSize=6;
+  const pageCount=Math.max(1,Math.ceil(players.length/pageSize));
+  const started=Date.parse(startedAt||'');
+  const elapsed=Number.isFinite(started)?Math.max(0,now-started):0;
+  const page=pageCount>1?Math.floor(elapsed/3500)%pageCount:0;
+  const startIndex=Math.min(page*pageSize,Math.max(0,players.length-pageSize));
+  const visiblePlayers=players.slice(startIndex,startIndex+pageSize);
+  return <section className="tv-fullboard tv-xi">
+    <div className="tv-board-top"><span>PLAYING XI</span><b>{data.match?.tournament?.name||'IPS CRICKET'}</b></div>
+    <header>
+      <Logo team={team}/>
+      <div><span>{side.toUpperCase()} TEAM</span><strong>{team.name||'TEAM'}</strong></div>
+      {pageCount>1&&<em>{page+1}/{pageCount}</em>}
+    </header>
+    <div className="tv-xi-cards" key={side+'-'+page}>
+      {visiblePlayers.map((p:any,i:number)=><article className="tv-xi-card" key={p.id||i}>
+        <div className="tv-xi-photo">
+          {p.photo_url?<img src={p.photo_url} alt=""/>:<span>{initials(p.name)}</span>}
+          <i>{String(p.order??startIndex+i+1).padStart(2,'0')}</i>
+        </div>
+        <div className="tv-xi-player-copy">
+          <b>{p.name}</b>
+          {p.role&&<small>{p.role}</small>}
+        </div>
+      </article>)}
+    </div>
+    <footer><span>{data.match?.venue||''}</span><b>{data.match?.code||''}</b></footer>
+    <SponsorTag payload={payload} kind="fullscreen" startedAt={startedAt} now={now}/>
   </section>;
 }
+
 function Scorecard({type,data,payload,startedAt,now}:{type:'batting'|'bowling';data:J;payload:J;startedAt?:string;now:number}){
   const batting=type==='batting',rows=batting?(data.batting_scorecard||[]):(data.bowling_scorecard||[]),team=batting?data.innings?.batting_team:data.innings?.bowling_team;
   return <section className="tv-fullboard tv-scorecard"><div className="tv-board-top"><span>{batting?'BATTING':'BOWLING'} SCORECARD</span><b>{data.match?.tournament?.name||'IPS CRICKET'}</b></div>
@@ -282,9 +307,25 @@ function Scorecard({type,data,payload,startedAt,now}:{type:'batting'|'bowling';d
 }
 function LowerThird({type,data,payload,startedAt,now}:{type:'partnership'|'need';data:J;payload:J;startedAt?:string;now:number}){
   const p=data.current?.partnership||{};
-  return type==='partnership'?<section className="tv-lower-info"><span>PARTNERSHIP</span><strong>{p.runs??0}<i>{p.balls??0} BALLS</i></strong><b>{data.current?.striker?.name||'—'} + {data.current?.non_striker?.name||'—'}</b><SponsorTag payload={payload} kind="lower-third" startedAt={startedAt} now={now}/></section>
-    :<section className="tv-lower-info chase"><span>CHASE</span><strong>{data.innings?.runs_required??0}<i>RUNS</i></strong><b>NEEDED FROM {data.innings?.balls_remaining??0} BALLS · TARGET {data.innings?.target??'—'} · RRR {Number(data.innings?.rrr||0).toFixed(2)}</b><SponsorTag payload={payload} kind="lower-third" startedAt={startedAt} now={now}/></section>;
+  if(type==='partnership')return <section className="tv-lower-info">
+    <span>PARTNERSHIP</span><strong>{p.runs??0}<i>{p.balls??0} BALLS</i></strong><b>{data.current?.striker?.name||'—'} + {data.current?.non_striker?.name||'—'}</b>
+    <SponsorTag payload={payload} kind="lower-third" startedAt={startedAt} now={now}/>
+  </section>;
+  const need=data.innings?.runs_required;
+  const balls=data.innings?.balls_remaining;
+  const target=data.innings?.target;
+  const rrr=Number(data.innings?.rrr||0);
+  return <section className="tv-need-linear">
+    <span>NEED</span>
+    <strong>{need??0}</strong>
+    <b>RUNS FROM</b>
+    <strong>{balls??0}</strong>
+    <b>BALLS</b>
+    {(target!=null||rrr>0)&&<small>{target!=null?'TARGET '+target:''}{target!=null&&rrr>0?' · ':''}{rrr>0?'RRR '+rrr.toFixed(2):''}</small>}
+    <SponsorTag payload={payload} kind="lower-third" startedAt={startedAt} now={now}/>
+  </section>;
 }
+
 function SponsorFullscreen({payload,startedAt,now}:{payload:J;startedAt?:string;now:number}){
   const {sponsor}=resolveSponsor(payload,startedAt,now);
   return <section className="tv-sponsor-fullscreen"><div className="tv-sponsor-fullscreen-glow"/><div className="tv-sponsor-fullscreen-content">
@@ -316,6 +357,8 @@ function BroadcastSkin({variantKey,data,payload,startedAt,now}:{variantKey:strin
 export function BroadcastOverlay({matchId}:{matchId?:string}){
   const [snapshot,setSnapshot]=useState<Snapshot|null>(null),[error,setError]=useState(''),[now,setNow]=useState(()=>Date.now());
   const exposureRef=useRef<Map<string,SponsorExposure>>(new Map());
+  const lastScorebarRef=useRef<J|null>(null);
+  const programRevisionRef=useRef<number|null>(null);
   const supabase=useMemo(()=>matchId?createBroadcastClient():null,[matchId]);
   const refresh=useCallback(async()=>{
     if(!supabase||!matchId)return;
@@ -335,8 +378,20 @@ export function BroadcastOverlay({matchId}:{matchId?:string}){
     return()=>{void supabase.removeChannel(ch)};
   },[supabase,matchId,refresh]);
 
-  const layers=(snapshot?.program?.active_layers||[]).filter((x:J)=>!x.expiresAt||Date.parse(x.expiresAt)>now).sort((a:J,b:J)=>(a.priority??0)-(b.priority??0));
   const manifest=snapshot?.release?.manifest?.variants||{};
+  const rawLayers=(snapshot?.program?.active_layers||[]).filter((x:J)=>!x.expiresAt||Date.parse(x.expiresAt)>now).sort((a:J,b:J)=>(a.priority??0)-(b.priority??0));
+  const rawScorebar=rawLayers.find((x:J)=>x.replacementGroup==='scorebar'||x.variantKey==='scorebar.default')||null;
+  const rawHideScorebar=rawLayers.some((x:J)=>manifest?.[x.variantKey]?.conflictBehavior==='HIDE_SCOREBAR');
+  const revision=Number(snapshot?.program?.revision??0);
+  if(programRevisionRef.current!==revision){
+    if(rawScorebar)lastScorebarRef.current=rawScorebar;
+    else if(!rawHideScorebar)lastScorebarRef.current=null;
+    programRevisionRef.current=revision;
+  }else if(rawScorebar){
+    lastScorebarRef.current=rawScorebar;
+  }
+  const restoredScorebar=!rawHideScorebar&&!rawScorebar&&lastScorebarRef.current?lastScorebarRef.current:null;
+  const layers=(restoredScorebar?[...rawLayers,restoredScorebar]:rawLayers).sort((a:J,b:J)=>(a.priority??0)-(b.priority??0));
   const hideScorebar=layers.some((x:J)=>manifest?.[x.variantKey]?.conflictBehavior==='HIDE_SCOREBAR');
   const visible=hideScorebar?layers.filter((x:J)=>x.replacementGroup!=='scorebar'):layers;
 
