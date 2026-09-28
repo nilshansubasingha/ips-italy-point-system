@@ -11,7 +11,12 @@ COPY --from=livekit /livekit-server /usr/local/bin/livekit-server
 WORKDIR /app
 COPY . .
 RUN npm install
+
+# Next.js basePath is compiled into client bundles. The PRISM control-room image
+# always serves Director, Editor and Replay behind the shared gateway.
+ENV PRISM_PREVIEW_GATEWAY=1
 RUN npm run build -w @ips/director && npm run build -w @ips/editor && npm run build -w @ips/replay
+
 RUN chmod +x /app/scripts/start-control-room-livekit.sh
 
 EXPOSE 8080
