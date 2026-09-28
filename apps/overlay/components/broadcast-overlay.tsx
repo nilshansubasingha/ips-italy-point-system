@@ -6,101 +6,198 @@ import {createBroadcastClient} from '@/lib/supabase';
 type J=Record<string,any>;
 type Snapshot={match_id:string;session:J;program:J;release:J;data:J;signal:J};
 
-function getPath(root:any,path:string,scope?:J){
-  if(path==='item')return scope?.item;
-  const source=path.startsWith('item.')?scope?.item:root;
-  const clean=path.startsWith('item.')?path.slice(5):path;
-  return clean.split('.').filter(Boolean).reduce((v,k)=>v==null?undefined:v[k],source);
+function initials(name?:string|null){
+  return String(name||'IPS').split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]?.toUpperCase()).join('');
 }
-function formatValue(value:any,format?:string){
-  if(value==null)return '';
-  if(format==='INTEGER')return String(Math.round(Number(value)||0));
-  if(format==='DECIMAL_1')return Number(value||0).toFixed(1);
-  if(format==='DECIMAL_2')return Number(value||0).toFixed(2);
-  if(format==='UPPER')return String(value).toUpperCase();
-  return String(value);
+function shortName(team:any){
+  return team?.short_name||team?.name||'TEAM';
 }
-function bindElement(element:J,data:J,scope?:J){
-  const next=JSON.parse(JSON.stringify(element));
-  for(const b of element.bindings||[]){
-    const raw=getPath(data,b.path,scope);
-    const picked=(raw===undefined||raw===null||raw==='')?b.fallback:raw;
-    const final=String(b.prefix||'')+formatValue(picked,b.format)+String(b.suffix||'');
-    const parts=String(b.property||'').split('.');
-    let cursor=next;
-    for(let i=0;i<parts.length-1;i++){cursor[parts[i]]??={};cursor=cursor[parts[i]]}
-    if(parts.length)cursor[parts[parts.length-1]]=final;
-  }
-  return next;
+function Logo({team,className=''}:{team:any;className?:string}){
+  return <span className={'tv-logo '+className}>{team?.logo_url?<img src={team.logo_url} alt=""/>:<b>{initials(team?.name)}</b>}</span>;
 }
-function fillCss(fill:any){
-  if(!fill)return 'transparent';
-  if(fill.type==='SOLID')return fill.color||'transparent';
-  const stops=(fill.stops||[]).map((s:any)=>String(s.color)+' '+String(Math.round((s.offset??0)*100))+'%').join(',');
-  if(fill.type==='LINEAR_GRADIENT')return 'linear-gradient('+String(fill.angle??90)+'deg,'+stops+')';
-  if(fill.type==='RADIAL_GRADIENT')return 'radial-gradient(circle,'+stops+')';
-  return fill.color||'transparent';
+function ballClass(label:string){
+  if(label==='W')return 'w';
+  if(label==='4')return 'four';
+  if(label==='6')return 'six';
+  if(/^WD|^NB/.test(label))return 'extra';
+  return '';
 }
-function fromTransform(preset?:string){
-  if(preset==='SLIDE_LEFT')return 'translateX(-90px)';
-  if(preset==='SLIDE_RIGHT')return 'translateX(90px)';
-  if(preset==='SLIDE_UP')return 'translateY(70px)';
-  if(preset==='SCALE_POP'||preset==='IMPACT'||preset==='BALL_IMPACT')return 'scale(.75)';
-  return 'none';
+function playerName(data:J,kind:'batter'|'bowler',payload:J){
+  if(payload?.playerName||payload?.player_name)return String(payload.playerName||payload.player_name);
+  if(kind==='bowler')return data.current?.bowler?.name||'BOWLER';
+  return data.current?.striker?.name||'BATTER';
 }
-function baseStyle(e:J):CSSProperties{
-  const t=e.transform||{},s=e.style||{},typ=e.text?.typography||{};
-  const radius=s.corners?String(s.corners.tl??0)+'px '+String(s.corners.tr??0)+'px '+String(s.corners.br??0)+'px '+String(s.corners.bl??0)+'px':undefined;
-  const style:any={
-    position:'absolute',left:t.x??0,top:t.y??0,width:t.width??0,height:t.height??0,zIndex:e.zIndex??1,
-    transform:'rotate('+String(t.rotation??0)+'deg)',background:fillCss(s.fill),borderRadius:radius,
-    border:s.stroke?String(s.stroke.width??1)+'px solid '+String(s.stroke.color??'white'):undefined,
-    boxShadow:s.glow?'0 0 '+String(s.glow)+'px currentColor':undefined,opacity:s.opacity??1,overflow:'hidden'
-  };
-  if(e.type==='TEXT'){
-    Object.assign(style,{color:s.fill?.type==='SOLID'?s.fill.color:undefined,display:'flex',
-      alignItems:typ.verticalAlign==='TOP'?'flex-start':typ.verticalAlign==='BOTTOM'?'flex-end':'center',
-      justifyContent:typ.align==='CENTER'?'center':typ.align==='RIGHT'?'flex-end':'flex-start',
-      padding:typ.padding??0,fontFamily:typ.fontFamily||undefined,fontWeight:typ.fontWeight||undefined,
-      fontSize:typ.fontSize||undefined,lineHeight:typ.lineHeight||undefined,letterSpacing:typ.letterSpacing||undefined,
-      textAlign:String(typ.align||'LEFT').toLowerCase(),textTransform:typ.case==='UPPER'?'uppercase':typ.case==='LOWER'?'lowercase':undefined,
-      whiteSpace:typ.wrap==='WRAP'?'normal':'nowrap',textOverflow:typ.wrap==='SHRINK'?'ellipsis':undefined});
-  }
-  return style;
+function scoreText(data:J){
+  return data.innings?.score_display||String(data.innings?.runs??0)+'/'+String(data.innings?.wickets??0);
 }
-function effectStyle(kind?:string):CSSProperties{
-  if(kind==='IMPACT_FLASH')return {background:'radial-gradient(circle,rgba(255,255,255,.9),rgba(255,255,255,0) 58%)',mixBlendMode:'screen'};
-  if(kind==='ENERGY_RINGS')return {border:'18px solid rgba(255,255,255,.16)',borderRadius:'50%',boxShadow:'0 0 0 70px rgba(255,255,255,.05),0 0 0 150px rgba(255,255,255,.025)'};
-  if(kind==='BALL_STREAK'||kind==='SPEED_STREAKS')return {background:'linear-gradient(110deg,transparent 15%,rgba(255,255,255,.4) 48%,transparent 52%)',filter:'blur(2px)'};
-  if(kind==='STUMPS')return {background:'repeating-linear-gradient(90deg,transparent 0 32%,rgba(255,255,255,.75) 33% 37%,transparent 38% 65%)'};
-  if(kind==='SHARDS')return {background:'conic-gradient(from 20deg,transparent,rgba(255,255,255,.16),transparent,rgba(255,255,255,.08),transparent)'};
-  if(kind==='LIGHT_SWEEP')return {background:'linear-gradient(110deg,transparent 35%,rgba(255,255,255,.25) 48%,transparent 60%)',mixBlendMode:'screen'};
-  if(kind==='PARTICLE_DEPTH')return {backgroundImage:'radial-gradient(circle,rgba(255,255,255,.55) 0 1px,transparent 2px)',backgroundSize:'44px 44px',opacity:.45};
-  return {};
+function cssVars(data:J):CSSProperties{
+  const home=data.match?.home_team||{};
+  const away=data.match?.away_team||{};
+  const batting=data.innings?.batting_team||{};
+  return {
+    '--home':home.primary_color||'#ffffff',
+    '--away':away.primary_color||'#dfe5e8',
+    '--accent':data.match?.tournament?.primary_color||batting.primary_color||'#ffffff',
+    '--accent2':batting.secondary_color||'#14191d'
+  } as CSSProperties;
 }
-function PrismElement({raw,data,scope}:{raw:J;data:J;scope?:J}){
-  const e=bindElement(raw,data,scope);
-  if(e.type==='REPEATER'){
-    const items=(getPath(data,e.repeat?.path,scope)||[]).slice(0,e.repeat?.limit??99);
-    const gap=e.repeat?.gap??0,iw=e.repeat?.itemWidth??e.transform?.width??0,ih=e.repeat?.itemHeight??50;
-    return <div style={baseStyle(e)}>{items.map((item:any,i:number)=><div key={item.id||i} style={{position:'absolute',left:e.repeat?.direction==='HORIZONTAL'?i*(iw+gap):0,top:e.repeat?.direction==='HORIZONTAL'?0:i*(ih+gap),width:iw,height:ih}}>
-      {(e.repeat?.template||[]).map((child:any,j:number)=><PrismElement key={child.id||j} raw={child} data={data} scope={{item,index:i}}/>)}
-    </div>)}</div>;
-  }
-  const a=e.animation||{};
-  const css:any={...baseStyle(e),animation:'prism-enter '+String(a.durationMs??350)+'ms cubic-bezier(.16,.84,.25,1) '+String(a.delayMs??0)+'ms both','--prism-from':fromTransform(a.enterPreset)};
-  if(e.type==='TEXT')return <div style={css}>{e.text?.value??''}</div>;
-  if(e.type==='IMAGE')return e.asset?.url?<img src={e.asset.url} alt="" style={{...css,objectFit:String(e.asset.fit||'CONTAIN').toLowerCase(),objectPosition:e.asset.objectPosition||'50% 50%'}}/>:<div style={css}/>;
-  if(e.type==='EFFECT'||e.type==='PARTICLES')return <div style={{...css,...effectStyle(e.effect?.kind)}}/>;
-  return <div style={css}/>;
+
+function Scorebar({data}:{data:J}){
+  const inn=data.innings||{};
+  const cur=data.current||{};
+  const batting=inn.batting_team||{};
+  const chase=inn.number===2;
+  return <section className="tv-scorebar">
+    <div className="tv-scorebar-accent"/>
+    <div className="tv-score-main">
+      <Logo team={batting}/>
+      <div className="tv-team-score">
+        <span>{shortName(batting)}</span>
+        <strong>{scoreText(data)}</strong>
+      </div>
+      <div className="tv-overs"><strong>{inn.overs||'0.0'}</strong><span>OV</span></div>
+    </div>
+    <div className="tv-batters">
+      <div className="tv-batter active">
+        <span>STRIKER</span><b>{cur.striker?.name||'—'}</b>
+        <strong>{cur.striker?.runs??0}<i>{cur.striker?.balls??0}</i></strong>
+      </div>
+      <div className="tv-batter">
+        <span>NON-STRIKER</span><b>{cur.non_striker?.name||'—'}</b>
+        <strong>{cur.non_striker?.runs??0}<i>{cur.non_striker?.balls??0}</i></strong>
+      </div>
+      <div className="tv-bowler">
+        <span>BOWLER</span><b>{cur.bowler?.name||'—'}</b>
+        <strong>{cur.bowler?.wickets??0}/{cur.bowler?.runs??0}<i>{cur.bowler?.overs||'0.0'}</i></strong>
+      </div>
+    </div>
+    <div className="tv-over-strip">
+      <span>THIS OVER</span>
+      <div>{(cur.current_over||[]).slice(-8).map((ball:string,i:number)=><i className={ballClass(ball)} key={i}>{ball==='0'?'•':ball}</i>)}</div>
+      {inn.free_hit&&<b>FREE HIT</b>}
+    </div>
+    <div className="tv-context">
+      <span>CRR <b>{Number(inn.crr||0).toFixed(2)}</b></span>
+      {chase&&<span>TARGET <b>{inn.target??'—'}</b></span>}
+      {chase&&inn.runs_required!==null&&<span className="major">NEED <b>{inn.runs_required??0} FROM {inn.balls_remaining??0}</b></span>}
+      {chase&&<span>RRR <b>{Number(inn.rrr||0).toFixed(2)}</b></span>}
+      <em>{data.match?.tournament?.name||'IPS CRICKET'}</em>
+    </div>
+  </section>;
 }
-function Variant({variantKey,manifest,data,instance}:{variantKey:string;manifest:J;data:J;instance?:J}){
-  const meta=manifest?.variants?.[variantKey],doc=meta?.document;
-  if(!doc)return null;
-  const merged={...data,trigger:instance?.payload||{}};
-  const elements=[...(doc.elements||[])].sort((a:any,b:any)=>(a.zIndex??0)-(b.zIndex??0));
-  return <div className="prism-canvas">{elements.map((e:any,i:number)=><PrismElement key={e.id||i} raw={e} data={merged}/>)}</div>;
+
+function EventImpact({variantKey,data,payload}:{variantKey:string;data:J;payload:J}){
+  const full=variantKey.includes('fullscreen');
+  const kind=variantKey.split('.')[0];
+  const label=kind==='four'?'FOUR':kind==='six'?'SIX':kind==='wicket'?'WICKET':kind==='50'?'FIFTY':'CENTURY';
+  const mark=kind==='four'?'4':kind==='six'?'6':kind==='wicket'?'W':kind==='50'?'50':'100';
+  const dismissed=data.last_delivery?.dismissed_player?.name;
+  const person=kind==='wicket'?(payload?.playerName||payload?.player_name||dismissed||'WICKET'):playerName(data,'batter',payload);
+  return <section className={'tv-impact '+(full?'full':'lower')+' kind-'+kind}>
+    <div className="tv-impact-beam"/>
+    <div className="tv-impact-mark">{mark}</div>
+    <div className="tv-impact-copy">
+      <span>{data.match?.tournament?.name||'IPS CRICKET'}</span>
+      <strong>{label}</strong>
+      <b>{person}</b>
+      <small>{scoreText(data)} · {data.innings?.overs||'0.0'} OV</small>
+    </div>
+    <div className="tv-impact-rule"/>
+  </section>;
 }
+
+function PlayerFeature({kind,data,payload}:{kind:'batter'|'bowler';data:J;payload:J}){
+  const p=kind==='batter'?(data.current?.striker||{}):(data.current?.bowler||{});
+  const name=playerName(data,kind,payload);
+  const primary=kind==='batter'?String(p.runs??0):String(p.wickets??0)+'/'+String(p.runs??0);
+  const secondary=kind==='batter'?String(p.balls??0)+' BALLS':String(p.overs||'0.0')+' OV';
+  const tertiary=kind==='batter'?'SR '+Number(p.strike_rate||0).toFixed(1):'ECON '+Number(p.economy||0).toFixed(2);
+  return <section className="tv-player-feature">
+    <div className="tv-player-photo">{p.photo_url?<img src={p.photo_url} alt=""/>:<span>{initials(name)}</span>}</div>
+    <div className="tv-player-data">
+      <span>{kind==='batter'?'ON STRIKE':'CURRENT BOWLER'}</span>
+      <strong>{name}</strong>
+      <div><b>{primary}</b><i>{secondary}</i><em>{tertiary}</em></div>
+    </div>
+    <div className="tv-player-edge">IPS</div>
+  </section>;
+}
+
+function Versus({data}:{data:J}){
+  const home=data.match?.home_team||{},away=data.match?.away_team||{};
+  return <section className="tv-fullboard tv-versus">
+    <div className="tv-board-top"><span>IPS BROADCAST</span><b>{data.match?.tournament?.name||'MATCH'}</b></div>
+    <div className="tv-versus-grid">
+      <div><Logo team={home}/><strong>{home.name||'HOME'}</strong><span>{home.short_name||''}</span></div>
+      <i><small>MATCH</small>VS</i>
+      <div><Logo team={away}/><strong>{away.name||'AWAY'}</strong><span>{away.short_name||''}</span></div>
+    </div>
+    <footer><span>{data.match?.venue||''}</span><b>{data.match?.code||''}</b></footer>
+  </section>;
+}
+
+function PlayingXI({side,data}:{side:'home'|'away';data:J}){
+  const team=data.match?.[side+'_team']||{};
+  const players=data.playing_xi?.[side]||[];
+  return <section className="tv-fullboard tv-xi">
+    <div className="tv-board-top"><span>PLAYING XI</span><b>{data.match?.tournament?.name||'IPS CRICKET'}</b></div>
+    <header><Logo team={team}/><div><span>{side.toUpperCase()} TEAM</span><strong>{team.name||'TEAM'}</strong></div></header>
+    <div className="tv-xi-list">{players.slice(0,11).map((p:any,i:number)=><div key={p.id||i}>
+      <i>{String(i+1).padStart(2,'0')}</i><b>{p.name}</b><span>{p.role||''}</span>
+    </div>)}</div>
+    <footer><span>{data.match?.venue||''}</span><b>{data.match?.code||''}</b></footer>
+  </section>;
+}
+
+function Scorecard({type,data}:{type:'batting'|'bowling';data:J}){
+  const batting=type==='batting';
+  const rows=batting?(data.batting_scorecard||[]):(data.bowling_scorecard||[]);
+  const team=batting?data.innings?.batting_team:data.innings?.bowling_team;
+  return <section className="tv-fullboard tv-scorecard">
+    <div className="tv-board-top"><span>{batting?'BATTING':'BOWLING'} SCORECARD</span><b>{data.match?.tournament?.name||'IPS CRICKET'}</b></div>
+    <div className="tv-scorecard-head">
+      <div><Logo team={team}/><span>{team?.name||'TEAM'}</span></div>
+      <strong>{batting?scoreText(data):(data.innings?.overs||'')}</strong>
+    </div>
+    <div className={'tv-score-table '+(batting?'batting':'bowling')}>
+      <div className="tv-score-columns">{batting?<><b>BATTER</b><span>R</span><span>B</span><span>4</span><span>6</span><span>SR</span></>:<><b>BOWLER</b><span>O</span><span>M</span><span>R</span><span>W</span><span>ECON</span></>}</div>
+      {rows.slice(0,11).map((r:any,i:number)=><div className="tv-score-row" key={r.player_id||i}>
+        <b>{r.name}<small>{batting?r.dismissal:''}</small></b>
+        {batting?<><span>{r.runs}</span><span>{r.balls}</span><span>{r.fours}</span><span>{r.sixes}</span><span>{Number(r.strike_rate||0).toFixed(1)}</span></>:
+          <><span>{r.overs}</span><span>{r.maidens}</span><span>{r.runs}</span><span>{r.wickets}</span><span>{Number(r.economy||0).toFixed(2)}</span></>}
+      </div>)}
+    </div>
+    <footer><span>{data.match?.venue||''}</span><b>{data.match?.code||''}</b></footer>
+  </section>;
+}
+
+function LowerThird({type,data}:{type:'partnership'|'need';data:J}){
+  const p=data.current?.partnership||{};
+  if(type==='partnership')return <section className="tv-lower-info">
+    <span>PARTNERSHIP</span><strong>{p.runs??0}<i>{p.balls??0} BALLS</i></strong>
+    <b>{data.current?.striker?.name||'—'} + {data.current?.non_striker?.name||'—'}</b>
+  </section>;
+  return <section className="tv-lower-info chase">
+    <span>CHASE</span><strong>{data.innings?.runs_required??0}<i>FROM {data.innings?.balls_remaining??0}</i></strong>
+    <b>TARGET {data.innings?.target??'—'} · RRR {Number(data.innings?.rrr||0).toFixed(2)}</b>
+  </section>;
+}
+
+function BroadcastSkin({variantKey,data,payload}:{variantKey:string;data:J;payload:J}){
+  if(variantKey==='scorebar.default')return <Scorebar data={data}/>;
+  if(variantKey==='vs.fullscreen')return <Versus data={data}/>;
+  if(variantKey==='playing-xi.home')return <PlayingXI side="home" data={data}/>;
+  if(variantKey==='playing-xi.away')return <PlayingXI side="away" data={data}/>;
+  if(variantKey==='batter-info.large')return <PlayerFeature kind="batter" data={data} payload={payload}/>;
+  if(variantKey==='bowler-info.large')return <PlayerFeature kind="bowler" data={data} payload={payload}/>;
+  if(/^four\.|^six\.|^wicket\.|^50\.|^100\./.test(variantKey))return <EventImpact variantKey={variantKey} data={data} payload={payload}/>;
+  if(variantKey==='batting-scorecard.fullscreen')return <Scorecard type="batting" data={data}/>;
+  if(variantKey==='bowling-scorecard.fullscreen')return <Scorecard type="bowling" data={data}/>;
+  if(variantKey==='partnership.lower-third')return <LowerThird type="partnership" data={data}/>;
+  if(variantKey==='need-from.lower-third')return <LowerThird type="need" data={data}/>;
+  return <section className="tv-unknown"><span>IPS BROADCAST</span><strong>{variantKey}</strong></section>;
+}
+
 export function BroadcastOverlay({matchId}:{matchId?:string}){
   const [snapshot,setSnapshot]=useState<Snapshot|null>(null);
   const [error,setError]=useState('');
@@ -111,23 +208,33 @@ export function BroadcastOverlay({matchId}:{matchId?:string}){
     if(result.error){setError(result.error.message);return}
     setSnapshot(result.data as Snapshot);setError('');
   },[supabase,matchId]);
+
   useEffect(()=>{void refresh()},[refresh]);
   useEffect(()=>{
     if(!supabase||!matchId)return;
-    const ch=supabase.channel('prism-'+matchId)
+    const ch=supabase.channel('prism-tv-'+matchId)
       .on('postgres_changes',{event:'*',schema:'public',table:'broadcast_realtime_signals',filter:'match_id=eq.'+matchId},()=>void refresh())
       .on('postgres_changes',{event:'*',schema:'public',table:'match_live_state',filter:'match_id=eq.'+matchId},()=>void refresh())
       .subscribe();
     return()=>{void supabase.removeChannel(ch)};
   },[supabase,matchId,refresh]);
 
-  if(!matchId)return <main className="prism-empty"><b>IPS PRISM</b><span>Add ?match=&lt;match-id&gt; to the overlay URL.</span></main>;
-  if(error)return <main className="prism-empty"><b>OVERLAY OFFLINE</b><span>{error}</span></main>;
-  if(!snapshot)return <main className="prism-empty"><b>IPS PRISM</b><span>Connecting to broadcast state…</span></main>;
-  if(snapshot.session?.clean_feed)return <main className="prism-output"/>;
+  if(!matchId)return <main className="tv-empty"><b>IPS BROADCAST</b><span>Add ?match=&lt;match-id&gt; to the overlay URL.</span></main>;
+  if(error)return <main className="tv-empty"><b>OVERLAY OFFLINE</b><span>{error}</span></main>;
+  if(!snapshot)return <main className="tv-empty"><b>IPS BROADCAST</b><span>Connecting to live match…</span></main>;
+  if(snapshot.session?.clean_feed)return <main className="tv-output"/>;
+
   const now=Date.now();
-  const layers=(snapshot.program?.active_layers||[]).filter((x:J)=>!x.expiresAt||Date.parse(x.expiresAt)>now).sort((a:J,b:J)=>(a.priority??0)-(b.priority??0));
-  const hideScorebar=layers.some((x:J)=>snapshot.release?.manifest?.variants?.[x.variantKey]?.conflictBehavior==='HIDE_SCOREBAR');
+  const layers=(snapshot.program?.active_layers||[])
+    .filter((x:J)=>!x.expiresAt||Date.parse(x.expiresAt)>now)
+    .sort((a:J,b:J)=>(a.priority??0)-(b.priority??0));
+  const manifest=snapshot.release?.manifest?.variants||{};
+  const hideScorebar=layers.some((x:J)=>manifest?.[x.variantKey]?.conflictBehavior==='HIDE_SCOREBAR');
   const visible=hideScorebar?layers.filter((x:J)=>x.replacementGroup!=='scorebar'):layers;
-  return <main className="prism-output">{visible.map((layer:J)=><Variant key={layer.instanceId||layer.variantKey} variantKey={layer.variantKey} manifest={snapshot.release?.manifest||{}} data={snapshot.data||{}} instance={layer}/>)}</main>;
+
+  return <main className="tv-output" style={cssVars(snapshot.data||{})}>
+    {visible.map((layer:J)=><div className="tv-layer" key={layer.instanceId||layer.variantKey}>
+      <BroadcastSkin variantKey={layer.variantKey} data={snapshot.data||{}} payload={layer.payload||{}}/>
+    </div>)}
+  </main>;
 }
