@@ -106,6 +106,10 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
   const queueAdd=(key:string,extra:Record<string,unknown>={})=>command({type:'QUEUE_ADD',variantKey:key,payload:payloadFor(extra)});
   const queueRemove=(id:string)=>command({type:'QUEUE_REMOVE',queueId:id});
   const applyScorebar=()=>command({type:'TAKE',variantKey:'scorebar.default',persistent:true,payload:payloadFor({scorebar:{showBatterPhotos}},'scorebar')});
+  const applySponsoredScorebar=()=>{
+    if(!selectedSponsor)return;
+    command({type:'TAKE',variantKey:'scorebar.default',persistent:true,payload:{scorebar:{showBatterPhotos},sponsor:{id:selectedSponsor.id,name:selectedSponsor.name,logo_url:selectedSponsor.logo_url,message:selectedSponsor.message||'SPONSORED BY',placement:'scorebar'}}});
+  };
 
   const loadRelease=()=>{
     if(!releaseChoice||releaseChoice===snap.release?.id)return;
@@ -292,7 +296,7 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
               <button disabled={!selectedSponsor} onClick={()=>{setSponsorEnabled(true);setSponsorPlacement('lower-third');}}>ARM LOWER THIRD</button>
               <button disabled={!selectedSponsor} onClick={()=>{setSponsorEnabled(true);setSponsorPlacement('top-right');}}>ARM CORNER BUG</button>
               <button disabled={!selectedSponsor} onClick={()=>{setSponsorEnabled(true);setSponsorPlacement('fullscreen');}}>ARM FULLSCREEN</button>
-              <button disabled={!selectedSponsor} onClick={()=>{setSponsorEnabled(true);setSponsorPlacement('scorebar');setTimeout(applyScorebar,0);}}>SPONSOR SCOREBAR</button>
+              <button disabled={!selectedSponsor} onClick={()=>{setSponsorEnabled(true);setSponsorPlacement('scorebar');applySponsoredScorebar();}}>SPONSOR SCOREBAR</button>
             </div>
           </section>
         </section>}
