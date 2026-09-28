@@ -269,6 +269,7 @@ function BroadcastSkin({variantKey,data,payload}:{variantKey:string;data:J;paylo
 export function BroadcastOverlay({matchId}:{matchId?:string}){
   const [snapshot,setSnapshot]=useState<Snapshot|null>(null);
   const [error,setError]=useState('');
+  const [now,setNow]=useState(()=>Date.now());
   const supabase=useMemo(()=>matchId?createBroadcastClient():null,[matchId]);
   const refresh=useCallback(async()=>{
     if(!supabase||!matchId)return;
@@ -278,6 +279,10 @@ export function BroadcastOverlay({matchId}:{matchId?:string}){
   },[supabase,matchId]);
 
   useEffect(()=>{void refresh()},[refresh]);
+  useEffect(()=>{
+    const timer=setInterval(()=>setNow(Date.now()),100);
+    return()=>clearInterval(timer);
+  },[]);
   useEffect(()=>{
     if(!supabase||!matchId)return;
     const ch=supabase.channel('prism-tv-'+matchId)
@@ -292,7 +297,6 @@ export function BroadcastOverlay({matchId}:{matchId?:string}){
   if(!snapshot)return <main className="tv-empty"><b>IPS BROADCAST</b><span>Connecting to live match…</span></main>;
   if(snapshot.session?.clean_feed)return <main className="tv-output"/>;
 
-  const now=Date.now();
   const layers=(snapshot.program?.active_layers||[])
     .filter((x:J)=>!x.expiresAt||Date.parse(x.expiresAt)>now)
     .sort((a:J,b:J)=>(a.priority??0)-(b.priority??0));
