@@ -10,7 +10,10 @@ type Layer={instanceId:string;variantKey:string;priority:number;replacementGroup
 type Suggestion={id:string;suggestion_key:string;variant_key:string;title:string;subtitle:string|null;payload:Record<string,unknown>;created_at:string};
 type EventConfig={event_key:string;mode:'MANUAL'|'ASSISTED'|'AUTOMATIC';default_variant_key:string;enabled:boolean};
 type ReleaseOption={release_id:string;package_id:string;package_name:string;package_slug:string;is_factory:boolean;version:number;published_at:string;variant_count:number;is_current:boolean};
-type Sponsor={id:string;name:string;logo_url:string|null;message:string|null;metadata:any};
+type Sponsor={id:string;name:string;logo_url:string|null;message:string|null;status:'ACTIVE'|'INACTIVE'|'ARCHIVED';metadata:any};
+type SponsorPlaylistItem={sponsor_id:string;position:number;duration_ms:number|null;sponsor:Sponsor};
+type SponsorPlaylist={id:string;name:string;rotation_interval_ms:number;shine_enabled:boolean;items:SponsorPlaylistItem[]};
+type SponsorDraft={id?:string;name:string;message:string;logo_url:string;status:'ACTIVE'|'INACTIVE'|'ARCHIVED';metadata:any};
 type Snapshot={match_id:string;session:any;program:{revision:number;preview:any;active_layers:Layer[];queue:any[];persistent_snapshot:Layer[]};release:{id:string;version:number;manifest:{variants:Record<string,Meta>};theme:any};data:any;signal:any;event_config:EventConfig[];suggestions:Suggestion[];available_releases?:ReleaseOption[]};
 
 const OVERLAY_URL=process.env.NEXT_PUBLIC_IPS_OVERLAY_URL??'http://localhost:3002';
@@ -18,6 +21,28 @@ const OVERLAY_URL=process.env.NEXT_PUBLIC_IPS_OVERLAY_URL??'http://localhost:300
 function age(ts:string){const sec=Math.max(0,Math.round((Date.now()-Date.parse(ts))/1000));return sec<60?sec+'s':Math.floor(sec/60)+'m';}
 function sceneLabel(key:string){return key.replaceAll('_',' ').replaceAll('-',' ').replace(/\b\w/g,c=>c.toUpperCase());}
 function graphicLabel(name:string){return name.replace(/^PRISM\s+/i,'');}
+function safeFilePart(value:string){return value.toLowerCase().replace(/[^a-z0-9._-]+/g,'-').replace(/^-+|-+$/g,'')||'sponsor';}
+async function adjustedSponsorBlob(file:File,zoom:number,posX:number,posY:number,fit:'contain'|'cover'){
+  const source=URL.createObjectURL(file);
+  try{
+    const img=new Image();
+    img.decoding='async';
+    img.src=source;
+    await new Promise<void>((resolve,reject)=>{img.onload=()=>resolve();img.onerror=()=>reject(new Error('Could not read sponsor image.'));});
+    const width=1200,height=500;
+    const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;
+    const ctx=canvas.getContext('2d');if(!ctx)throw new Error('Image editor is unavailable.');
+    ctx.clearRect(0,0,width,height);
+    const contain=Math.min(width/img.naturalWidth,height/img.naturalHeight);
+    const cover=Math.max(width/img.naturalWidth,height/img.naturalHeight);
+    const scale=(fit==='cover'?cover:contain)*Math.max(.5,Math.min(3,zoom));
+    const dw=img.naturalWidth*scale,dh=img.naturalHeight*scale;
+    const x=(width-dw)/2+((posX-50)/50)*width*.32;
+    const y=(height-dh)/2+((posY-50)/50)*height*.32;
+    ctx.drawImage(img,x,y,dw,dh);
+    return await new Promise<Blob>((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('Could not prepare sponsor image.')),'image/png',.96));
+  }finally{URL.revokeObjectURL(source);}
+}
 
 export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapshot}){
   const [snap,setSnap]=useState<Snapshot>(initial);
@@ -29,11 +54,34 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
   const [search,setSearch]=useState('');
   const [releaseChoice,setReleaseChoice]=useState(initial.release?.id??'');
   const [showBatterPhotos,setShowBatterPhotos]=useState(false);
+  const [matchInfoAuto,setMatchInfoAuto]=useState(true);
+  const [matchInfoInterval,setMatchInfoInterval]=useState(4000);
+  const [matchInfoPin,setMatchInfoPin]=useState('AUTO');
+  const [matchCardShow,setMatchCardShow]=useState(true);
+  const [matchCardMode,setMatchCardMode]=useState('AUTO');
+  const [matchCardInterval,setMatchCardInterval]=useState(5000);
+  const [matchCardLogos,setMatchCardLogos]=useState(true);
+  const [matchCardPlacement,setMatchCardPlacement]=useState('TOP_LEFT');
+  const [includeSponsorInScorebar,setIncludeSponsorInScorebar]=useState(false);
   const [durationOverrideMs,setDurationOverrideMs]=useState<number|null>(null);
   const [sponsors,setSponsors]=useState<Sponsor[]>([]);
+  const [sponsorPlaylists,setSponsorPlaylists]=useState<SponsorPlaylist[]>([]);
   const [sponsorId,setSponsorId]=useState('');
+  const [sponsorPlaylistId,setSponsorPlaylistId]=useState('');
+  const [sponsorRotationEnabled,setSponsorRotationEnabled]=useState(false);
   const [sponsorEnabled,setSponsorEnabled]=useState(false);
-  const [sponsorPlacement,setSponsorPlacement]=useState<'auto'|'lower-third'|'scorebar'|'top-right'|'bottom-right'|'fullscreen'>('auto');
+  const [sponsorPlacement,setSponsorPlacement]=useState('auto');
+  const [sponsorDraft,setSponsorDraft]=useState<SponsorDraft|null>(null);
+  const [sponsorFile,setSponsorFile]=useState<File|null>(null);
+  const [sponsorFilePreview,setSponsorFilePreview]=useState('');
+  const [sponsorZoom,setSponsorZoom]=useState(1);
+  const [sponsorPosX,setSponsorPosX]=useState(50);
+  const [sponsorPosY,setSponsorPosY]=useState(50);
+  const [sponsorFit,setSponsorFit]=useState<'contain'|'cover'>('contain');
+  const [sponsorSaving,setSponsorSaving]=useState(false);
+  const [playlistName,setPlaylistName]=useState('Sponsor Rotation');
+  const [playlistInterval,setPlaylistInterval]=useState(10000);
+  const [playlistSponsorIds,setPlaylistSponsorIds]=useState<string[]>([]);
   const [pending,startTransition]=useTransition();
   const supabase=useMemo(()=>createClient(),[]);
 
