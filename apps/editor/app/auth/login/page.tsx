@@ -1,0 +1,3 @@
+import {redirect} from 'next/navigation';import {createClient} from '@/lib/supabase/server';import {LoginForm} from '@/components/login-form';
+export const dynamic='force-dynamic';
+export default async function Login(){const supabase=await createClient();const {data:{user}}=await supabase.auth.getUser();if(user)redirect('/');return <main className="login-page"><section className="login-card"><div className="wordmark"><b>IPS</b><span>PRISM EDITOR</span></div><p className="eyebrow">BROADCAST GRAPHICS</p><h1>Overlay Editor</h1><p>Design and publish versioned graphics without touching live scoring.</p><LoginForm/></section></main>;}

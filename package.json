@@ -1,17 +1,17 @@
 {
   "name": "ips-platform",
-  "version": "0.6.2",
+  "version": "0.7.0",
   "private": true,
-  "description": "IPS \u2014 Italy Point System. Project 5.2 professional management, club/team/player registry, private contact identity and admin-managed player media.",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
+  "description": "IPS — Italy Point System. City cricket operations with authoritative scoring, PRISM broadcast control, graphics and replay.",
+  "workspaces": ["apps/*", "packages/*"],
   "scripts": {
-    "dev": "concurrently -n WEB,CONTROLLER,OVERLAY -c blue,green,magenta \"npm run dev -w @ips/web\" \"npm run dev -w @ips/controller\" \"npm run dev -w @ips/overlay\"",
+    "dev": "concurrently -n WEB,CONTROLLER,OVERLAY,DIRECTOR,EDITOR,REPLAY -c blue,green,magenta,cyan,yellow,white \"npm run dev -w @ips/web\" \"npm run dev -w @ips/controller\" \"npm run dev -w @ips/overlay\" \"npm run dev -w @ips/director\" \"npm run dev -w @ips/editor\" \"npm run dev -w @ips/replay\"",
     "dev:web": "npm run dev -w @ips/web",
     "dev:controller": "node scripts/sync-public-env.mjs && npm run dev -w @ips/controller",
     "dev:overlay": "npm run dev -w @ips/overlay",
+    "dev:director": "npm run dev -w @ips/director",
+    "dev:editor": "npm run dev -w @ips/editor",
+    "dev:replay": "npm run dev -w @ips/replay",
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "db:smoke": "node scripts/db-smoke.mjs",
@@ -27,7 +27,5 @@
     "typescript": "^5.7.3",
     "@supabase/supabase-js": "^2.49.4"
   },
-  "engines": {
-    "node": ">=20.0.0"
-  }
+  "engines": {"node": ">=20.0.0"}
 }
