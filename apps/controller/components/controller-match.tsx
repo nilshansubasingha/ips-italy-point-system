@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import {useEffect,useMemo,useState,useTransition} from 'react';
+import {useEffect,useMemo,useRef,useState,useTransition} from 'react';
 import {BrandMark} from '@ips/ui';
 import {
   overrideMatchFormat,
@@ -390,6 +390,18 @@ export function ControllerMatch({
     });
   }
 
+  const replayWindowRef=useRef<Window|null>(null);
+  const replayBase=(process.env.NEXT_PUBLIC_IPS_REPLAY_URL||'https://ips-overlay-p6-4-preview-production.up.railway.app/replay').replace(/\/$/,'');
+  function openReplayDashboard(kind:'FOUR'|'SIX'|'WICKET'){
+    const url=replayBase+'/matches/'+context.match.id+'?event='+kind;
+    const existing=replayWindowRef.current;
+    if(existing&&!existing.closed){
+      try{existing.focus();return;}catch{}
+    }
+    replayWindowRef.current=window.open(url,'ips-replay-'+context.match.id,'popup=yes,width=1500,height=950,resizable=yes,scrollbars=yes');
+    replayWindowRef.current?.focus();
+  }
+
   function recordDelivery(input:{
     runsOffBat?:number;
     extraType?:ExtraKind|null;
@@ -576,11 +588,11 @@ export function ControllerMatch({
               disabled={scoringLocked}
               key={value}
               className={value===4?'four-run':value===6?'six-run':''}
-              onClick={()=>recordDelivery({runsOffBat:value})}
+              onClick={()=>{if(value===4)openReplayDashboard('FOUR');if(value===6)openReplayDashboard('SIX');recordDelivery({runsOffBat:value});}}
             ><span>{value}</span><small>{value===0?'DOT':'RUNS'}</small></button>)}
           </div>
 
-          <button type="button" disabled={scoringLocked} className="wicket-action p6-wicket" onClick={()=>setSheet({kind:'wicket'})}>
+          <button type="button" disabled={scoringLocked} className="wicket-action p6-wicket" onClick={()=>{openReplayDashboard('WICKET');setSheet({kind:'wicket'});}}>
             <span>W</span><div><strong>WICKET</strong><small>Choose how it happened</small></div><b>→</b>
           </button>
 
