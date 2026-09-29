@@ -808,7 +808,7 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
       <div className="replay-wordmark"><b>IPS</b><span>REPLAY ENGINE</span></div>
       <div className="match-ident"><small>{(match.tournaments as any)?.name||'IPS MATCH'}</small><strong>{shortTeam(match.home)} <i>v</i> {shortTeam(match.away)}</strong><span>{match.match_code} · {match.status}</span></div>
       <div className={'program-state '+programMode.toLowerCase()}><i/>{programMode==='LIVE'?'LIVE PROGRAM':'REPLAY ON AIR'}</div>
-      <div className="head-links"><button onClick={openProgram}>OPEN IPS PROGRAM ↗</button><Link href="/director">DIRECTOR</Link></div>
+      <div className="head-links"><button onClick={openProgram}>OPEN IPS PROGRAM ↗</button><a href="/controller">CONTROLLER</a><a href="/director">DIRECTOR</a></div>
     </header>
 
     <div className="status-strip"><span>SCORER MARKERS <b className={scorerLink==='LIVE'?'good':''}>{scorerLink}</b></span><span>REMOTE CAMERAS <b className={remoteLink==='READY'?'good':''}>{remoteLink}</b></span><span>PROGRAM LINK <b className={programPeer==='CONNECTED'?'good':''}>{programPeer}</b></span><span>RECORDING <b className={recording.some(Boolean)?'good':''}>{recording.filter(Boolean).length}/4</b></span><span>BUFFER <b>45s CENTRAL</b></span><span>{notice}</span></div>
