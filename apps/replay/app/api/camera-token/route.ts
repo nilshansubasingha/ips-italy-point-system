@@ -61,7 +61,8 @@ export async function POST(req:NextRequest){
         room:roomName(data.match_id),
         canPublish:true,
         canSubscribe:false,
-        canPublishData:false
+        canPublishData:false,
+        canUpdateOwnMetadata:true
       });
 
       return NextResponse.json({
@@ -72,7 +73,7 @@ export async function POST(req:NextRequest){
       });
     }
 
-    if(role==='viewer'){
+    if(role==='viewer'||role==='overlay'){
       const matchId=String(body?.matchId||'');
       if(!matchId)return NextResponse.json({error:'Missing match.'},{status:400});
 
@@ -87,11 +88,12 @@ export async function POST(req:NextRequest){
         return NextResponse.json({error:error?.message||'Not authorized for this match.'},{status:403});
       }
 
-      const identity='replay-'+user.id+'-'+crypto.randomUUID();
+      const isOverlay=role==='overlay';
+      const identity=(isOverlay?'overlay-':'replay-')+user.id+'-'+crypto.randomUUID();
       const token=new AccessToken(apiKey,apiSecret,{
         identity,
-        name:'IPS Replay Control',
-        metadata:JSON.stringify({role:'replay',matchId}),
+        name:isOverlay?'IPS Overlay Live Camera':'IPS Replay Control',
+        metadata:JSON.stringify({role:isOverlay?'overlay':'replay',matchId}),
         ttl:'12h'
       });
       token.addGrant({
