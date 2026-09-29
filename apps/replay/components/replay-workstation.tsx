@@ -20,6 +20,7 @@ type ReplayAngle={slot:number;label:string;url:string;mime:string;blob:Blob;publ
 type ReplayClip={id:string;kind:'FOUR'|'SIX'|'WICKET'|'MANUAL';source:'SCORER'|'MANUAL';title:string;createdAt:number;durationSec:number;angles:ReplayAngle[]};
 type CameraSession={id:string;match_id:string;pin:string;realtime_key:string;expires_at:string;active:boolean};
 type RemoteCamera={connectionId:string;channelNo:number;label:string;quality?:string;lastSeen:number;status:'READY'|'LIVE'|'ERROR'};
+type BallMarker={id:string;marked_at:string;linked_at?:string|null;scoring_event_id?:string|null;sequence_no?:number|null;over_no?:number|null;ball_no?:number|null;delivery_label?:string|null;score_state?:any};
 
 const SLOT_COUNT=4;
 const BUFFER_MS=45000;
@@ -130,6 +131,9 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
   const [cameraSession,setCameraSession]=useState<CameraSession|null>(null);
   const [remoteLink,setRemoteLink]=useState<'CONNECTING'|'READY'|'ERROR'>('CONNECTING');
   const [remoteCameras,setRemoteCameras]=useState<(RemoteCamera|null)[]>(()=>Array(SLOT_COUNT).fill(null));
+  const [recording,setRecording]=useState<boolean[]>(()=>Array(SLOT_COUNT).fill(false));
+  const [ballMarkers,setBallMarkers]=useState<BallMarker[]>([]);
+  const [markingBall,setMarkingBall]=useState(false);
 
   const streamsRef=useRef<(MediaStream|null)[]>(Array(SLOT_COUNT).fill(null));
   const recordersRef=useRef<(MediaRecorder|null)[]>(Array(SLOT_COUNT).fill(null));
@@ -142,9 +146,11 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
   const previewVideoRef=useRef<HTMLVideoElement|null>(null);
   const livekitRoomRef=useRef<Room|null>(null);
   const remoteCamerasRef=useRef<(RemoteCamera|null)[]>(Array(SLOT_COUNT).fill(null));
+  const recordingRef=useRef<boolean[]>(Array(SLOT_COUNT).fill(false));
 
   useEffect(()=>{clipsRef.current=clips;},[clips]);
   useEffect(()=>{remoteCamerasRef.current=remoteCameras;},[remoteCameras]);
+  useEffect(()=>{recordingRef.current=recording;},[recording]);
 
   const enumerate=useCallback(async()=>{
     if(!navigator.mediaDevices?.enumerateDevices)return;
@@ -164,16 +170,60 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
     }catch(e:any){setNotice('Camera permission failed: '+(e?.message||'permission denied'));}
   };
 
-  const stopSlot=useCallback((index:number)=>{
+  const stopRecording=useCallback((index:number,quiet=false)=>{
     const recorder=recordersRef.current[index];
     if(recorder&&recorder.state!=='inactive'){try{recorder.stop();}catch{}}
     recordersRef.current[index]=null;
+    recordingRef.current[index]=false;
+    setRecording(prev=>prev.map((value,i)=>i===index?false:value));
+    if(!quiet)setNotice('CAM '+(index+1)+' recording stopped. Live preview remains connected.');
+  },[]);
+
+  const startRecording=useCallback(async(index:number,quiet=false)=>{
+    const stream=streamsRef.current[index];
+    if(!stream){
+      if(!quiet)setNotice('CAM '+(index+1)+' has no live video to record.');
+      return false;
+    }
+    const existing=recordersRef.current[index];
+    if(existing&&existing.state==='recording'){
+      recordingRef.current[index]=true;
+      setRecording(prev=>prev.map((value,i)=>i===index?true:value));
+      return true;
+    }
+    try{
+      const video=videoRefs.current[index];
+      await waitForVideoReady(stream,video);
+      const buffer:BufferState={header:null,chunks:[],mime:'',startedAt:Date.now()};
+      buffersRef.current[index]=buffer;
+      const recorder=startRollingRecorder(stream,buffer,message=>{
+        recordingRef.current[index]=false;
+        setRecording(prev=>prev.map((value,i)=>i===index?false:value));
+        setSlots(prev=>prev.map((slot,i)=>i===index?{...slot,status:'LIVE',error:'BUFFER: '+message}:slot));
+      });
+      recordersRef.current[index]=recorder;
+      recordingRef.current[index]=true;
+      setRecording(prev=>prev.map((value,i)=>i===index?true:value));
+      setSlots(prev=>prev.map((slot,i)=>i===index?{...slot,error:undefined}:slot));
+      if(!quiet)setNotice('CAM '+(index+1)+' central 45s recording buffer started.');
+      return true;
+    }catch(e:any){
+      recordingRef.current[index]=false;
+      setRecording(prev=>prev.map((value,i)=>i===index?false:value));
+      setSlots(prev=>prev.map((slot,i)=>i===index?{...slot,status:'LIVE',error:'BUFFER UNAVAILABLE: '+(e?.message||'MediaRecorder could not start')}:slot));
+      if(!quiet)setNotice('CAM '+(index+1)+' video is live, but recording could not start.');
+      return false;
+    }
+  },[]);
+
+  const stopSlot=useCallback((index:number)=>{
+    stopRecording(index,true);
     streamsRef.current[index]?.getTracks().forEach(t=>t.stop());
     streamsRef.current[index]=null;
     const video=videoRefs.current[index];if(video)video.srcObject=null;
     buffersRef.current[index]={header:null,chunks:[],mime:'',startedAt:0};
     setSlots(prev=>prev.map((s,i)=>i===index?{...s,status:'IDLE',error:undefined,source:undefined,connectionId:undefined}:s));
-  },[]);
+  },[stopRecording]);
 
   const startSlot=useCallback(async(index:number)=>{
     stopSlot(index);
@@ -187,21 +237,16 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
         await video.play().catch(()=>{});
       }
       await waitForVideoReady(stream,video);
-      const buffer:BufferState={header:null,chunks:[],mime:'',startedAt:Date.now()};
-      buffersRef.current[index]=buffer;
-      const recorder=startRollingRecorder(stream,buffer,message=>{
-        setSlots(prev=>prev.map((slot,i)=>i===index?{...slot,status:'ERROR',error:message}:slot));
-      });
-      recordersRef.current[index]=recorder;
       const label=stream.getVideoTracks()[0]?.label||slots[index]?.label||'CAM '+(index+1);
       setSlots(prev=>prev.map((s,i)=>i===index?{...s,status:'LIVE',label,error:undefined,source:'LOCAL',connectionId:undefined}:s));
-      setNotice('CAM '+(index+1)+' rolling buffer is live.');
+      setNotice('CAM '+(index+1)+' local video is live. Press START REC to arm its replay buffer.');
     }catch(e:any){
       setSlots(prev=>prev.map((s,i)=>i===index?{...s,status:'ERROR',error:e?.message||'Camera unavailable'}:s));
     }
   },[slots,stopSlot]);
 
   const attachRemoteStream=useCallback(async(index:number,stream:MediaStream,label:string,connectionId:string)=>{
+    const resumeRecording=recordingRef.current[index];
     const previousRecorder=recordersRef.current[index];
     if(previousRecorder&&previousRecorder.state!=='inactive'){try{previousRecorder.stop();}catch{}}
     recordersRef.current[index]=null;
@@ -230,30 +275,13 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
       connectionId
     }:slot));
     setRemoteCameras(prev=>prev.map((cam,i)=>i===index&&cam?{...cam,status:'LIVE'}:cam));
-    setNotice('REMOTE CAM '+(index+1)+' video is live. Arming central replay buffer…');
+    setNotice('REMOTE CAM '+(index+1)+' video is live. Press START REC or use START ALL RECORDING.');
 
-    try{
-      await waitForVideoReady(stream,video);
-      const buffer:BufferState={header:null,chunks:[],mime:'',startedAt:Date.now()};
-      buffersRef.current[index]=buffer;
-      const recorder=startRollingRecorder(stream,buffer,message=>{
-        setSlots(prev=>prev.map((slot,i)=>i===index?{...slot,status:'LIVE',error:'BUFFER: '+message,source:'REMOTE',connectionId}:slot));
-      });
-      recordersRef.current[index]=recorder;
-      setSlots(prev=>prev.map((slot,i)=>i===index?{...slot,status:'LIVE',error:undefined,source:'REMOTE',connectionId}:slot));
-      setNotice('REMOTE CAM '+(index+1)+' is live and recording into the central 45s buffer.');
-    }catch(e:any){
-      buffersRef.current[index]={header:null,chunks:[],mime:'',startedAt:0};
-      setSlots(prev=>prev.map((slot,i)=>i===index?{
-        ...slot,
-        status:'LIVE',
-        error:'BUFFER UNAVAILABLE: '+(e?.message||'MediaRecorder could not start'),
-        source:'REMOTE',
-        connectionId
-      }:slot));
-      setNotice('REMOTE CAM '+(index+1)+' video is live, but its replay buffer is not armed.');
+    if(resumeRecording){
+      await startRecording(index,true);
+      setNotice('REMOTE CAM '+(index+1)+' reconnected and its recording buffer resumed.');
     }
-  },[]);
+  },[startRecording]);
 
   const buildClip=useCallback((kind:ReplayClip['kind'],source:ReplayClip['source'],title:string,preRollSec:number)=>{
     const now=Date.now();
@@ -290,6 +318,29 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
     window.setTimeout(()=>buildClip(kind,source,subtitle||kind+' · '+shortTeam(match.home)+' vs '+shortTeam(match.away),pre),post);
   },[buildClip,match]);
 
+  const loadBallMarkers=useCallback(async()=>{
+    const {data,error}=await supabase.rpc('ips_replay_ball_markers',{p_match_id:matchId});
+    if(!error&&Array.isArray(data))setBallMarkers(data as BallMarker[]);
+  },[supabase,matchId]);
+
+  useEffect(()=>{void loadBallMarkers();},[loadBallMarkers]);
+
+  const markBall=useCallback(async()=>{
+    if(markingBall)return;
+    setMarkingBall(true);
+    try{
+      const {data,error}=await supabase.rpc('ips_replay_mark_ball',{p_match_id:matchId});
+      if(error)throw error;
+      const marker=data as BallMarker;
+      setBallMarkers(prev=>[marker,...prev.filter(m=>m.id!==marker.id)].slice(0,100));
+      setNotice('BALL TIMESTAMP '+formatClock(new Date(marker.marked_at).getTime())+' saved — waiting for the scorer delivery to attach score data.');
+    }catch(e:any){
+      setNotice('Ball timestamp failed: '+(e?.message||'unknown error'));
+    }finally{
+      setMarkingBall(false);
+    }
+  },[supabase,matchId,markingBall]);
+
   useEffect(()=>{
     const ch=supabase.channel('ips-replay-score-'+matchId)
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'match_scoring_events',filter:'match_id=eq.'+matchId},payload=>{
@@ -297,6 +348,13 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
         if(!row?.id||seenEventsRef.current.has(row.id))return;
         seenEventsRef.current.add(row.id);
         if(row.event_type!=='DELIVERY')return;
+        void supabase.rpc('ips_replay_link_latest_pending_marker',{p_match_id:matchId,p_event_id:row.id}).then(({data,error})=>{
+          if(error||!data)return;
+          const marker=data as BallMarker;
+          setBallMarkers(prev=>[marker,...prev.filter(m=>m.id!==marker.id)].slice(0,100));
+          const state=marker.score_state||{};
+          setNotice('BALL '+String(marker.over_no??'—')+'.'+String(marker.ball_no??'—')+' linked · '+String(marker.delivery_label||'DELIVERY')+' · '+String(state.runs??'—')+'/'+String(state.wickets??'—'));
+        });
         if(row.is_wicket)markEvent('WICKET','SCORER',row.delivery_label||'WICKET');
         else if(Number(row.runs_off_bat)===6)markEvent('SIX','SCORER',row.delivery_label||'SIX');
         else if(Number(row.runs_off_bat)===4)markEvent('FOUR','SCORER',row.delivery_label||'FOUR');
@@ -591,6 +649,20 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
 
   const startAll=async()=>{for(let i=0;i<SLOT_COUNT;i++){if(slots[i].deviceId||devices[i])await startSlot(i);}};
 
+  const liveRecordingIndices=slots.map((slot,i)=>slot.status==='LIVE'&&streamsRef.current[i]?i:-1).filter(i=>i>=0);
+  const allLiveRecording=liveRecordingIndices.length>0&&liveRecordingIndices.every(i=>recording[i]);
+  const toggleAllRecording=async()=>{
+    if(!liveRecordingIndices.length){setNotice('No live camera channels are connected yet.');return;}
+    if(allLiveRecording){
+      liveRecordingIndices.forEach(i=>stopRecording(i,true));
+      setNotice('ALL CAMERA RECORDING STOPPED. Live previews remain connected.');
+      return;
+    }
+    let started=0;
+    for(const i of liveRecordingIndices){if(recordingRef.current[i]||await startRecording(i,true))started++;}
+    setNotice('MASTER RECORD · '+started+'/'+liveRecordingIndices.length+' live channels recording into 45s buffers.');
+  };
+
   useEffect(()=>()=>{for(let i=0;i<SLOT_COUNT;i++)stopSlot(i);for(const c of clipsRef.current)for(const a of c.angles)URL.revokeObjectURL(a.url);},[stopSlot]);
 
   return <main className="replay-shell">
@@ -601,12 +673,12 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
       <div className="head-links"><button onClick={openProgram}>OPEN IPS PROGRAM ↗</button><Link href="/director">DIRECTOR</Link></div>
     </header>
 
-    <div className="status-strip"><span>SCORER MARKERS <b className={scorerLink==='LIVE'?'good':''}>{scorerLink}</b></span><span>REMOTE CAMERAS <b className={remoteLink==='READY'?'good':''}>{remoteLink}</b></span><span>PROGRAM LINK <b className={programPeer==='CONNECTED'?'good':''}>{programPeer}</b></span><span>BUFFER <b>45s CENTRAL</b></span><span>{notice}</span></div>
+    <div className="status-strip"><span>SCORER MARKERS <b className={scorerLink==='LIVE'?'good':''}>{scorerLink}</b></span><span>REMOTE CAMERAS <b className={remoteLink==='READY'?'good':''}>{remoteLink}</b></span><span>PROGRAM LINK <b className={programPeer==='CONNECTED'?'good':''}>{programPeer}</b></span><span>RECORDING <b className={recording.some(Boolean)?'good':''}>{recording.filter(Boolean).length}/4</b></span><span>BUFFER <b>45s CENTRAL</b></span><span>{notice}</span></div>
 
     <section className="replay-grid">
       <div className="camera-column">
         <section className="replay-panel camera-panel">
-          <header><div><span>CENTRAL CAMERA INGEST</span><h2>Remote phones + local fallback</h2></div><div className="panel-actions"><button onClick={openCameraPublisher}>OPEN CAMERA PAGE ↗</button><button onClick={enablePermissions}>LOCAL CAMERAS</button><button className="primary" onClick={startAll}>START LOCAL</button></div></header>
+          <header><div><span>CENTRAL CAMERA INGEST</span><h2>Remote phones + local fallback</h2></div><div className="panel-actions"><button className={'master-record '+(allLiveRecording?'active':'')} onClick={()=>void toggleAllRecording()}>{allLiveRecording?'■ STOP ALL RECORDING':'● START ALL RECORDING'}</button><button onClick={openCameraPublisher}>OPEN CAMERA PAGE ↗</button><button onClick={enablePermissions}>LOCAL CAMERAS</button><button onClick={startAll}>START LOCAL FEEDS</button></div></header>
           <div className="remote-camera-session">
             <div><span>CAMERA PIN</span><strong>{cameraSession?.pin||'—— ——'}</strong><small>{cameraSession?'Valid until '+new Date(cameraSession.expires_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'Creating secure camera session…'}</small></div>
             <div><span>CONNECTED</span><strong>{remoteCameras.filter(Boolean).length}/4</strong><small>Phones only need this PIN + channel number.</small></div>
@@ -618,15 +690,19 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
               {slot.source==='REMOTE'?<div className="remote-source-label"><b>REMOTE PHONE</b><span>{remoteCameras[i]?.quality||'WEBRTC'} · {remoteCameras[i]?.label||slot.label}</span></div>:<select value={slot.deviceId} onChange={e=>setSlots(prev=>prev.map((s,j)=>j===i?{...s,deviceId:e.target.value,label:devices.find(d=>d.deviceId===e.target.value)?.label||s.label}:s))}>
                 <option value="">Choose local camera…</option>{devices.map((d,j)=><option key={d.deviceId} value={d.deviceId}>{d.label||'Camera '+(j+1)}</option>)}
               </select>}
-              <button disabled={slot.source==='REMOTE'} onClick={()=>slot.status==='LIVE'?stopSlot(i):void startSlot(i)}>{slot.source==='REMOTE'?'REMOTE':slot.status==='LIVE'?'STOP':'ARM LOCAL'}</button>
-              <button className={programCamera===i?'program-cam':''} onClick={()=>setProgramCamera(i)}>PROGRAM LIVE</button>
+              <button className={recording[i]?'recording-btn active':'recording-btn'} disabled={slot.status!=='LIVE'} onClick={()=>recording[i]?stopRecording(i):void startRecording(i)}>{recording[i]?'■ STOP REC':'● START REC'}</button>
+              <button title="Select this camera as the live source for the separate IPS Program output. It does not start recording." className={programCamera===i?'program-cam':''} onClick={()=>setProgramCamera(i)}>{programCamera===i?'ON PROGRAM':'TAKE LIVE'}</button>
             </div>
             {slot.error&&<small className="camera-error">{slot.error}</small>}
           </article>)}</div>
         </section>
 
         <section className="replay-panel event-panel">
-          <header><div><span>REPLAY MARKERS</span><h2>Scorer-linked + manual capture</h2></div></header>
+          <header><div><span>REPLAY MARKERS</span><h2>Ball timestamps + scorer-linked capture</h2></div></header>
+          <div className="ball-marker-console">
+            <button className="mark-ball-button" disabled={markingBall} onClick={()=>void markBall()}>{markingBall?'SAVING…':'MARK BALL'}<span>PRESS AT DELIVERY</span></button>
+            <div className="ball-marker-history">{ballMarkers.slice(0,6).map(marker=>{const state=marker.score_state||{};return <div className={marker.scoring_event_id?'linked':'pending'} key={marker.id}><b>{formatClock(new Date(marker.marked_at).getTime())}</b><span>{marker.scoring_event_id?String(marker.over_no??'—')+'.'+String(marker.ball_no??'—')+' · '+String(marker.delivery_label||'BALL')+' · '+String(state.runs??'—')+'/'+String(state.wickets??'—'):'WAITING FOR SCORE'}</span></div>;})}{!ballMarkers.length&&<p>No ball timestamps yet.</p>}</div>
+          </div>
           <div className="event-buttons">
             <button className="four" onClick={()=>markEvent('FOUR')}>4 <span>MARK FOUR</span></button>
             <button className="six" onClick={()=>markEvent('SIX')}>6 <span>MARK SIX</span></button>
