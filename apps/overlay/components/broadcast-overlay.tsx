@@ -2,6 +2,7 @@
 
 import {CSSProperties,ReactNode,useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {createBroadcastClient} from '@/lib/supabase';
+import {ConnectionState,Room,RoomEvent,Track,type RemoteParticipant,type RemoteTrack,type RemoteTrackPublication} from 'livekit-client';
 
 type J=Record<string,any>;
 type Snapshot={match_id:string;session:J;program:J;release:J;data:J;signal:J};
@@ -346,7 +347,64 @@ function ReplayVideo({url,speed}:{url:string;speed:number}){
   return <video ref={ref} className="tv-replay-video" src={url} autoPlay muted playsInline preload="auto"/>;
 }
 
+function LiveCameraFullscreen({config}:{config:J}){
+  const ref=useRef<HTMLVideoElement|null>(null);
+  const [state,setState]=useState('CONNECTING');
+  const url=String(config?.url||'');
+  const token=String(config?.token||'');
+  const channelNo=Number(config?.channelNo||0);
+
+  useEffect(()=>{
+    if(!url||!token||!channelNo){setState('UNAVAILABLE');return;}
+    let cancelled=false;
+    const room=new Room({adaptiveStream:true,dynacast:false,disconnectOnPageLeave:true});
+
+    const matches=(participant:RemoteParticipant)=>{
+      try{
+        const meta=JSON.parse(participant.metadata||'{}');
+        return meta.role==='camera'&&Number(meta.channelNo)===channelNo;
+      }catch{return false;}
+    };
+    const attach=(track:RemoteTrack,_publication:RemoteTrackPublication,participant:RemoteParticipant)=>{
+      if(track.kind!==Track.Kind.Video||!matches(participant))return;
+      const video=ref.current;
+      if(!video)return;
+      try{
+        track.detach();
+        track.attach(video);
+        video.muted=true;
+        video.playsInline=true;
+        void video.play().catch(()=>{});
+        setState('LIVE');
+      }catch{setState('VIDEO ERROR');}
+    };
+
+    room.on(RoomEvent.TrackSubscribed,attach);
+    room.on(RoomEvent.ConnectionStateChanged,(next:ConnectionState)=>{
+      if(cancelled)return;
+      if(next===ConnectionState.Connected&&state!=='LIVE')setState('WAITING FOR CAMERA');
+      else if(next===ConnectionState.Reconnecting)setState('RECONNECTING');
+      else if(next===ConnectionState.Disconnected)setState('OFFLINE');
+    });
+
+    void room.connect(url,token,{autoSubscribe:true}).catch(()=>{if(!cancelled)setState('CONNECTION FAILED');});
+    return()=>{
+      cancelled=true;
+      try{room.off(RoomEvent.TrackSubscribed,attach);}catch{}
+      try{room.disconnect();}catch{}
+      if(ref.current)ref.current.srcObject=null;
+    };
+  },[url,token,channelNo]);
+
+  return <section className="tv-live-camera-fullscreen">
+    <video ref={ref} autoPlay muted playsInline/>
+    <aside className="tv-live-camera-label"><b>LIVE</b><span>CAM {channelNo}{config?.label?' · '+String(config.label):''}</span><small>{state}</small></aside>
+  </section>;
+}
+
 function ReplayFullscreen({payload,startedAt,now}:{payload:J;startedAt?:string;now:number}){
+  const liveCamera=payload?.liveCamera||null;
+  if(liveCamera?.url&&liveCamera?.token&&liveCamera?.channelNo)return <LiveCameraFullscreen config={liveCamera}/>;
   const replay=payload?.replay||{};
   const url=String(replay.videoUrl||'');
   const speed=Math.max(.25,Number(replay.speed)||1);
