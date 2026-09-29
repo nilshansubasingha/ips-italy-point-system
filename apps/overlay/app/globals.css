@@ -148,5 +148,11 @@ body{font-family:Inter,Arial,sans-serif}
 .tv-replay-label{position:absolute;left:42px;top:36px;display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:7px;background:rgba(3,8,11,.74);border-left:4px solid #19d18f;backdrop-filter:blur(8px)}
 .tv-replay-label b{font-size:11px;letter-spacing:.16em}.tv-replay-label span{font-size:8px;color:#9dafb6}
 .tv-replay-missing{font-size:24px;font-weight:950;letter-spacing:.08em;color:#fff}
+.tv-live-camera-fullscreen{position:absolute;inset:0;background:#000;overflow:hidden}
+.tv-live-camera-fullscreen video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
+.tv-live-camera-label{position:absolute;left:42px;top:36px;display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:7px;background:rgba(3,8,11,.76);border-left:4px solid #ff4f5d;backdrop-filter:blur(8px)}
+.tv-live-camera-label b{font-size:11px;letter-spacing:.15em;color:#fff}.tv-live-camera-label b:before{content:'';display:inline-block;width:8px;height:8px;margin-right:8px;border-radius:50%;background:#ff4f5d;box-shadow:0 0 12px rgba(255,79,93,.7)}
+.tv-live-camera-label span{font-size:8px;color:#d7e2e6}.tv-live-camera-label small{font-size:7px;color:#718994;letter-spacing:.06em}
+
 @keyframes tv-replay-sting-in{from{opacity:0;transform:scale(1.04)}to{opacity:1;transform:none}}
 @keyframes tv-replay-lines{from{opacity:0;transform:translateX(-30%) rotate(-6deg)}to{opacity:1;transform:translateX(5%) rotate(-6deg)}}
