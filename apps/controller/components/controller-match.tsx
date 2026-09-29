@@ -486,7 +486,7 @@ export function ControllerMatch({
     <header className="controller-header p6-header">
       <div className="controller-brand"><BrandMark compact/><div className="match-id"><span>IPS MATCH CONTROLLER</span><b>{context.match.code}</b></div></div>
       <div className="p6-header-actions">
-        <a className="p6-header-output" href={overlayUrl+'/program/'+encodeURIComponent(context.match.code)} target="_blank" rel="noreferrer">CURRENT OVERLAY ↗</a>
+        <a className="p6-header-output" href={overlayUrl+'/program/'+encodeURIComponent(context.match.id)} target="_blank" rel="noreferrer">CURRENT OVERLAY ↗</a>
         <a className="p6-header-director" href={'/director/matches/'+encodeURIComponent(context.match.code)} target="_blank" rel="noreferrer">DIRECTOR ↗</a>
         <Link className="header-menu back-control" href="/">←</Link>
       </div>
