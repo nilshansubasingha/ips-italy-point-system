@@ -19,7 +19,7 @@ type BufferState={header:Blob|null;chunks:Chunk[];mime:string;startedAt:number};
 type ReplayAngle={slot:number;label:string;url:string;mime:string;blob:Blob;publicUrl?:string};
 type ReplayClip={id:string;kind:'FOUR'|'SIX'|'WICKET'|'MANUAL';source:'SCORER'|'MANUAL';title:string;createdAt:number;durationSec:number;angles:ReplayAngle[]};
 type CameraSession={id:string;match_id:string;pin:string;realtime_key:string;expires_at:string;active:boolean};
-type RemoteCamera={connectionId:string;channelNo:number;label:string;quality?:string;lastSeen:number;status:'READY'|'LIVE'|'ERROR'};
+type RemoteCamera={connectionId:string;channelNo:number;label:string;quality?:string;signalQuality?:string;lastSeen:number;status:'READY'|'LIVE'|'ERROR';batteryPct?:number|null;charging?:boolean|null;effectiveType?:string|null;downlinkMbps?:number|null;rttMs?:number|null;width?:number|null;height?:number|null;frameRate?:number|null};
 type BallMarker={id:string;marked_at:string;linked_at?:string|null;scoring_event_id?:string|null;sequence_no?:number|null;over_no?:number|null;ball_no?:number|null;delivery_label?:string|null;score_state?:any};
 
 const SLOT_COUNT=4;
@@ -134,6 +134,8 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
   const [recording,setRecording]=useState<boolean[]>(()=>Array(SLOT_COUNT).fill(false));
   const [ballMarkers,setBallMarkers]=useState<BallMarker[]>([]);
   const [markingBall,setMarkingBall]=useState(false);
+  const [overlayLiveCamera,setOverlayLiveCamera]=useState<number|null>(null);
+  const [overlayCameraBusy,setOverlayCameraBusy]=useState<number|null>(null);
 
   const streamsRef=useRef<(MediaStream|null)[]>(Array(SLOT_COUNT).fill(null));
   const recordersRef=useRef<(MediaRecorder|null)[]>(Array(SLOT_COUNT).fill(null));
@@ -434,10 +436,19 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
         const parsed=JSON.parse(participant.metadata||'{}');
         const channelNo=Number(parsed.channelNo);
         if(parsed.role!=='camera'||channelNo<1||channelNo>SLOT_COUNT)return null;
+        const telemetry=parsed.telemetry||{};
         return {
           channelNo,
           label:String(parsed.label||('CAM '+channelNo)),
-          connectionId:String(parsed.connectionId||participant.identity)
+          connectionId:String(parsed.connectionId||participant.identity),
+          batteryPct:Number.isFinite(Number(telemetry.batteryPct))?Number(telemetry.batteryPct):null,
+          charging:typeof telemetry.charging==='boolean'?telemetry.charging:null,
+          effectiveType:telemetry.effectiveType?String(telemetry.effectiveType):null,
+          downlinkMbps:Number.isFinite(Number(telemetry.downlinkMbps))?Number(telemetry.downlinkMbps):null,
+          rttMs:Number.isFinite(Number(telemetry.rttMs))?Number(telemetry.rttMs):null,
+          width:Number.isFinite(Number(telemetry.width))?Number(telemetry.width):null,
+          height:Number.isFinite(Number(telemetry.height))?Number(telemetry.height):null,
+          frameRate:Number.isFinite(Number(telemetry.frameRate))?Number(telemetry.frameRate):null
         };
       }catch{return null;}
     };
@@ -488,11 +499,50 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
             connectionId:meta.connectionId,
             channelNo:meta.channelNo,
             label:meta.label,
-            quality:'SFU',
+            quality:'LIVEKIT',
+            signalQuality:cam?.signalQuality||'UNKNOWN',
             lastSeen:Date.now(),
-            status:'LIVE'
+            status:'LIVE',
+            batteryPct:meta.batteryPct,
+            charging:meta.charging,
+            effectiveType:meta.effectiveType,
+            downlinkMbps:meta.downlinkMbps,
+            rttMs:meta.rttMs,
+            width:meta.width,
+            height:meta.height,
+            frameRate:meta.frameRate
           }:cam));
           void attachRemoteStream(index,stream,meta.label,meta.connectionId);
+        });
+
+        room.on(RoomEvent.ParticipantMetadataChanged,(_previousMetadata:string|undefined,participant:any)=>{
+          const meta=cameraMeta(participant as RemoteParticipant);
+          if(!meta)return;
+          const index=meta.channelNo-1;
+          setRemoteCameras(prev=>prev.map((cam,i)=>i===index&&cam?{
+            ...cam,
+            label:meta.label,
+            lastSeen:Date.now(),
+            batteryPct:meta.batteryPct,
+            charging:meta.charging,
+            effectiveType:meta.effectiveType,
+            downlinkMbps:meta.downlinkMbps,
+            rttMs:meta.rttMs,
+            width:meta.width,
+            height:meta.height,
+            frameRate:meta.frameRate
+          }:cam));
+        });
+
+        room.on(RoomEvent.ConnectionQualityChanged,(quality:any,participant:any)=>{
+          const meta=cameraMeta(participant as RemoteParticipant);
+          if(!meta)return;
+          const index=meta.channelNo-1;
+          setRemoteCameras(prev=>prev.map((cam,i)=>i===index&&cam?{
+            ...cam,
+            signalQuality:String(quality||'UNKNOWN').toUpperCase(),
+            lastSeen:Date.now()
+          }:cam));
         });
 
         room.on(RoomEvent.TrackUnsubscribed,(_track:RemoteTrack,_publication:RemoteTrackPublication,participant:RemoteParticipant)=>{
@@ -659,11 +709,73 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
     setSelectedClipId(clip.id);
     setSelectedAngle(angle.slot);
     setReadyClipId(null);
+    setOverlayLiveCamera(null);
     await takeReplay(clip,angle);
+  };
+
+  const stopOverlayLive=async()=>{
+    try{
+      const {error}=await supabase.rpc('ips_broadcast_clear_variant',{
+        p_match_id:matchId,
+        p_variant_key:'replay.fullscreen'
+      });
+      if(error)throw error;
+      setOverlayLiveCamera(null);
+      setNotice('Live camera removed from IPS overlay.');
+    }catch(e:any){
+      setNotice('Could not remove live camera from overlay: '+(e?.message||'unknown error'));
+    }
+  };
+
+  const takeCameraLiveToOverlay=async(index:number)=>{
+    if(slots[index]?.status!=='LIVE'||!streamsRef.current[index]){
+      setNotice('CAM '+(index+1)+' is not live.');
+      return;
+    }
+    if(overlayLiveCamera===index){
+      await stopOverlayLive();
+      return;
+    }
+    setOverlayCameraBusy(index);
+    try{
+      const base=window.location.pathname.startsWith('/replay')?'/replay':'';
+      const response=await fetch(base+'/api/camera-token',{
+        method:'POST',
+        headers:{'content-type':'application/json'},
+        body:JSON.stringify({role:'overlay',matchId})
+      });
+      const auth=await response.json();
+      if(!response.ok||!auth?.token||!auth?.url)throw new Error(auth?.error||'Could not authorize overlay camera.');
+      const {error}=await supabase.rpc('ips_broadcast_program_command',{
+        p_match_id:matchId,
+        p_command:{
+          type:'TAKE',
+          variantKey:'replay.fullscreen',
+          durationMs:120000,
+          persistent:true,
+          payload:{liveCamera:{
+            url:auth.url,
+            token:auth.token,
+            channelNo:index+1,
+            label:slots[index]?.label||('CAM '+(index+1))
+          }}
+        }
+      });
+      if(error)throw error;
+      setOverlayLiveCamera(index);
+      setProgramMode('LIVE');
+      setReadyClipId(null);
+      setNotice('CAM '+(index+1)+' IS LIVE ON IPS OVERLAY.');
+    }catch(e:any){
+      setNotice('Live-to-overlay failed: '+(e?.message||'unknown error'));
+    }finally{
+      setOverlayCameraBusy(null);
+    }
   };
 
   const returnLive=async()=>{
     setProgramMode('LIVE');
+    setOverlayLiveCamera(null);
     channelRef.current?.postMessage({type:'LIVE'});
     try{await supabase.rpc('ips_broadcast_program_command',{p_match_id:matchId,p_command:{type:'CLEAR_TEMPORARY'}});}catch{}
     setNotice('Returned to LIVE.');
@@ -711,12 +823,14 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
             <button disabled={!cameraSession} onClick={()=>void loadCameraSession(true)}>ROTATE PIN</button>
           </div>
           <div className="camera-grid">{slots.map((slot,i)=><article className={'camera-card '+slot.status.toLowerCase()} key={i}>
-            <div className="camera-video"><video ref={el=>{videoRefs.current[i]=el;}} autoPlay muted playsInline/><span>CAM {i+1}</span><b>{slot.status}</b></div>
+            <div className="camera-video"><video ref={el=>{videoRefs.current[i]=el;}} autoPlay muted playsInline/><span>CAM {i+1}</span><b>{overlayLiveCamera===i?'ON AIR':slot.status}</b>{slot.source==='REMOTE'&&<div className="camera-telemetry-overlay"><i className={'signal-dot '+String(remoteCameras[i]?.signalQuality||'unknown').toLowerCase()}/><span>{remoteCameras[i]?.signalQuality||'SIGNAL'}</span><span>{remoteCameras[i]?.batteryPct!=null?(remoteCameras[i]?.charging?'⚡ ':'')+remoteCameras[i]?.batteryPct+'%':'BATT —'}</span></div>}</div>
+            {slot.source==='REMOTE'&&<div className="camera-telemetry-row"><span>SIGNAL <b>{remoteCameras[i]?.signalQuality||'UNKNOWN'}</b></span><span>BATTERY <b>{remoteCameras[i]?.batteryPct!=null?String(remoteCameras[i]?.batteryPct)+'%':'UNAVAILABLE'}</b></span><span>NET <b>{remoteCameras[i]?.effectiveType?.toUpperCase()||'WEBRTC'}</b></span><span>RTT <b>{remoteCameras[i]?.rttMs!=null?Math.round(remoteCameras[i]!.rttMs!)+' ms':'—'}</b></span><span>VIDEO <b>{remoteCameras[i]?.width&&remoteCameras[i]?.height?remoteCameras[i]?.width+'×'+remoteCameras[i]?.height:'—'}{remoteCameras[i]?.frameRate?' · '+Math.round(remoteCameras[i]!.frameRate!)+'fps':''}</b></span></div>}
             <div className="camera-controls">
               {slot.source==='REMOTE'?<div className="remote-source-label"><b>REMOTE PHONE</b><span>{remoteCameras[i]?.quality||'WEBRTC'} · {remoteCameras[i]?.label||slot.label}</span></div>:<select value={slot.deviceId} onChange={e=>setSlots(prev=>prev.map((s,j)=>j===i?{...s,deviceId:e.target.value,label:devices.find(d=>d.deviceId===e.target.value)?.label||s.label}:s))}>
                 <option value="">Choose local camera…</option>{devices.map((d,j)=><option key={d.deviceId} value={d.deviceId}>{d.label||'Camera '+(j+1)}</option>)}
               </select>}
               <button className={recording[i]?'recording-btn active':'recording-btn'} disabled={slot.status!=='LIVE'} onClick={()=>recording[i]?stopRecording(i):void startRecording(i)}>{recording[i]?'■ STOP REC':'● START REC'}</button>
+              <button className={overlayLiveCamera===i?'overlay-live-btn active':'overlay-live-btn'} disabled={slot.status!=='LIVE'||overlayCameraBusy!==null} onClick={()=>void takeCameraLiveToOverlay(i)}>{overlayCameraBusy===i?'TAKING…':overlayLiveCamera===i?'■ STOP OVERLAY':'● LIVE TO OVERLAY'}</button>
               <button title="Select this camera as the live source for the separate IPS Program output. It does not start recording." className={programCamera===i?'program-cam':''} onClick={()=>setProgramCamera(i)}>{programCamera===i?'ON PROGRAM':'TAKE LIVE'}</button>
             </div>
             {slot.error&&<small className="camera-error">{slot.error}</small>}
