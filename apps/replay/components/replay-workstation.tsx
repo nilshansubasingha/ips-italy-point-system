@@ -341,6 +341,21 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
     }
   },[supabase,matchId,markingBall]);
 
+  const deleteBallMarker=useCallback(async(marker:BallMarker)=>{
+    try{
+      const {data,error}=await supabase.rpc('ips_replay_delete_ball_marker',{
+        p_match_id:matchId,
+        p_marker_id:marker.id
+      });
+      if(error)throw error;
+      if(!data)throw new Error('Marker was not found.');
+      setBallMarkers(prev=>prev.filter(m=>m.id!==marker.id));
+      setNotice('Ball timestamp '+formatClock(new Date(marker.marked_at).getTime())+' removed.');
+    }catch(e:any){
+      setNotice('Could not remove ball timestamp: '+(e?.message||'unknown error'));
+    }
+  },[supabase,matchId]);
+
   useEffect(()=>{
     const ch=supabase.channel('ips-replay-score-'+matchId)
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'match_scoring_events',filter:'match_id=eq.'+matchId},payload=>{
@@ -636,6 +651,17 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
       setReplayTakeBusy(false);
     }
   };
+  const instantReplay=async(clip:ReplayClip)=>{
+    const angle=selectedClipId===clip.id
+      ? (clip.angles.find(a=>a.slot===selectedAngle)??clip.angles[0])
+      : clip.angles[0];
+    if(!angle){setNotice('This replay has no available camera angle.');return;}
+    setSelectedClipId(clip.id);
+    setSelectedAngle(angle.slot);
+    setReadyClipId(null);
+    await takeReplay(clip,angle);
+  };
+
   const returnLive=async()=>{
     setProgramMode('LIVE');
     channelRef.current?.postMessage({type:'LIVE'});
@@ -701,7 +727,7 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
           <header><div><span>REPLAY MARKERS</span><h2>Ball timestamps + scorer-linked capture</h2></div></header>
           <div className="ball-marker-console">
             <button className="mark-ball-button" disabled={markingBall} onClick={()=>void markBall()}>{markingBall?'SAVING…':'MARK BALL'}<span>PRESS AT DELIVERY</span></button>
-            <div className="ball-marker-history">{ballMarkers.slice(0,6).map(marker=>{const state=marker.score_state||{};return <div className={marker.scoring_event_id?'linked':'pending'} key={marker.id}><b>{formatClock(new Date(marker.marked_at).getTime())}</b><span>{marker.scoring_event_id?String(marker.over_no??'—')+'.'+String(marker.ball_no??'—')+' · '+String(marker.delivery_label||'BALL')+' · '+String(state.runs??'—')+'/'+String(state.wickets??'—'):'WAITING FOR SCORE'}</span></div>;})}{!ballMarkers.length&&<p>No ball timestamps yet.</p>}</div>
+            <div className="ball-marker-history">{ballMarkers.slice(0,6).map(marker=>{const state=marker.score_state||{};return <div className={marker.scoring_event_id?'linked':'pending'} key={marker.id}><button className="ball-marker-remove" title="Remove this ball timestamp" onClick={()=>void deleteBallMarker(marker)}>×</button><b>{formatClock(new Date(marker.marked_at).getTime())}</b><span>{marker.scoring_event_id?String(marker.over_no??'—')+'.'+String(marker.ball_no??'—')+' · '+String(marker.delivery_label||'BALL')+' · '+String(state.runs??'—')+'/'+String(state.wickets??'—'):'WAITING FOR SCORE'}</span></div>;})}{!ballMarkers.length&&<p>No ball timestamps yet.</p>}</div>
           </div>
           <div className="event-buttons">
             <button className="four" onClick={()=>markEvent('FOUR')}>4 <span>MARK FOUR</span></button>
@@ -717,6 +743,7 @@ export function ReplayWorkstation({matchId,match}:{matchId:string;match:any}){
             <button className="clip-select" onClick={()=>{setSelectedClipId(c.id);setSelectedAngle(c.angles[0]?.slot??0);}}>
               <em>{c.kind}</em><div><strong>{c.title}</strong><span>{formatClock(c.createdAt)} · {c.angles.length} angles · {c.source}</span></div><b>{c.durationSec}s</b>
             </button>
+            <button className="clip-instant" disabled={programMode==='REPLAY'||replayTakeBusy||!c.angles.length} onClick={()=>void instantReplay(c)}>REPLAY ▶</button>
             <button className="clip-delete" disabled={programMode==='REPLAY'} onClick={()=>void deleteClip(c)}>DELETE</button>
           </div>):<p>No replay clips yet. FOUR, SIX and WICKET from the scorer will appear here automatically while this dashboard is open.</p>}</div>
         </section>
