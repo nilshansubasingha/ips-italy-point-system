@@ -17,7 +17,8 @@
     "react-dom": "19.0.0",
     "@ips/broadcast": "*",
     "@ips/graphics-engine": "*",
-    "@supabase/supabase-js": "^2.49.4"
+    "@supabase/supabase-js": "^2.49.4",
+    "livekit-client": "^2.22.3"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",
