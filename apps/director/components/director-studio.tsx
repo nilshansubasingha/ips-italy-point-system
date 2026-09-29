@@ -330,7 +330,7 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
         <small>{match.code} · {match.status}</small>
       </div>
       <div className="top-status"><span className="live-dot"/>PROGRAM CONNECTED <b>R{snap.program?.revision??0}</b></div>
-      <div className="director-nav"><a className="overlay-open" target="_blank" rel="noreferrer" href={OVERLAY_URL+"/?match="+matchId}>OPEN OVERLAY ↗</a><a href={"/replay/matches/"+matchId}>REPLAY</a><Link href="/">← MATCHES</Link></div>
+      <div className="director-nav"><a className="overlay-open" target="_blank" rel="noreferrer" href={OVERLAY_URL+"/program/"+encodeURIComponent(matchId)}>OPEN OVERLAY ↗</a><a href={"/replay/matches/"+matchId}>REPLAY</a><Link href="/">← MATCHES</Link></div>
     </header>
 
     <nav className="control-tabs">
@@ -363,8 +363,8 @@ export function DirectorStudio({matchId,initial}:{matchId:string;initial:Snapsho
 
           <article className="monitor program-monitor">
             <header><span>PROGRAM</span><strong><i className="on-air-dot"/> ON AIR</strong></header>
-            <div className="monitor-screen"><iframe title="IPS PRISM Program" src={OVERLAY_URL+'/?match='+matchId}/></div>
-            <footer><span>{active.length} active layer{active.length===1?'':'s'}</span><a target="_blank" rel="noreferrer" href={OVERLAY_URL+'/?match='+matchId}>CLEAN OUTPUT ↗</a></footer>
+            <div className="monitor-screen"><iframe title="IPS PRISM Program" src={OVERLAY_URL+'/program/'+encodeURIComponent(matchId)}/></div>
+            <footer><span>{active.length} active layer{active.length===1?'':'s'}</span><a target="_blank" rel="noreferrer" href={OVERLAY_URL+'/program/'+encodeURIComponent(matchId)}>CLEAN OUTPUT ↗</a></footer>
           </article>
         </section>
 
