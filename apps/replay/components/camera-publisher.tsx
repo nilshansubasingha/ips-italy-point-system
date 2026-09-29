@@ -53,6 +53,7 @@ export function CameraPublisher(){
   const trackRef=useRef<LocalVideoTrack|null>(null);
   const wakeLockRef=useRef<any>(null);
   const intentionalStopRef=useRef(false);
+  const telemetryTimerRef=useRef<number|null>(null);
 
   const attachPreview=()=>{
     const track=trackRef.current;
@@ -64,6 +65,43 @@ export function CameraPublisher(){
       video.muted=true;
       video.playsInline=true;
       void video.play().catch(()=>{});
+    }catch{}
+  };
+
+  const publishTelemetry=async(room:Room,joinInfo:JoinInfo)=>{
+    try{
+      const nav:any=navigator;
+      const connection=nav.connection||nav.mozConnection||nav.webkitConnection;
+      let batteryPct:number|null=null;
+      let charging:boolean|null=null;
+      if(typeof nav.getBattery==='function'){
+        try{
+          const battery=await nav.getBattery();
+          batteryPct=Math.round(Number(battery.level||0)*100);
+          charging=Boolean(battery.charging);
+        }catch{}
+      }
+      const settings=trackRef.current?.mediaStreamTrack?.getSettings?.()||{};
+      await room.localParticipant.setMetadata(JSON.stringify({
+        role:'camera',
+        matchId:joinInfo.match_id,
+        channelNo:joinInfo.channel_no,
+        label:joinInfo.label,
+        connectionId:joinInfo.connection_id,
+        telemetry:{
+          batteryPct,
+          charging,
+          online:navigator.onLine,
+          effectiveType:connection?.effectiveType??null,
+          downlinkMbps:connection?.downlink??null,
+          rttMs:connection?.rtt??null,
+          saveData:connection?.saveData??null,
+          width:settings.width??null,
+          height:settings.height??null,
+          frameRate:settings.frameRate??null,
+          updatedAt:Date.now()
+        }
+      }));
     }catch{}
   };
 
@@ -83,6 +121,10 @@ export function CameraPublisher(){
     if(videoRef.current)videoRef.current.srcObject=null;
     try{await wakeLockRef.current?.release?.();}catch{}
     wakeLockRef.current=null;
+    if(telemetryTimerRef.current!==null){
+      window.clearInterval(telemetryTimerRef.current);
+      telemetryTimerRef.current=null;
+    }
 
     setJoin(null);
     setStatus('IDLE');
@@ -167,6 +209,10 @@ export function CameraPublisher(){
         simulcast:false
       });
 
+      await publishTelemetry(room,auth.join);
+      if(telemetryTimerRef.current!==null)window.clearInterval(telemetryTimerRef.current);
+      telemetryTimerRef.current=window.setInterval(()=>{void publishTelemetry(room,auth.join);},10000);
+
       setStatus('LIVE');
       setViewerState('CONNECTED TO IPS MEDIA SERVER');
       setMessage('Camera is live. Keep this page visible during transmission.');
@@ -192,6 +238,7 @@ export function CameraPublisher(){
 
   useEffect(()=>()=>{
     intentionalStopRef.current=true;
+    if(telemetryTimerRef.current!==null)window.clearInterval(telemetryTimerRef.current);
     try{trackRef.current?.stop();}catch{}
     try{roomRef.current?.disconnect();}catch{}
   },[]);
