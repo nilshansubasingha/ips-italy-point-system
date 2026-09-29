@@ -26,7 +26,7 @@ export default async function ControllerLoginPage(){
       <div className="controller-auth-copy">
         <span className="micro">SAME IPS ACCOUNT</span>
         <h1>Sign in to the Controller.</h1>
-        <p>Use the same email and password as the main IPS website. Railway hosts the Controller on a separate domain, so it needs its own browser session.</p>
+        <p>Use the same email and password as the main IPS website. Controller, Director and Replay now share the unified IPS broadcast workspace.</p>
       </div>
       <ControllerLoginForm/>
       <div className="controller-auth-foot">
