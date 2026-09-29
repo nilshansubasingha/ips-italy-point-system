@@ -9,12 +9,16 @@ RUN npm install
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 ARG NEXT_PUBLIC_IPS_OVERLAY_URL
+ARG NEXT_PUBLIC_IPS_REPLAY_URL
+ARG NEXT_PUBLIC_IPS_WEB_URL
 ENV NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
 ENV NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY}
 ENV NEXT_PUBLIC_IPS_OVERLAY_URL=${NEXT_PUBLIC_IPS_OVERLAY_URL}
+ENV NEXT_PUBLIC_IPS_REPLAY_URL=${NEXT_PUBLIC_IPS_REPLAY_URL}
+ENV NEXT_PUBLIC_IPS_WEB_URL=${NEXT_PUBLIC_IPS_WEB_URL}
 ENV PRISM_PREVIEW_GATEWAY=1
 
-RUN npm run build -w @ips/director && npm run build -w @ips/editor && npm run build -w @ips/replay && npm run build -w @ips/overlay
+RUN npm run build -w @ips/controller && npm run build -w @ips/director && npm run build -w @ips/editor && npm run build -w @ips/replay && npm run build -w @ips/overlay
 
 EXPOSE 8080
 
