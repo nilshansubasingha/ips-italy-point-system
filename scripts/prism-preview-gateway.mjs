@@ -1,12 +1,10 @@
 import http from 'node:http';
-import net from 'node:net';
 import {spawn} from 'node:child_process';
 
 const publicPort=Number(process.env.PORT||8080);
 const directorPort=3103;
 const editorPort=3104;
 const replayPort=3106;
-const livekitPort=7880;
 const children=[];
 
 function start(name,workspace,port){
@@ -27,12 +25,12 @@ start('director','@ips/director',directorPort);
 start('editor','@ips/editor',editorPort);
 start('replay','@ips/replay',replayPort);
 
-function proxy(req,res,targetPort,pathOverride){
+function proxy(req,res,targetPort){
   const headers={...req.headers,host:'127.0.0.1:'+targetPort};
   const upstream=http.request({
     hostname:'127.0.0.1',
     port:targetPort,
-    path:pathOverride??req.url,
+    path:req.url,
     method:req.method,
     headers
   },up=>{
@@ -58,12 +56,7 @@ const server=http.createServer((req,res)=>{
   if(url==='/health'){
     res.statusCode=200;
     res.setHeader('content-type','application/json');
-    res.end(JSON.stringify({ok:true,apps:['director','editor','replay']}));
-    return;
-  }
-  if(url==='/livekit'||url.startsWith('/livekit/')){
-    const target=url.replace(/^\/livekit/,'')||'/';
-    proxy(req,res,livekitPort,target);
+    res.end(JSON.stringify({ok:true,apps:['director','editor','replay'],media:'livekit-cloud'}));
     return;
   }
   if(url==='/director'||url.startsWith('/director/')){
@@ -83,37 +76,8 @@ const server=http.createServer((req,res)=>{
   res.end('IPS PRISM preview gateway: use /director, /editor or /replay');
 });
 
-server.on('upgrade',(req,socket,head)=>{
-  const url=req.url||'/';
-  if(!(url==='/livekit'||url.startsWith('/livekit/'))){
-    socket.destroy();
-    return;
-  }
-
-  const targetPath=url.replace(/^\/livekit/,'')||'/';
-  const upstream=net.connect(livekitPort,'127.0.0.1',()=>{
-    const lines=[
-      `GET ${targetPath} HTTP/1.1`,
-      ...Object.entries(req.headers).map(([key,value])=>{
-        const rendered=Array.isArray(value)?value.join(', '):(value??'');
-        return key.toLowerCase()==='host'
-          ? `Host: 127.0.0.1:${livekitPort}`
-          : `${key}: ${rendered}`;
-      }),
-      '',
-      ''
-    ];
-    upstream.write(lines.join('\r\n'));
-    if(head?.length)upstream.write(head);
-    socket.pipe(upstream).pipe(socket);
-  });
-
-  upstream.on('error',()=>socket.destroy());
-  socket.on('error',()=>upstream.destroy());
-});
-
 server.listen(publicPort,'0.0.0.0',()=>{
-  console.log('IPS PRISM preview gateway ready on '+publicPort);
+  console.log('IPS PRISM preview gateway ready on '+publicPort+' with LiveKit Cloud media');
 });
 
 function shutdown(){
