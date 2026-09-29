@@ -51,7 +51,8 @@ function proxy(req,res,targetPort){
 
 const server=http.createServer((req,res)=>{
   const url=req.url||'/';
-  if(url==='/'||url===''){
+  const pathname=new URL(url,'http://ips.local').pathname;
+  if(pathname==='/'||pathname===''){
     res.statusCode=200;
     res.setHeader('content-type','text/html; charset=utf-8');
     res.end(`<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>IPS Broadcast Control Room</title><style>
@@ -65,29 +66,29 @@ const server=http.createServer((req,res)=>{
     </div></main></body></html>`);
     return;
   }
-  if(url==='/health'){
+  if(pathname==='/health'){
     res.statusCode=200;
     res.setHeader('content-type','application/json');
     res.end(JSON.stringify({ok:true,apps:['controller','director','editor','overlay','replay'],media:'livekit-cloud'}));
     return;
   }
-  if(url==='/controller'||url.startsWith('/controller/')){
+  if(pathname==='/controller'||pathname.startsWith('/controller/')){
     proxy(req,res,controllerPort);
     return;
   }
-  if(url==='/director'||url.startsWith('/director/')){
+  if(pathname==='/director'||pathname.startsWith('/director/')){
     proxy(req,res,directorPort);
     return;
   }
-  if(url==='/editor'||url.startsWith('/editor/')){
+  if(pathname==='/editor'||pathname.startsWith('/editor/')){
     proxy(req,res,editorPort);
     return;
   }
-  if(url==='/overlay'||url.startsWith('/overlay/')){
+  if(pathname==='/overlay'||pathname.startsWith('/overlay/')){
     proxy(req,res,overlayPort);
     return;
   }
-  if(url==='/replay'||url.startsWith('/replay/')){
+  if(pathname==='/replay'||pathname.startsWith('/replay/')){
     proxy(req,res,replayPort);
     return;
   }
