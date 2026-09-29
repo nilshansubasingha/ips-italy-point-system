@@ -3,6 +3,7 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {createClient,type RealtimeChannel} from '@supabase/supabase-js';
 import {FitSceneCanvas} from '@ips/graphics-react';
+import {ConnectionState,Room,RoomEvent,Track,type RemoteParticipant,type RemoteTrack,type RemoteTrackPublication} from 'livekit-client';
 
 type ActiveLayer={
   instanceId:string;
@@ -108,6 +109,58 @@ function compose(snapshot:Snapshot,now:number){
   });
 }
 
+function LiveCameraLayer({config}:{config:Record<string,unknown>}){
+  const ref=useRef<HTMLVideoElement|null>(null);
+  const [state,setState]=useState('CONNECTING');
+  const url=String(config?.url||'');
+  const token=String(config?.token||'');
+  const channelNo=Number(config?.channelNo||0);
+
+  useEffect(()=>{
+    if(!url||!token||!channelNo){setState('UNAVAILABLE');return;}
+    let cancelled=false;
+    const room=new Room({adaptiveStream:true,dynacast:false,disconnectOnPageLeave:true});
+    const matches=(participant:RemoteParticipant)=>{
+      try{
+        const meta=JSON.parse(participant.metadata||'{}');
+        return meta.role==='camera'&&Number(meta.channelNo)===channelNo;
+      }catch{return false;}
+    };
+    const attach=(track:RemoteTrack,_publication:RemoteTrackPublication,participant:RemoteParticipant)=>{
+      if(track.kind!==Track.Kind.Video||!matches(participant))return;
+      const video=ref.current;
+      if(!video)return;
+      try{
+        track.detach();
+        track.attach(video);
+        video.muted=true;
+        video.playsInline=true;
+        void video.play().catch(()=>{});
+        setState('LIVE');
+      }catch{setState('VIDEO ERROR');}
+    };
+    room.on(RoomEvent.TrackSubscribed,attach);
+    room.on(RoomEvent.ConnectionStateChanged,(next:ConnectionState)=>{
+      if(cancelled)return;
+      if(next===ConnectionState.Connected)setState(prev=>prev==='LIVE'?prev:'WAITING FOR CAMERA');
+      else if(next===ConnectionState.Reconnecting)setState('RECONNECTING');
+      else if(next===ConnectionState.Disconnected)setState('OFFLINE');
+    });
+    void room.connect(url,token,{autoSubscribe:true}).catch(()=>{if(!cancelled)setState('CONNECTION FAILED');});
+    return()=>{
+      cancelled=true;
+      try{room.off(RoomEvent.TrackSubscribed,attach);}catch{}
+      try{room.disconnect();}catch{}
+      if(ref.current)ref.current.srcObject=null;
+    };
+  },[url,token,channelNo]);
+
+  return <div className="program-live-camera">
+    <video ref={ref} autoPlay muted playsInline/>
+    <div className="program-live-camera-label"><b>LIVE</b><span>CAM {channelNo}{config?.label?' · '+String(config.label):''}</span><small>{state}</small></div>
+  </div>;
+}
+
 function ProgramLayer({snapshot,item,now}:{snapshot:Snapshot;item:{layer:ActiveLayer;meta:VariantMeta};now:number}){
   const {layer,meta}=item;
   const started=Date.parse(layer.startedAt);
@@ -116,8 +169,11 @@ function ProgramLayer({snapshot,item,now}:{snapshot:Snapshot;item:{layer:ActiveL
   const remaining=end!=null?end-now:null;
   const exiting=remaining!=null&&remaining<=360;
   const data=useMemo(()=>({...snapshot.data,director:layer.payload??{},runtime:{variantKey:layer.variantKey,instanceId:layer.instanceId}}),[snapshot.data,layer.payload,layer.variantKey,layer.instanceId]);
+  const liveCamera=(layer.payload as any)?.liveCamera;
   return <div className={'program-layer'+(exiting?' exiting':'')} style={{zIndex:layer.priority}}>
-    <FitSceneCanvas document={meta.document} data={data} exiting={exiting} fit="cover"/>
+    {layer.variantKey==='replay.fullscreen'&&liveCamera?.url&&liveCamera?.token
+      ?<LiveCameraLayer config={liveCamera}/>
+      :<FitSceneCanvas document={meta.document} data={data} exiting={exiting} fit="cover"/>}
   </div>;
 }
 
