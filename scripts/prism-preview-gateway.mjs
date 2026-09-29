@@ -4,6 +4,7 @@ import {spawn} from 'node:child_process';
 const publicPort=Number(process.env.PORT||8080);
 const directorPort=3103;
 const editorPort=3104;
+const overlayPort=3105;
 const replayPort=3106;
 const children=[];
 
@@ -23,6 +24,7 @@ function start(name,workspace,port){
 
 start('director','@ips/director',directorPort);
 start('editor','@ips/editor',editorPort);
+start('overlay','@ips/overlay',overlayPort);
 start('replay','@ips/replay',replayPort);
 
 function proxy(req,res,targetPort){
@@ -56,7 +58,7 @@ const server=http.createServer((req,res)=>{
   if(url==='/health'){
     res.statusCode=200;
     res.setHeader('content-type','application/json');
-    res.end(JSON.stringify({ok:true,apps:['director','editor','replay'],media:'livekit-cloud'}));
+    res.end(JSON.stringify({ok:true,apps:['director','editor','overlay','replay'],media:'livekit-cloud'}));
     return;
   }
   if(url==='/director'||url.startsWith('/director/')){
@@ -67,13 +69,17 @@ const server=http.createServer((req,res)=>{
     proxy(req,res,editorPort);
     return;
   }
+  if(url==='/overlay'||url.startsWith('/overlay/')){
+    proxy(req,res,overlayPort);
+    return;
+  }
   if(url==='/replay'||url.startsWith('/replay/')){
     proxy(req,res,replayPort);
     return;
   }
   res.statusCode=404;
   res.setHeader('content-type','text/plain; charset=utf-8');
-  res.end('IPS PRISM preview gateway: use /director, /editor or /replay');
+  res.end('IPS PRISM preview gateway: use /director, /editor, /overlay or /replay');
 });
 
 server.listen(publicPort,'0.0.0.0',()=>{
